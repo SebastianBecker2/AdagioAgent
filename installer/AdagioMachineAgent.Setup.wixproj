@@ -37,9 +37,10 @@
     <PublishDir Condition="'$(PublishDir)'==''">$(MSBuildThisFileDirectory)publish\</PublishDir>
     <!--
       Strip the trailing path separator so that -o "$(PublishDirNoSlash)"
-      in the dotnet publish command is quoted correctly on Windows.
+      in the dotnet publish command is quoted correctly on Windows, while
+      still preserving drive roots like C:\.
     -->
-    <PublishDirNoSlash>$(PublishDir.TrimEnd('\').TrimEnd('/'))</PublishDirNoSlash>
+    <PublishDirNoSlash>$([System.IO.Path]::TrimEndingDirectorySeparator('$(PublishDir)'))</PublishDirNoSlash>
   </PropertyGroup>
 
   <!--
