@@ -45,8 +45,7 @@
       inside the quoted -o "..." argument of the dotnet publish Exec command.
       A trailing backslash before the closing quote causes the Windows C-runtime
       argv parser to treat the backslash-quote pair as an escaped quote (keeping
-      the string open), which absorbs subsequent arguments (e.g. --nologo) into
-      the output path.
+      the string open) and absorbs subsequent flags into the output path.
     -->
     <PublishDirNoSlash>$(PublishDir.TrimEnd('\').TrimEnd('/'))</PublishDirNoSlash>
   </PropertyGroup>
