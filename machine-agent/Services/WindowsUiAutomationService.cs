@@ -1,3 +1,4 @@
+#if WINDOWS
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
@@ -9,19 +10,13 @@ using FlaUI.UIA3;
 namespace AdagioMachineAgent.Services;
 
 /// <summary>
-/// Wraps FlaUI and System.Drawing to provide UI automation and screenshots.
-/// FlaUI only works on Windows; calling any method on a non-Windows OS throws
-/// <see cref="PlatformNotSupportedException"/>.
+/// Windows implementation of <see cref="IUiAutomationService"/> using FlaUI (UIA3)
+/// and System.Drawing. Only supported on Windows.
 /// </summary>
-public sealed class UiAutomationService : IDisposable
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
+public sealed class WindowsUiAutomationService : IUiAutomationService
 {
-    private readonly UIA3Automation _automation;
-
-    public UiAutomationService()
-    {
-        EnsureWindows();
-        _automation = new UIA3Automation();
-    }
+    private readonly UIA3Automation _automation = new();
 
     // ── UI tree ──────────────────────────────────────────────────────────────
 
@@ -30,7 +25,6 @@ public sealed class UiAutomationService : IDisposable
     /// </summary>
     public UiTreeResponse GetUiTree(int pid)
     {
-        EnsureWindows();
         var app = Application.Attach(pid);
         var mainWindow = app.GetMainWindow(_automation);
 
@@ -51,7 +45,6 @@ public sealed class UiAutomationService : IDisposable
     /// </summary>
     public void Click(int pid, string elementId)
     {
-        EnsureWindows();
         var element = FindElement(pid, elementId);
         element.Click();
     }
@@ -63,7 +56,6 @@ public sealed class UiAutomationService : IDisposable
     /// </summary>
     public void Type(int pid, string elementId, string text)
     {
-        EnsureWindows();
         var element = FindElement(pid, elementId);
         element.Focus();
         element.AsTextBox()?.Enter(text);
@@ -77,7 +69,6 @@ public sealed class UiAutomationService : IDisposable
     /// </summary>
     public string CaptureScreenshot(int pid)
     {
-        EnsureWindows();
         var app = Application.Attach(pid);
         var mainWindow = app.GetMainWindow(_automation);
 
@@ -186,13 +177,5 @@ public sealed class UiAutomationService : IDisposable
         else if (!string.IsNullOrEmpty(el.Name)) parts.Add(el.Name.Replace(' ', '-'));
         return string.Join("-", parts).ToLowerInvariant();
     }
-
-    private static void EnsureWindows()
-    {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            throw new PlatformNotSupportedException(
-                "UI automation is only supported on Windows.");
-        }
-    }
 }
+#endif

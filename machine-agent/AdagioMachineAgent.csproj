@@ -1,29 +1,41 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>AdagioMachineAgent</AssemblyName>
     <RootNamespace>AdagioMachineAgent</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!--
-      Allow cross-compilation from non-Windows hosts (e.g. Linux CI).
-      The agent itself is only designed to run on Windows.
-    -->
-    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!--
-      FlaUI is Windows-only and requires the target to run on Windows.
-      The package references are included here so the project compiles; the
-      runtime guard in UiAutomationService ensures a clear error when the agent
-      is accidentally run on a non-Windows host.
-    -->
+  <!--
+    Define build-time platform constants so #if WINDOWS / #if LINUX guards in
+    source files select the correct UI-automation backend.
+  -->
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <DefineConstants>$(DefineConstants);LINUX</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+    Windows-only: FlaUI wraps the UIA3 accessibility API used by
+    WindowsUiAutomationService.
+  -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
     <PackageReference Include="FlaUI.Core" Version="4.0.0" />
     <PackageReference Include="FlaUI.UIA3" Version="4.0.0" />
+  </ItemGroup>
+
+  <!--
+    Linux-only: Tmds.DBus.Protocol provides the D-Bus client used by
+    LinuxUiAutomationService to talk to the AT-SPI2 accessibility stack.
+  -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.91.0" />
   </ItemGroup>
 
 </Project>

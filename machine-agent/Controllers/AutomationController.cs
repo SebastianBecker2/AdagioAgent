@@ -12,7 +12,7 @@ namespace AdagioMachineAgent.Controllers;
 public sealed class AutomationController : ControllerBase
 {
     private readonly ProcessService _processService;
-    private readonly UiAutomationService _uiService;
+    private readonly IUiAutomationService _uiService;
     private readonly ILogger<AutomationController> _logger;
 
     private static readonly string AgentVersion =
@@ -20,7 +20,7 @@ public sealed class AutomationController : ControllerBase
 
     public AutomationController(
         ProcessService processService,
-        UiAutomationService uiService,
+        IUiAutomationService uiService,
         ILogger<AutomationController> logger)
     {
         _processService = processService;
