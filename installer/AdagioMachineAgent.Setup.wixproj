@@ -35,11 +35,24 @@
       Override with -p:PublishDir=<path> when calling msbuild/dotnet build.
     -->
     <PublishDir Condition="'$(PublishDir)'==''">$(MSBuildThisFileDirectory)publish\</PublishDir>
+    <!--
+      Expose PublishDir to the WiX preprocessor so Package.wxs can reference it
+      as $(var.PublishDir).  DefineConstants maps directly to WiX -d switches.
+    -->
+    <DefineConstants>$(DefineConstants);PublishDir=$(PublishDir)</DefineConstants>
+    <!--
+      Version of PublishDir without the trailing directory separator, for use
+      inside the quoted -o "..." argument of the dotnet publish Exec command.
+      A trailing backslash before the closing quote causes the Windows C-runtime
+      argv parser to treat the backslash-quote pair as an escaped quote (keeping
+      the string open), which absorbs subsequent arguments (e.g. --nologo) into
+      the output path.
+    -->
+    <PublishDirNoSlash>$(PublishDir.TrimEnd('\').TrimEnd('/'))</PublishDirNoSlash>
   </PropertyGroup>
 
   <!--
-    Pass $(PublishDir) to WiX so that Package.wxs can reference it via
-    $(var.PublishDir) in File/@Source attributes.
+    Tell the WiX linker where to search for loose files (harvested output).
   -->
   <ItemGroup>
     <BindInputPaths Include="$(PublishDir)" />
@@ -51,7 +64,7 @@
     building the installer on its own.
   -->
   <Target Name="PublishMachineAgent" BeforeTargets="BeforeBuild">
-    <Exec Command="dotnet publish &quot;$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj&quot; -r win-x64 -c Release --self-contained -o &quot;$(PublishDir)&quot; --nologo" />
+    <Exec Command="dotnet publish &quot;$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj&quot; -r win-x64 -c Release --self-contained -o &quot;$(PublishDirNoSlash)&quot; --nologo" />
   </Target>
 
   <!--
