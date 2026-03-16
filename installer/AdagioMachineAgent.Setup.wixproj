@@ -36,22 +36,15 @@
     -->
     <PublishDir Condition="'$(PublishDir)'==''">$(MSBuildThisFileDirectory)publish\</PublishDir>
     <!--
-      Expose PublishDir to the WiX preprocessor so Package.wxs can reference it
-      as $(var.PublishDir).  DefineConstants maps directly to WiX -d switches.
-    -->
-    <DefineConstants>$(DefineConstants);PublishDir=$(PublishDir)</DefineConstants>
-    <!--
-      Version of PublishDir without the trailing directory separator, for use
-      inside the quoted -o "..." argument of the dotnet publish Exec command.
-      A trailing backslash before the closing quote causes the Windows C-runtime
-      argv parser to treat the backslash-quote pair as an escaped quote (keeping
-      the string open) and absorbs subsequent flags into the output path.
+      Strip the trailing path separator so that -o "$(PublishDirNoSlash)"
+      in the dotnet publish command is quoted correctly on Windows.
     -->
     <PublishDirNoSlash>$(PublishDir.TrimEnd('\').TrimEnd('/'))</PublishDirNoSlash>
   </PropertyGroup>
 
   <!--
-    Tell the WiX linker where to search for loose files (harvested output).
+    Tell the WiX linker where to search for files: both for harvested output
+    and to resolve bare File/@Source filenames in Package.wxs.
   -->
   <ItemGroup>
     <BindInputPaths Include="$(PublishDir)" />
