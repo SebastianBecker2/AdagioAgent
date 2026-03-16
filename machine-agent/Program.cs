@@ -25,8 +25,8 @@ app.Run();
 /// <summary>Agent runtime configuration (appsettings.json / env vars).</summary>
 public sealed class AgentOptions
 {
-    /// <summary>Directories from which installers are allowed to run.</summary>
-    public List<string> AllowedInstallerPaths { get; set; } = ["C:\\Installers"];
+    /// <summary>Directories from which executables are allowed to run.</summary>
+    public List<string> AllowedExecutablePaths { get; set; } = ["C:\\Apps"];
 
     /// <summary>Seconds before a managed process is forcibly killed.</summary>
     public int ProcessTimeoutSeconds { get; set; } = 300;

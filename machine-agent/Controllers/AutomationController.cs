@@ -39,7 +39,7 @@ public sealed class AutomationController : ControllerBase
 
     // ── POST /run ────────────────────────────────────────────────────────────
 
-    /// <summary>Start an installer process and return its PID.</summary>
+    /// <summary>Start an executable process and return its PID.</summary>
     [HttpPost("/run")]
     [ProducesResponseType(typeof(RunResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
