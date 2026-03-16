@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  WiX v4 installer for Adagio Machine Agent.
+
+  Installs the machine-agent as a Windows Service (AdagioMachineAgent) that
+  starts automatically and listens on http://0.0.0.0:5000.
+
+  Upgrade behaviour: major upgrades replace earlier versions automatically.
+  Uninstall: stops the service, removes it, and removes all installed files.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Package Name="Adagio Machine Agent"
+           Manufacturer="AdagioAgent"
+           Version="1.0.0.0"
+           UpgradeCode="{BA4F3D21-9E6B-4C7A-8F0E-2A1C5D8B7E3F}"
+           Scope="perMachine">
+
+    <!-- Replace any earlier version; block downgrades. -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <!-- Embed all files inside the single .msi cabinet. -->
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Install to %ProgramFiles%\AdagioMachineAgent (64-bit path). -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="AdagioMachineAgent" />
+    </StandardDirectory>
+
+    <Feature Id="Complete" Level="1">
+      <!-- Main executable + service registration (defined below). -->
+      <ComponentGroupRef Id="AgentService" />
+      <!-- All other published files (harvested automatically). -->
+      <ComponentGroupRef Id="ApplicationFiles" />
+    </Feature>
+
+    <!--
+      Service component: installs AdagioMachineAgent.exe and registers the
+      Windows Service.  The service is started on install and stopped/removed
+      on uninstall.
+
+      Note on interactive desktop access
+      ───────────────────────────────────
+      Windows services run in Session 0 (isolated from the interactive desktop).
+      FlaUI/UIA3 UI automation therefore requires the service to run under a
+      user account that owns an interactive session rather than LocalSystem.
+      After installation an administrator can change the "Log on as" account
+      in services.msc or via:
+
+          sc.exe config AdagioMachineAgent obj= ".\LocalUser"   password= "***"
+          sc.exe config AdagioMachineAgent obj= "DOMAIN\User"   password= "***"
+    -->
+    <ComponentGroup Id="AgentService" Directory="INSTALLFOLDER">
+      <Component>
+        <File Source="$(var.PublishDir)AdagioMachineAgent.exe" KeyPath="yes" />
+        <ServiceInstall Id="ServiceInstall"
+                        Name="AdagioMachineAgent"
+                        DisplayName="Adagio Machine Agent"
+                        Description="REST API for process control and UI automation (listens on port 5000)."
+                        Type="ownProcess"
+                        Start="auto"
+                        ErrorControl="normal"
+                        Account="LocalSystem" />
+        <ServiceControl Id="ServiceControl"
+                        Name="AdagioMachineAgent"
+                        Start="install"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+    </ComponentGroup>
+
+  </Package>
+
+</Wix>

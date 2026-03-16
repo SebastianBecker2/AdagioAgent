@@ -23,11 +23,13 @@
 
   <!--
     Windows-only: FlaUI wraps the UIA3 accessibility API used by
-    WindowsUiAutomationService.
+    WindowsUiAutomationService.  Microsoft.Extensions.Hosting.WindowsServices
+    enables the app to run as a Windows Service.
   -->
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
     <PackageReference Include="FlaUI.Core" Version="4.0.0" />
     <PackageReference Include="FlaUI.UIA3" Version="4.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
   </ItemGroup>
 
   <!--

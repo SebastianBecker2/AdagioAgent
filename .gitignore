@@ -4,6 +4,9 @@
 **/out/
 **/.vs/
 
+# Installer: published machine-agent output (populated during MSI build)
+installer/publish/
+
 # Dependencies
 controller-extension/node_modules/
 
