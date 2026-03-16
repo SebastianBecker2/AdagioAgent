@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  WiX v4 installer project for Adagio Machine Agent.
+
+  Building this project automatically:
+    1. Publishes machine-agent as a self-contained win-x64 Release build.
+    2. Harvests all published files into the ApplicationFiles component group.
+    3. Produces AdagioMachineAgentSetup.msi in the output directory.
+
+  Prerequisites
+  ─────────────
+  • .NET 8 SDK
+  • WiX v4 toolset (installed automatically via the WixToolset.Sdk NuGet SDK)
+
+  Build
+  ─────
+  From this directory (or the repo root):
+
+      msbuild installer\AdagioMachineAgent.Setup.wixproj -r -p:Configuration=Release
+
+  The .msi is written to  installer\bin\Release\en-US\AdagioMachineAgentSetup.msi
+
+  To customise the publish output location, override the PublishDir property:
+
+      msbuild ... -p:PublishDir=C:\custom\publish\
+-->
+<Project Sdk="WixToolset.Sdk/4.0.5">
+
+  <PropertyGroup>
+    <OutputName>AdagioMachineAgentSetup</OutputName>
+    <Platform>x64</Platform>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <!--
+      Location of the dotnet-published machine-agent output.
+      Override with -p:PublishDir=<path> when calling msbuild/dotnet build.
+    -->
+    <PublishDir Condition="'$(PublishDir)'==''">$(MSBuildThisFileDirectory)publish\</PublishDir>
+  </PropertyGroup>
+
+  <!--
+    Pass $(PublishDir) to WiX so that Package.wxs can reference it via
+    $(var.PublishDir) in File/@Source attributes.
+  -->
+  <ItemGroup>
+    <BindInputPaths Include="$(PublishDir)" />
+  </ItemGroup>
+
+  <!--
+    Publish machine-agent as a self-contained win-x64 binary before the WiX
+    harvester runs.  This ensures $(PublishDir) is populated automatically when
+    building the installer on its own.
+  -->
+  <Target Name="PublishMachineAgent" BeforeTargets="BeforeBuild">
+    <Exec Command="dotnet publish &quot;$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj&quot; -r win-x64 -c Release --self-contained -o &quot;$(PublishDir)&quot; --nologo" />
+  </Target>
+
+  <!--
+    Harvest all files from the publish directory into the ApplicationFiles
+    component group.  ExcludeMainExe.xslt suppresses AdagioMachineAgent.exe
+    so it is not duplicated (it is declared explicitly in Package.wxs with the
+    ServiceInstall / ServiceControl elements).
+  -->
+  <ItemGroup>
+    <HarvestDirectory Include="$(PublishDir)">
+      <DirectoryRefId>INSTALLFOLDER</DirectoryRefId>
+      <ComponentGroupName>ApplicationFiles</ComponentGroupName>
+      <SuppressRootDirectory>true</SuppressRootDirectory>
+      <Transforms>$(MSBuildThisFileDirectory)ExcludeMainExe.xslt</Transforms>
+    </HarvestDirectory>
+  </ItemGroup>
+
+</Project>

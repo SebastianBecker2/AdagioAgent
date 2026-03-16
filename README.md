@@ -132,6 +132,80 @@ The `DISPLAY` and `DBUS_SESSION_BUS_ADDRESS` environment variables must be set
 
 ---
 
+### `installer/` — Windows MSI Installer
+
+Produces a self-contained Windows MSI (`AdagioMachineAgentSetup.msi`) that
+installs and registers the machine-agent as a Windows Service
+(`AdagioMachineAgent`) starting automatically on boot.
+
+**Prerequisites:**
+
+- .NET 8 SDK (used to publish the agent before packaging)
+- Visual Studio MSBuild **or** the [WiX Toolset v4](https://wixtoolset.org/)
+  CLI tools (downloaded automatically as NuGet packages on first build)
+
+**Build the installer (run from the repo root or the `installer/` directory):**
+
+```powershell
+# Restore the WiX SDK and build the .msi
+msbuild installer\AdagioMachineAgent.Setup.wixproj -r -p:Configuration=Release
+```
+
+The installer is written to:
+```
+installer\bin\Release\en-US\AdagioMachineAgentSetup.msi
+```
+
+**What the installer does:**
+
+| Action | Detail |
+|---|---|
+| Install location | `%ProgramFiles%\AdagioMachineAgent\` |
+| Service name | `AdagioMachineAgent` |
+| Service display name | `Adagio Machine Agent` |
+| Start type | Automatic (starts on boot) |
+| Listens on | `http://0.0.0.0:5000` |
+| Uninstall | Stops & removes the service, deletes all installed files |
+| Upgrade | Major-upgrade (replaces earlier versions in-place) |
+
+**Install / Uninstall:**
+
+```powershell
+# Install
+msiexec /i AdagioMachineAgentSetup.msi /quiet
+
+# Uninstall
+msiexec /x AdagioMachineAgentSetup.msi /quiet
+```
+
+Or use **Add / Remove Programs** for a GUI experience.
+
+**Configuration after installation:**
+
+Edit `%ProgramFiles%\AdagioMachineAgent\appsettings.json` then restart the
+service:
+
+```powershell
+Restart-Service AdagioMachineAgent
+```
+
+**UI automation and service account:**
+
+Windows services run in Session 0, which is isolated from the interactive
+desktop. For FlaUI/UIA3 UI automation to reach applications running in the
+user session, change the service's *Log On* account to the interactive user
+account (via `services.msc` or the commands below) and restart the service:
+
+```powershell
+# Local account:
+sc.exe config AdagioMachineAgent obj= ".\YourUserName" password= "YourPassword"
+# Domain account:
+sc.exe config AdagioMachineAgent obj= "DOMAIN\YourUserName" password= "YourPassword"
+Restart-Service AdagioMachineAgent
+```
+
+---
+
 ## Typical flow
 
 1. Copilot calls **`adagioAgent_runExecutable`** → VS Code sends `POST /run` → agent starts the executable, returns PID.

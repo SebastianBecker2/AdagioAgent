@@ -3,6 +3,14 @@ using AdagioMachineAgent.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Support running as a Windows Service (no-op when launched as a console app).
+#if WINDOWS
+builder.Host.UseWindowsService(options =>
+{
+    options.ServiceName = "AdagioMachineAgent";
+});
+#endif
+
 // ── Services ─────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddSingleton<ProcessService>();
