@@ -1,12 +1,12 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
-using AdagioVmAgent.Models;
+using AdagioMachineAgent.Models;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
 
-namespace AdagioVmAgent.Services;
+namespace AdagioMachineAgent.Services;
 
 /// <summary>
 /// Wraps FlaUI and System.Drawing to provide UI automation and screenshots.

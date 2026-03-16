@@ -23,7 +23,7 @@ extension) to a UI-automation agent running inside a Windows VM.
                                                         │
                                               ┌─────────▼───────────────────┐
                                               │  Windows VM                 │
-                                              │  vm-agent/                  │
+                                              │  machine-agent/                  │
                                               │  • Program.cs               │
                                               │  • AutomationController.cs  │
                                               │  • ProcessService.cs        │
@@ -64,7 +64,7 @@ npm run compile
 
 ---
 
-### `vm-agent/` — Windows VM Agent (.NET 8, C#)
+### `machine-agent/` — Windows VM Agent (.NET 8, C#)
 
 Minimal Kestrel web host exposing a REST API for process control and UI
 automation via **FlaUI (UIA3)**.
@@ -83,7 +83,7 @@ automation via **FlaUI (UIA3)**.
 **Build (cross-platform):**
 
 ```bash
-cd vm-agent
+cd machine-agent
 dotnet build
 ```
 

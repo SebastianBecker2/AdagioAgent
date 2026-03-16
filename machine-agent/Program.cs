@@ -1,4 +1,4 @@
-using AdagioVmAgent.Services;
+using AdagioMachineAgent.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
