@@ -30,8 +30,13 @@ build_script:
   - npm run compile
   - cd ..
 
-  # 3. Build the WiX MSI installer (also publishes the machine-agent internally)
-  - msbuild installer\AdagioMachineAgent.Setup.wixproj -r -p:Configuration=Release -nologo -verbosity:minimal
+  # 3. Build the WiX MSI installer (also publishes the machine-agent internally).
+  #    Uses dotnet build (not msbuild.exe) so MSBuild runs on the .NET runtime —
+  #    required for WiX SDK NuGet resolution and MSBuild property functions that
+  #    are only available on .NET (not .NET Framework).  The implicit restore in
+  #    dotnet build is intentional: the installer project has not been restored
+  #    by any earlier step.
+  - dotnet build installer\AdagioMachineAgent.Setup.wixproj -c Release --nologo -v minimal
 
 # ── Artifacts ────────────────────────────────────────────────────────────────
 artifacts:

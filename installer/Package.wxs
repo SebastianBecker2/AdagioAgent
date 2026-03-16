@@ -52,7 +52,7 @@
     -->
     <ComponentGroup Id="AgentService" Directory="INSTALLFOLDER">
       <Component>
-        <File Source="AdagioMachineAgent.exe" KeyPath="yes" />
+        <File Source="$(var.PublishDir)AdagioMachineAgent.exe" KeyPath="yes" />
         <ServiceInstall Id="ServiceInstall"
                         Name="AdagioMachineAgent"
                         DisplayName="Adagio Machine Agent"

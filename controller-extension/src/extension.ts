@@ -169,7 +169,7 @@ async function cmdGetScreenshot(): Promise<void> {
     vscode.Uri.file(os.tmpdir()),
     `adagio-screenshot-${pid}-${Date.now()}.png`
   );
-  const imageBytes = Buffer.from(screenshot.imageBase64, "base64");
+  const imageBytes = new Uint8Array(Buffer.from(screenshot.imageBase64, "base64"));
   await vscode.workspace.fs.writeFile(tmpUri, imageBytes);
   await vscode.commands.executeCommand("vscode.open", tmpUri);
 }
