@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <AssemblyName>AdagioVmAgent</AssemblyName>
-    <RootNamespace>AdagioVmAgent</RootNamespace>
+    <AssemblyName>AdagioMachineAgent</AssemblyName>
+    <RootNamespace>AdagioMachineAgent</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>

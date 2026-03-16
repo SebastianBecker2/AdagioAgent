@@ -1,4 +1,4 @@
-namespace AdagioVmAgent.Models;
+namespace AdagioMachineAgent.Models;
 
 // ─── Requests ─────────────────────────────────────────────────────────────────
 

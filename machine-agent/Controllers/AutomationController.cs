@@ -1,8 +1,8 @@
-using AdagioVmAgent.Models;
-using AdagioVmAgent.Services;
+using AdagioMachineAgent.Models;
+using AdagioMachineAgent.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AdagioVmAgent.Controllers;
+namespace AdagioMachineAgent.Controllers;
 
 /// <summary>
 /// REST API surface exposed to the VS Code controller extension.

@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
 
-namespace AdagioVmAgent.Services;
+namespace AdagioMachineAgent.Services;
 
 /// <summary>
 /// Runs installer processes on the VM, enforcing a command whitelist,
