@@ -1,0 +1,39 @@
+# AppVeyor CI configuration for AdagioAgent
+# Builds on Windows (Visual Studio 2022 image) to support:
+#   • machine-agent  — .NET 8 / FlaUI / WiX MSI installer
+#   • controller-extension — TypeScript / VS Code extension
+
+image: Visual Studio 2022
+
+# ── Environment ──────────────────────────────────────────────────────────────
+environment:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+# ── Node.js version ──────────────────────────────────────────────────────────
+# VS 2022 image ships with multiple Node versions; select a stable LTS release.
+install:
+  - ps: Install-Product node 20
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+# Disable the default MSBuild step; we drive everything through build_script.
+build: off
+
+build_script:
+  # 1. Restore & build the .NET machine-agent (Release)
+  - dotnet restore machine-agent\AdagioMachineAgent.csproj
+  - dotnet build machine-agent\AdagioMachineAgent.csproj -c Release --no-restore
+
+  # 2. Install Node dependencies and compile the VS Code extension
+  - cd controller-extension
+  - npm ci
+  - npm run compile
+  - cd ..
+
+  # 3. Build the WiX MSI installer (also publishes the machine-agent internally)
+  - msbuild installer\AdagioMachineAgent.Setup.wixproj -r -p:Configuration=Release -nologo -verbosity:minimal
+
+# ── Artifacts ────────────────────────────────────────────────────────────────
+artifacts:
+  - path: installer\bin\Release\en-US\AdagioMachineAgentSetup.msi
+    name: AdagioMachineAgentSetup
