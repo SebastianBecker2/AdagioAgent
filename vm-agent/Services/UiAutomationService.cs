@@ -1,0 +1,198 @@
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
+using AdagioVmAgent.Models;
+using FlaUI.Core;
+using FlaUI.Core.AutomationElements;
+using FlaUI.UIA3;
+
+namespace AdagioVmAgent.Services;
+
+/// <summary>
+/// Wraps FlaUI and System.Drawing to provide UI automation and screenshots.
+/// FlaUI only works on Windows; calling any method on a non-Windows OS throws
+/// <see cref="PlatformNotSupportedException"/>.
+/// </summary>
+public sealed class UiAutomationService : IDisposable
+{
+    private readonly UIA3Automation _automation;
+
+    public UiAutomationService()
+    {
+        EnsureWindows();
+        _automation = new UIA3Automation();
+    }
+
+    // ── UI tree ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Return the UI element tree for the main window of the given process.
+    /// </summary>
+    public UiTreeResponse GetUiTree(int pid)
+    {
+        EnsureWindows();
+        var app = Application.Attach(pid);
+        var mainWindow = app.GetMainWindow(_automation);
+
+        if (mainWindow == null)
+        {
+            throw new InvalidOperationException(
+                $"No main window found for process {pid}.");
+        }
+
+        var elements = Walk(mainWindow).ToList();
+        return new UiTreeResponse(mainWindow.Title, elements);
+    }
+
+    // ── Click ────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Click a UI element identified by its composite ID (see <see cref="BuildId"/>).
+    /// </summary>
+    public void Click(int pid, string elementId)
+    {
+        EnsureWindows();
+        var element = FindElement(pid, elementId);
+        element.Click();
+    }
+
+    // ── Type ─────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Focus a UI element and type the given text into it.
+    /// </summary>
+    public void Type(int pid, string elementId, string text)
+    {
+        EnsureWindows();
+        var element = FindElement(pid, elementId);
+        element.Focus();
+        element.AsTextBox()?.Enter(text);
+    }
+
+    // ── Screenshot ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Capture a screenshot of the main window for <paramref name="pid"/> and
+    /// return it as a base64-encoded PNG string.
+    /// </summary>
+    public string CaptureScreenshot(int pid)
+    {
+        EnsureWindows();
+        var app = Application.Attach(pid);
+        var mainWindow = app.GetMainWindow(_automation);
+
+        if (mainWindow == null)
+        {
+            throw new InvalidOperationException(
+                $"No main window found for process {pid}.");
+        }
+
+        var bounds = mainWindow.BoundingRectangle;
+        using var bitmap = new Bitmap(bounds.Width, bounds.Height);
+        using (var g = Graphics.FromImage(bitmap))
+        {
+            g.CopyFromScreen(bounds.X, bounds.Y, 0, 0,
+                new Size(bounds.Width, bounds.Height),
+                CopyPixelOperation.SourceCopy);
+        }
+
+        using var ms = new MemoryStream();
+        bitmap.Save(ms, ImageFormat.Png);
+        return Convert.ToBase64String(ms.ToArray());
+    }
+
+    // ── Dispose ──────────────────────────────────────────────────────────────
+
+    public void Dispose() => _automation.Dispose();
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    private AutomationElement FindElement(int pid, string elementId)
+    {
+        var app = Application.Attach(pid);
+        var mainWindow = app.GetMainWindow(_automation);
+
+        if (mainWindow == null)
+        {
+            throw new InvalidOperationException(
+                $"No main window found for process {pid}.");
+        }
+
+        // Walk all descendants to find the one whose ID matches
+        var match = FindById(mainWindow, elementId);
+        if (match == null)
+        {
+            throw new InvalidOperationException(
+                $"Element '{elementId}' not found in the UI tree of process {pid}.");
+        }
+
+        return match;
+    }
+
+    private static AutomationElement? FindById(AutomationElement root, string id)
+    {
+        if (BuildId(root) == id)
+        {
+            return root;
+        }
+
+        foreach (var child in root.FindAllChildren())
+        {
+            var found = FindById(child, id);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<UiElement> Walk(AutomationElement element)
+    {
+        foreach (var child in element.FindAllChildren())
+        {
+            yield return ToDto(child);
+        }
+    }
+
+    private static UiElement ToDto(AutomationElement el)
+    {
+        var children = el.FindAllChildren()
+            .Select(ToDto)
+            .ToList();
+
+        var r = el.BoundingRectangle;
+        Bounds? bounds = r.IsEmpty
+            ? null
+            : new Bounds(r.X, r.Y, r.Width, r.Height);
+
+        return new UiElement(
+            Id: BuildId(el),
+            Type: el.ControlType.ToString(),
+            Name: el.Name ?? string.Empty,
+            AutomationId: el.AutomationId ?? string.Empty,
+            Bounds: bounds,
+            Children: children.Count > 0 ? children : null);
+    }
+
+    /// <summary>
+    /// Build a stable, human-readable element ID from control type + automation ID + name.
+    /// </summary>
+    private static string BuildId(AutomationElement el)
+    {
+        var parts = new List<string> { el.ControlType.ToString() };
+        if (!string.IsNullOrEmpty(el.AutomationId)) parts.Add(el.AutomationId);
+        else if (!string.IsNullOrEmpty(el.Name)) parts.Add(el.Name.Replace(' ', '-'));
+        return string.Join("-", parts).ToLowerInvariant();
+    }
+
+    private static void EnsureWindows()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            throw new PlatformNotSupportedException(
+                "UI automation is only supported on Windows.");
+        }
+    }
+}
