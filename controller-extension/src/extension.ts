@@ -5,7 +5,7 @@ import { RunRequest, UiElement } from "./schema";
 
 // ─── Tool handler types ──────────────────────────────────────────────────────
 
-interface RunInstallerInput {
+interface RunExecutableInput {
   command: string;
   arguments?: string;
   workingDirectory?: string;
@@ -33,8 +33,8 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "adagioAgent.runInstaller",
-      cmdRunInstaller
+      "adagioAgent.runExecutable",
+      cmdRunExecutable
     ),
     vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree),
     vscode.commands.registerCommand(
@@ -53,8 +53,8 @@ export function activate(context: vscode.ExtensionContext): void {
   if (typeof vscode.lm !== "undefined" && "registerTool" in vscode.lm) {
     context.subscriptions.push(
       vscode.lm.registerTool(
-        "adagioAgent_runInstaller",
-        new RunInstallerTool()
+        "adagioAgent_runExecutable",
+        new RunExecutableTool()
       ),
       vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()),
       vscode.lm.registerTool(
@@ -76,10 +76,10 @@ export function deactivate(): void {
 
 // ─── Palette command implementations ─────────────────────────────────────────
 
-async function cmdRunInstaller(): Promise<void> {
+async function cmdRunExecutable(): Promise<void> {
   const command = await vscode.window.showInputBox({
-    prompt: "Full path to installer on the VM (e.g. C:\\Installers\\Setup.exe)",
-    placeHolder: "C:\\Installers\\Setup.exe",
+    prompt: "Full path to executable on the VM (e.g. C:\\Apps\\MyApp.exe)",
+    placeHolder: "C:\\Apps\\MyApp.exe",
   });
   if (!command) {
     return;
@@ -89,13 +89,13 @@ async function cmdRunInstaller(): Promise<void> {
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: "Adagio Agent: Starting installer…",
+      title: "Adagio Agent: Starting executable…",
       cancellable: false,
     },
     async () => {
-      const result = await client.runInstaller({ command });
+      const result = await client.runExecutable({ command });
       vscode.window.showInformationMessage(
-        `Installer started – PID ${result.pid} (${result.status})`
+        `Executable started – PID ${result.pid} (${result.status})`
       );
     }
   );
@@ -103,7 +103,7 @@ async function cmdRunInstaller(): Promise<void> {
 
 async function cmdGetUiTree(): Promise<void> {
   const pidStr = await vscode.window.showInputBox({
-    prompt: "Process ID of the installer",
+    prompt: "Process ID of the executable",
     placeHolder: "1234",
   });
   if (!pidStr) {
@@ -225,18 +225,18 @@ function uiTreeSummary(elements: UiElement[], depth = 0): string {
     .join("\n");
 }
 
-class RunInstallerTool implements vscode.LanguageModelTool<RunInstallerInput> {
+class RunExecutableTool implements vscode.LanguageModelTool<RunExecutableInput> {
   async invoke(
-    options: vscode.LanguageModelToolInvocationOptions<RunInstallerInput>,
+    options: vscode.LanguageModelToolInvocationOptions<RunExecutableInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
     const { command, arguments: args, workingDirectory } = options.input;
     const request: RunRequest = { command, arguments: args, workingDirectory };
     const client = createAgentClient();
-    const result = await client.runInstaller(request);
+    const result = await client.runExecutable(request);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
-        `Installer started.\n- PID: ${result.pid}\n- Status: ${result.status}\n- Started at: ${result.startedAt}`
+        `Executable started.\n- PID: ${result.pid}\n- Status: ${result.status}\n- Started at: ${result.startedAt}`
       ),
     ]);
   }

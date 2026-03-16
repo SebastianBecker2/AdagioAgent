@@ -31,10 +31,10 @@ export class AgentClient {
   // ─── Process ─────────────────────────────────────────────────────────────
 
   /**
-   * Start an installer process on the VM.
+   * Start an executable process on the VM.
    * @param request Run parameters (command, optional args, optional workingDir)
    */
-  async runInstaller(request: RunRequest): Promise<RunResponse> {
+  async runExecutable(request: RunRequest): Promise<RunResponse> {
     return this.post<RunResponse>("/run", request);
   }
 
@@ -42,7 +42,7 @@ export class AgentClient {
 
   /**
    * Retrieve the UI element tree for a running process.
-   * @param pid Process ID returned by runInstaller
+   * @param pid Process ID returned by runExecutable
    */
   async getUiTree(pid: number): Promise<UiTreeResponse> {
     return this.get<UiTreeResponse>(`/ui-tree?pid=${pid}`);

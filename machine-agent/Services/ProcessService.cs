@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 namespace AdagioMachineAgent.Services;
 
 /// <summary>
-/// Runs installer processes on the VM, enforcing a command whitelist,
+/// Runs executable processes on the VM, enforcing a command whitelist,
 /// a concurrency limit, and an automatic timeout.
 /// </summary>
 public sealed class ProcessService : IDisposable
@@ -25,7 +25,7 @@ public sealed class ProcessService : IDisposable
     // ── Public API ───────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Start an installer process and return its PID and start time.
+    /// Start an executable process and return its PID and start time.
     /// </summary>
     /// <exception cref="InvalidOperationException">
     ///   Thrown when the command is not in the allowed-paths whitelist,
@@ -86,7 +86,7 @@ public sealed class ProcessService : IDisposable
     private void EnforceWhitelist(string command)
     {
         var normalizedCommand = Path.GetFullPath(command);
-        var allowed = _options.AllowedInstallerPaths.Any(dir =>
+        var allowed = _options.AllowedExecutablePaths.Any(dir =>
             normalizedCommand.StartsWith(
                 Path.GetFullPath(dir),
                 StringComparison.OrdinalIgnoreCase));
@@ -94,8 +94,8 @@ public sealed class ProcessService : IDisposable
         if (!allowed)
         {
             throw new InvalidOperationException(
-                $"Command '{command}' is not in an allowed installer path. " +
-                $"Allowed paths: {string.Join(", ", _options.AllowedInstallerPaths)}");
+                $"Command '{command}' is not in an allowed executable path. " +
+                $"Allowed paths: {string.Join(", ", _options.AllowedExecutablePaths)}");
         }
     }
 

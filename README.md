@@ -1,6 +1,6 @@
 # AdagioAgent
 
-Automated installer testing harness connecting GitHub Copilot (via a VS Code
+Automated execution harness connecting GitHub Copilot (via a VS Code
 extension) to a UI-automation agent running inside a Windows VM.
 
 ---
@@ -41,7 +41,7 @@ Exposes five Copilot language-model tools and matching VS Code commands:
 
 | Tool / Command | Description |
 |---|---|
-| `adagioAgent_runInstaller` | Start an installer on the VM |
+| `adagioAgent_runExecutable` | Start an executable on the VM |
 | `adagioAgent_getUiTree` | Dump the UI element hierarchy |
 | `adagioAgent_getScreenshot` | Capture a screenshot |
 | `adagioAgent_clickElement` | Click a UI element by ID |
@@ -60,7 +60,7 @@ npm run compile
 | Setting | Default | Description |
 |---|---|---|
 | `adagioAgent.vmAgentUrl` | `http://localhost:5000` | VM agent base URL |
-| `adagioAgent.allowedInstallerPaths` | `["C:\\Installers"]` | Command whitelist |
+| `adagioAgent.allowedExecutablePaths` | `["C:\\Apps"]` | Command whitelist |
 
 ---
 
@@ -74,7 +74,7 @@ automation via **FlaUI (UIA3)**.
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/health` | Health check |
-| `POST` | `/run` | Start an installer process |
+| `POST` | `/run` | Start an executable process |
 | `GET` | `/ui-tree?pid=N` | Dump UI element tree |
 | `GET` | `/screenshot?pid=N` | Capture window screenshot (base64 PNG) |
 | `POST` | `/click` | Click a UI element |
@@ -97,7 +97,7 @@ Listens on `http://0.0.0.0:5000` by default (see `appsettings.json`).
 
 **Safety guardrails:**
 
-- **Command whitelist** — only paths under `AgentOptions.AllowedInstallerPaths`
+- **Command whitelist** — only paths under `AgentOptions.AllowedExecutablePaths`
   are allowed; all others are rejected with HTTP 400.
 - **Process timeout** — processes are forcibly killed after
   `AgentOptions.ProcessTimeoutSeconds` (default 300 s).
@@ -108,7 +108,7 @@ Listens on `http://0.0.0.0:5000` by default (see `appsettings.json`).
 
 ## Typical flow
 
-1. Copilot calls **`adagioAgent_runInstaller`** → VS Code sends `POST /run` → agent starts `setup.exe`, returns PID.
+1. Copilot calls **`adagioAgent_runExecutable`** → VS Code sends `POST /run` → agent starts the executable, returns PID.
 2. Copilot calls **`adagioAgent_getUiTree`** → VS Code sends `GET /ui-tree?pid=…` → agent returns element tree.
 3. Copilot reasons: *"I should click the Next button"* → calls **`adagioAgent_clickElement`** → VS Code sends `POST /click`.
-4. Repeat until installer exits.
+4. Repeat until the application exits.
