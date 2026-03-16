@@ -1,7 +1,7 @@
 # AdagioAgent
 
 Automated execution harness connecting GitHub Copilot (via a VS Code
-extension) to a UI-automation agent running inside a Windows VM.
+extension) to a UI-automation agent running inside a Windows or Linux VM.
 
 ---
 
@@ -22,12 +22,14 @@ extension) to a UI-automation agent running inside a Windows VM.
 └─────────────────────────────────────────────────────────────────────────┘
                                                         │
                                               ┌─────────▼───────────────────┐
-                                              │  Windows VM                 │
-                                              │  machine-agent/                  │
+                                              │  Windows VM  OR  Linux VM   │
+                                              │  machine-agent/             │
                                               │  • Program.cs               │
                                               │  • AutomationController.cs  │
                                               │  • ProcessService.cs        │
-                                              │  • UiAutomationService.cs   │
+                                              │  • IUiAutomationService     │
+                                              │    (Windows: FlaUI/UIA3)    │
+                                              │    (Linux: AT-SPI2/X11)     │
                                               └─────────────────────────────┘
 ```
 
@@ -64,10 +66,11 @@ npm run compile
 
 ---
 
-### `machine-agent/` — Windows VM Agent (.NET 8, C#)
+### `machine-agent/` — VM Agent (.NET 8, C#)
 
 Minimal Kestrel web host exposing a REST API for process control and UI
-automation via **FlaUI (UIA3)**.
+automation. Supports **Windows** (via **FlaUI/UIA3**) and **Linux with a GUI**
+(via **AT-SPI2** and **X11**).
 
 **REST API:**
 
@@ -80,20 +83,43 @@ automation via **FlaUI (UIA3)**.
 | `POST` | `/click` | Click a UI element |
 | `POST` | `/type` | Type text into a UI element |
 
-**Build (cross-platform):**
+**Build:**
 
 ```bash
 cd machine-agent
 dotnet build
 ```
 
-**Run (Windows only):**
+**Run:**
 
 ```bash
 dotnet run
 ```
 
 Listens on `http://0.0.0.0:5000` by default (see `appsettings.json`).
+
+**Platform-specific UI automation backends:**
+
+| Platform | Backend | Notes |
+|---|---|---|
+| Windows | FlaUI (UIA3) | Built-in Windows UI Automation |
+| Linux | AT-SPI2 + X11 | Requires packages listed below |
+
+**Linux prerequisites:**
+
+```bash
+# Debian / Ubuntu
+sudo apt-get install at-spi2-core libx11-6
+
+# Fedora / RHEL
+sudo dnf install at-spi2-core libX11
+```
+
+Applications must support AT-SPI2 accessibility (all GTK and Qt applications
+do by default; Electron apps require `--force-renderer-accessibility`).
+
+The `DISPLAY` and `DBUS_SESSION_BUS_ADDRESS` environment variables must be set
+(they are automatically when running as a graphical desktop session).
 
 **Safety guardrails:**
 

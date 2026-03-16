@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using AdagioMachineAgent.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -5,7 +6,18 @@ var builder = WebApplication.CreateBuilder(args);
 // ── Services ─────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddSingleton<ProcessService>();
-builder.Services.AddSingleton<UiAutomationService>();
+
+// Register the correct UI-automation backend for the host platform.
+#if WINDOWS
+builder.Services.AddSingleton<IUiAutomationService, WindowsUiAutomationService>();
+#elif LINUX
+builder.Services.AddSingleton<IUiAutomationService, LinuxUiAutomationService>();
+#else
+builder.Services.AddSingleton<IUiAutomationService>(_ =>
+    throw new PlatformNotSupportedException(
+        $"Platform '{RuntimeInformation.OSDescription}' is not supported. " +
+        "UI automation is only available on Windows (FlaUI/UIA3) and Linux (AT-SPI2)."));
+#endif
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 // Bind optional "AgentOptions" section from appsettings.json
@@ -26,7 +38,10 @@ app.Run();
 public sealed class AgentOptions
 {
     /// <summary>Directories from which executables are allowed to run.</summary>
-    public List<string> AllowedExecutablePaths { get; set; } = ["C:\\Apps"];
+    public List<string> AllowedExecutablePaths { get; set; } =
+        RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? ["C:\\Apps"]
+            : ["/usr/local/bin"];
 
     /// <summary>Seconds before a managed process is forcibly killed.</summary>
     public int ProcessTimeoutSeconds { get; set; } = 300;
