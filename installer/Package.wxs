@@ -8,7 +8,8 @@
   Upgrade behaviour: major upgrades replace earlier versions automatically.
   Uninstall: stops the service, removes it, and removes all installed files.
 -->
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:fire="http://wixtoolset.org/schemas/v4/wxs/firewall">
 
   <Package Name="Adagio Machine Agent"
            Manufacturer="AdagioAgent"
@@ -52,7 +53,15 @@
     -->
     <ComponentGroup Id="AgentService" Directory="INSTALLFOLDER">
       <Component>
-        <File Source="$(var.PublishDir)AdagioMachineAgent.exe" KeyPath="yes" />
+        <File Id="AdagioMachineAgentExe" Source="$(var.PublishDir)AdagioMachineAgent.exe" KeyPath="yes" />
+        <fire:FirewallException
+            Id="AdagioMachineAgentFirewallRule"
+            Name="Adagio Machine Agent"
+            Program="[INSTALLFOLDER]AdagioMachineAgent.exe"
+            Port="5000"
+            Protocol="tcp"
+            Scope="any"
+            Profile="all" />
         <ServiceInstall Id="ServiceInstall"
                         Name="AdagioMachineAgent"
                         DisplayName="Adagio Machine Agent"
