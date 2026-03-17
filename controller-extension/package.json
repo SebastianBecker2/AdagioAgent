@@ -77,6 +77,14 @@
       {
         "command": "adagioAgent.pressHotkey",
         "title": "Adagio Agent: Press Hotkey"
+      },
+      {
+        "command": "adagioAgent.setCheckbox",
+        "title": "Adagio Agent: Set Checkbox"
+      },
+      {
+        "command": "adagioAgent.selectOption",
+        "title": "Adagio Agent: Select Option"
       }
     ],
     "configuration": {
@@ -445,6 +453,63 @@
           "required": [
             "pid",
             "keys"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_setCheckbox",
+        "displayName": "Set Checkbox",
+        "modelDescription": "Toggle a checkbox or radio button in the installer UI to a specific checked/unchecked state.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pid": {
+              "type": "number",
+              "description": "Process ID returned by runExecutable"
+            },
+            "elementId": {
+              "type": "string",
+              "description": "Element ID from the UI tree (e.g. checkbox-eula)"
+            },
+            "isChecked": {
+              "type": "boolean",
+              "description": "True to check the element, false to uncheck it"
+            }
+          },
+          "required": [
+            "pid",
+            "elementId",
+            "isChecked"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_selectOption",
+        "displayName": "Select Option",
+        "modelDescription": "Select an item in a combo box or list control by visible text label or zero-based index.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pid": {
+              "type": "number",
+              "description": "Process ID returned by runExecutable"
+            },
+            "elementId": {
+              "type": "string",
+              "description": "Element ID of the combo box or list (from the UI tree)"
+            },
+            "optionText": {
+              "type": "string",
+              "description": "Visible text of the option to select (case-insensitive)"
+            },
+            "optionIndex": {
+              "type": "number",
+              "description": "Zero-based index of the option to select (used when optionText is not provided)"
+            }
+          },
+          "required": [
+            "pid",
+            "elementId"
           ]
         }
       }

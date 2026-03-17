@@ -43,10 +43,10 @@ Object.defineProperty(exports, "AgentClient", { enumerable: true, get: function 
 // ─── Activation ──────────────────────────────────────────────────────────────
 function activate(context) {
     // ── VS Code commands (palette / keybindings) ─────────────────────────────
-    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText), vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile), vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus), vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit), vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess), vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile), vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile), vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState), vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand), vscode.commands.registerCommand("adagioAgent.setFocus", cmdSetFocus), vscode.commands.registerCommand("adagioAgent.sendKeys", cmdSendKeys), vscode.commands.registerCommand("adagioAgent.pressHotkey", cmdPressHotkey));
+    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText), vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile), vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus), vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit), vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess), vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile), vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile), vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState), vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand), vscode.commands.registerCommand("adagioAgent.setFocus", cmdSetFocus), vscode.commands.registerCommand("adagioAgent.sendKeys", cmdSendKeys), vscode.commands.registerCommand("adagioAgent.pressHotkey", cmdPressHotkey), vscode.commands.registerCommand("adagioAgent.setCheckbox", cmdSetCheckbox), vscode.commands.registerCommand("adagioAgent.selectOption", cmdSelectOption));
     // ── Copilot language-model tools ─────────────────────────────────────────
     if (typeof vscode.lm !== "undefined" && "registerTool" in vscode.lm) {
-        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()), vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()), vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()), vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()), vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()), vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()), vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()), vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()), vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()), vscode.lm.registerTool("adagioAgent_setFocus", new SetFocusTool()), vscode.lm.registerTool("adagioAgent_sendKeys", new SendKeysTool()), vscode.lm.registerTool("adagioAgent_pressHotkey", new PressHotkeyTool()));
+        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()), vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()), vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()), vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()), vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()), vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()), vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()), vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()), vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()), vscode.lm.registerTool("adagioAgent_setFocus", new SetFocusTool()), vscode.lm.registerTool("adagioAgent_sendKeys", new SendKeysTool()), vscode.lm.registerTool("adagioAgent_pressHotkey", new PressHotkeyTool()), vscode.lm.registerTool("adagioAgent_setCheckbox", new SetCheckboxTool()), vscode.lm.registerTool("adagioAgent_selectOption", new SelectOptionTool()));
     }
 }
 function deactivate() {
@@ -633,6 +633,99 @@ class SendKeysTool {
         const result = await client.sendKeys(options.input);
         return new vscode.LanguageModelToolResult([
             new vscode.LanguageModelTextPart(result.message ?? `Sent keys to process ${options.input.pid}.`),
+        ]);
+    }
+}
+async function cmdSetCheckbox() {
+    const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+    if (!pidStr)
+        return;
+    const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
+    const elementId = await vscode.window.showInputBox({ prompt: "Element ID (checkbox/radio)" });
+    if (!elementId)
+        return;
+    const stateStr = await vscode.window.showInputBox({
+        prompt: "Desired state",
+        placeHolder: "true / false",
+    });
+    if (stateStr === undefined)
+        return;
+    const isChecked = stateStr.trim().toLowerCase() !== "false";
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.setCheckbox({ pid, elementId, isChecked });
+    if (result.status === "ok") {
+        vscode.window.showInformationMessage(`Set '${elementId}' to ${isChecked ? "checked" : "unchecked"}.`);
+    }
+    else {
+        vscode.window.showErrorMessage(result.message ?? `Failed to set checkbox '${elementId}'.`);
+    }
+}
+async function cmdSelectOption() {
+    const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+    if (!pidStr)
+        return;
+    const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
+    const elementId = await vscode.window.showInputBox({ prompt: "Element ID (combo box / list)" });
+    if (!elementId)
+        return;
+    const optionText = await vscode.window.showInputBox({
+        prompt: "Option text to select (leave empty to use index instead)",
+    });
+    let optionIndex;
+    if (!optionText) {
+        const idxStr = await vscode.window.showInputBox({
+            prompt: "Zero-based option index",
+            placeHolder: "0",
+        });
+        if (!idxStr)
+            return;
+        optionIndex = Number(idxStr);
+        if (!Number.isInteger(optionIndex) || optionIndex < 0) {
+            vscode.window.showErrorMessage("Invalid option index.");
+            return;
+        }
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.selectOption({
+        pid,
+        elementId,
+        optionText: optionText || undefined,
+        optionIndex,
+    });
+    if (result.status === "ok") {
+        vscode.window.showInformationMessage(`Selected option in '${elementId}'.`);
+    }
+    else {
+        vscode.window.showErrorMessage(result.message ?? `Failed to select option in '${elementId}'.`);
+    }
+}
+class SetCheckboxTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const result = await client.setCheckbox(options.input);
+        const state = options.input.isChecked ? "checked" : "unchecked";
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(result.message ?? `Set element '${options.input.elementId}' to ${state}.`),
+        ]);
+    }
+}
+class SelectOptionTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const result = await client.selectOption(options.input);
+        const selection = options.input.optionText
+            ? `"${options.input.optionText}"`
+            : `index ${options.input.optionIndex}`;
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(result.message ?? `Selected option ${selection} in element '${options.input.elementId}'.`),
         ]);
     }
 }

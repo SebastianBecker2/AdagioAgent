@@ -161,6 +161,18 @@ class AgentClient {
     async pressHotkey(request) {
         return this.post("/press-hotkey", request);
     }
+    /**
+     * Set a checkbox or radio button to the requested checked state.
+     */
+    async setCheckbox(request) {
+        return this.post("/set-checkbox", request);
+    }
+    /**
+     * Select an option in a combo box or list by text or index.
+     */
+    async selectOption(request) {
+        return this.post("/select-option", request);
+    }
     // ─── Helpers ─────────────────────────────────────────────────────────────
     async get(path) {
         const url = `${this.baseUrl}${path}`;

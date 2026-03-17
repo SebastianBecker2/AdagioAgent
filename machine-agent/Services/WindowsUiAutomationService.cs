@@ -160,6 +160,83 @@ public sealed class WindowsUiAutomationService : IUiAutomationService
     }
 
     /// <summary>
+    /// Set a checkbox or radio button to the requested checked state.
+    /// Uses UIA TogglePattern; the element is toggled only when its current state
+    /// does not match the requested state.
+    /// </summary>
+    public void SetCheckbox(int pid, string elementId, bool isChecked)
+    {
+        var element = FindElement(pid, elementId);
+        var toggle = element.Patterns.Toggle.PatternOrDefault
+            ?? throw new InvalidOperationException(
+                $"Element '{elementId}' does not support the Toggle pattern.");
+
+        var currentState = toggle.ToggleState.Value;
+        var currentlyChecked = currentState == FlaUI.Core.Definitions.ToggleState.On;
+        if (currentlyChecked != isChecked)
+        {
+            toggle.Toggle();
+        }
+    }
+
+    /// <summary>
+    /// Select an option in a combo box or list control by text label or zero-based index.
+    /// Uses UIA SelectionItemPattern on the matching child element.
+    /// </summary>
+    public void SelectOption(int pid, string elementId, string? optionText, int? optionIndex)
+    {
+        if (optionText is null && optionIndex is null)
+        {
+            throw new InvalidOperationException(
+                "Either optionText or optionIndex must be provided.");
+        }
+
+        var container = FindElement(pid, elementId);
+
+        // Some controls (e.g. combo boxes) need to be expanded first so their
+        // children become available in the UIA tree.
+        var expand = container.Patterns.ExpandCollapse.PatternOrDefault;
+        if (expand != null &&
+            expand.ExpandCollapseState.Value ==
+                FlaUI.Core.Definitions.ExpandCollapseState.Collapsed)
+        {
+            expand.Expand();
+        }
+
+        var children = container.FindAllChildren();
+        var selectables = children
+            .Where(c => c.Patterns.SelectionItem.IsSupported)
+            .ToList();
+
+        AutomationElement? target;
+
+        if (optionIndex.HasValue)
+        {
+            if (optionIndex.Value < 0 || optionIndex.Value >= selectables.Count)
+            {
+                throw new InvalidOperationException(
+                    $"Option index {optionIndex.Value} is out of range " +
+                    $"(container '{elementId}' has {selectables.Count} selectable item(s)).");
+            }
+
+            target = selectables[optionIndex.Value];
+        }
+        else
+        {
+            target = selectables.FirstOrDefault(c =>
+                string.Equals(c.Name, optionText, StringComparison.OrdinalIgnoreCase));
+
+            if (target is null)
+            {
+                throw new InvalidOperationException(
+                    $"Option '{optionText}' was not found in element '{elementId}'.");
+            }
+        }
+
+        target.Patterns.SelectionItem.Pattern.Select();
+    }
+
+    /// <summary>
     /// Return the current state of a UI element.
     /// </summary>
     public ElementStateResponse GetElementState(int pid, string elementId)

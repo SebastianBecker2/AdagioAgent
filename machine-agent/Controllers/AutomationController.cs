@@ -421,6 +421,93 @@ public sealed class AutomationController : ControllerBase
         }
     }
 
+    // ── POST /set-checkbox ────────────────────────────────────────────────
+
+    /// <summary>Toggle a checkbox or radio button to the requested checked state.</summary>
+    [HttpPost("/set-checkbox")]
+    [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public IActionResult SetCheckbox([FromBody] SetCheckboxRequest request)
+    {
+        if (request.Pid <= 0)
+        {
+            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ElementId))
+        {
+            return BadRequest(new ErrorResponse("elementId is required."));
+        }
+
+        try
+        {
+            _uiService.SetCheckbox(request.Pid, request.ElementId, request.IsChecked);
+            return Ok(new StatusResponse("ok"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new ErrorResponse(ex.Message));
+        }
+        catch (PlatformNotSupportedException ex)
+        {
+            return StatusCode(StatusCodes.Status501NotImplemented,
+                new ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SetCheckbox failed for element {ElementId}.", request.ElementId);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to set checkbox state.", ex.Message));
+        }
+    }
+
+    // ── POST /select-option ───────────────────────────────────────────────
+
+    /// <summary>Select an option in a combo box or list by text label or zero-based index.</summary>
+    [HttpPost("/select-option")]
+    [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public IActionResult SelectOption([FromBody] SelectOptionRequest request)
+    {
+        if (request.Pid <= 0)
+        {
+            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ElementId))
+        {
+            return BadRequest(new ErrorResponse("elementId is required."));
+        }
+
+        if (request.OptionText is null && request.OptionIndex is null)
+        {
+            return BadRequest(new ErrorResponse("Either optionText or optionIndex must be provided."));
+        }
+
+        try
+        {
+            _uiService.SelectOption(request.Pid, request.ElementId, request.OptionText, request.OptionIndex);
+            return Ok(new StatusResponse("ok"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new ErrorResponse(ex.Message));
+        }
+        catch (PlatformNotSupportedException ex)
+        {
+            return StatusCode(StatusCodes.Status501NotImplemented,
+                new ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SelectOption failed for element {ElementId}.", request.ElementId);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to select option.", ex.Message));
+        }
+    }
+
     // ── GET /screenshot ──────────────────────────────────────────────────────
 
     /// <summary>Capture a screenshot of the process window.</summary>

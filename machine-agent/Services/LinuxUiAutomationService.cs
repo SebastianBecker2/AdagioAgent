@@ -29,6 +29,7 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
     private const string AtSpiComponent       = "org.a11y.atspi.Component";
     private const string AtSpiAction          = "org.a11y.atspi.Action";
     private const string AtSpiEditableText    = "org.a11y.atspi.EditableText";
+    private const string AtSpiSelection       = "org.a11y.atspi.Selection";
     private const string DBusBusService       = "org.freedesktop.DBus";
     private const string DBusBusPath          = "/org/freedesktop/DBus";
     private const string DBusProperties       = "org.freedesktop.DBus.Properties";
@@ -95,6 +96,71 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
     {
         throw new PlatformNotSupportedException(
             "Generic hotkey simulation is not implemented on Linux yet.");
+    }
+
+    /// <inheritdoc/>
+    public void SetCheckbox(int pid, string elementId, bool isChecked)
+    {
+        var conn = GetConnection();
+        var (elBus, elPath) = FindElementByPidAndId(conn, pid, elementId);
+
+        // Check current state and only toggle if needed.
+        var currentlyChecked = IsElementChecked(conn, elBus, elPath);
+        if (currentlyChecked != isChecked)
+        {
+            DoAction(conn, elBus, elPath, 0); // action 0 is "click" / "toggle"
+        }
+    }
+
+    /// <inheritdoc/>
+    public void SelectOption(int pid, string elementId, string? optionText, int? optionIndex)
+    {
+        if (optionText is null && optionIndex is null)
+        {
+            throw new InvalidOperationException(
+                "Either optionText or optionIndex must be provided.");
+        }
+
+        var conn = GetConnection();
+        var (ctnBus, ctnPath) = FindElementByPidAndId(conn, pid, elementId);
+        var children = GetAccessibleChildren(conn, ctnBus, ctnPath);
+
+        int targetIndex;
+
+        if (optionIndex.HasValue)
+        {
+            if (optionIndex.Value < 0 || optionIndex.Value >= children.Length)
+            {
+                throw new InvalidOperationException(
+                    $"Option index {optionIndex.Value} is out of range " +
+                    $"(container '{elementId}' has {children.Length} child(ren)).");
+            }
+
+            targetIndex = optionIndex.Value;
+        }
+        else
+        {
+            targetIndex = -1;
+            for (var i = 0; i < children.Length; i++)
+            {
+                var (childBus, childPath) = children[i];
+                var name = GetStringProperty(conn, childBus, childPath, AtSpiAccessible, "Name");
+                if (string.Equals(name, optionText, StringComparison.OrdinalIgnoreCase))
+                {
+                    targetIndex = i;
+                    break;
+                }
+            }
+
+            if (targetIndex < 0)
+            {
+                throw new InvalidOperationException(
+                    $"Option '{optionText}' was not found in element '{elementId}'.");
+            }
+        }
+
+        // Use AT-SPI2 Selection interface to select the child at the resolved index.
+        SelectChild(conn, ctnBus, ctnPath, targetIndex);
     }
 
     /// <inheritdoc/>
@@ -392,6 +458,32 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
         conn.CallMethodAsync(msg, ReadBool, null).GetAwaiter().GetResult();
     }
 
+    /// <summary>
+    /// Returns true when the element has AT-SPI2 CHECKED state (bit 12 in the low state-set word).
+    /// </summary>
+    private bool IsElementChecked(DBusConnection conn, string busName, string path)
+    {
+        try
+        {
+            var msg = BuildNoArgCall(conn, busName, path, AtSpiAccessible, "GetState");
+            var stateSet = conn.CallMethodAsync(msg, ReadUInt32Array, null).GetAwaiter().GetResult();
+            if (stateSet.Length == 0) return false;
+            const int AtSpiStateChecked = 12;
+            return ((stateSet[0] >> AtSpiStateChecked) & 1u) == 1u;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Call the AT-SPI2 Selection::SelectChild method on <paramref name="path"/>.</summary>
+    private void SelectChild(DBusConnection conn, string busName, string path, int childIndex)
+    {
+        var msg = BuildInt32ArgCall(conn, busName, path, AtSpiSelection, "SelectChild", childIndex);
+        conn.CallMethodAsync(msg, ReadBool, null).GetAwaiter().GetResult();
+    }
+
     // ── D-Bus message builders ────────────────────────────────────────────────
 
     private static MessageBuffer BuildNoArgCall(
@@ -471,6 +563,16 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
 
     private static uint ReadUInt32(Message message, object? _) =>
         message.GetBodyReader().ReadUInt32();
+
+    private static uint[] ReadUInt32Array(Message message, object? _)
+    {
+        var reader = message.GetBodyReader();
+        var result = new List<uint>();
+        var ae = reader.ReadArrayStart(DBusType.UInt32);
+        while (reader.HasNext(ae))
+            result.Add(reader.ReadUInt32());
+        return [.. result];
+    }
 
     private static string ReadString(Message message, object? _) =>
         message.GetBodyReader().ReadString();

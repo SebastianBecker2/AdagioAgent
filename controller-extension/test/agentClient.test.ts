@@ -325,4 +325,43 @@ describe("AgentClient", () => {
       })
     );
   });
+
+  it("calls set-checkbox and select-option endpoints with expected payloads", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: "ok" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: "ok" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+
+    const client = new AgentClient("http://localhost:5000");
+
+    await client.setCheckbox({ pid: 88, elementId: "chk-eula", isChecked: true });
+    await client.selectOption({ pid: 88, elementId: "cmb-type", optionText: "Full" });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:5000/set-checkbox",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ pid: 88, elementId: "chk-eula", isChecked: true }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:5000/select-option",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ pid: 88, elementId: "cmb-type", optionText: "Full" }),
+      })
+    );
+  });
 });

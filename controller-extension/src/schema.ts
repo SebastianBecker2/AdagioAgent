@@ -74,6 +74,20 @@ export interface PressHotkeyRequest {
 }
 
 // ─── Responses ───────────────────────────────────────────────────────────────
+export interface SetCheckboxRequest {
+  pid: number;
+  elementId: string;
+  isChecked: boolean;
+}
+
+export interface SelectOptionRequest {
+  pid: number;
+  elementId: string;
+  optionText?: string;
+  optionIndex?: number;
+}
+
+// ─── Responses ───────────────────────────────────────────────────────────────
 
 export interface RunResponse {
   pid: number;

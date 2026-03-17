@@ -28,6 +28,8 @@ import {
   SetFocusRequest,
   SendKeysRequest,
   PressHotkeyRequest,
+  SetCheckboxRequest,
+  SelectOptionRequest,
 } from "./schema";
 
 /**
@@ -182,6 +184,20 @@ export class AgentClient {
   async pressHotkey(request: PressHotkeyRequest): Promise<StatusResponse> {
     return this.post<StatusResponse>("/press-hotkey", request);
   }
+  /**
+   * Set a checkbox or radio button to the requested checked state.
+   */
+  async setCheckbox(request: SetCheckboxRequest): Promise<StatusResponse> {
+    return this.post<StatusResponse>("/set-checkbox", request);
+  }
+
+  /**
+   * Select an option in a combo box or list by text or index.
+   */
+  async selectOption(request: SelectOptionRequest): Promise<StatusResponse> {
+    return this.post<StatusResponse>("/select-option", request);
+  }
+
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
   private async get<T>(path: string): Promise<T> {

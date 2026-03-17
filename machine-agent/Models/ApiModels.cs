@@ -51,6 +51,16 @@ public sealed record SendKeysRequest(int Pid, string Text);
 /// <summary>Press a key combination in the focused application window.</summary>
 public sealed record PressHotkeyRequest(int Pid, List<string> Keys);
 
+/// <summary>Toggle a checkbox or radio button to the specified checked state.</summary>
+public sealed record SetCheckboxRequest(int Pid, string ElementId, bool IsChecked);
+
+/// <summary>Select an option in a combo box or list by text or by zero-based index.</summary>
+public sealed record SelectOptionRequest(
+    int Pid,
+    string ElementId,
+    string? OptionText = null,
+    int? OptionIndex = null);
+
 // ─── Responses ────────────────────────────────────────────────────────────────
 
 /// <summary>Result of starting a process.</summary>

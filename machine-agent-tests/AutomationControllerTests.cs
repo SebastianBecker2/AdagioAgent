@@ -1,4 +1,4 @@
-using AdagioMachineAgent.Controllers;
+﻿using AdagioMachineAgent.Controllers;
 using AdagioMachineAgent.Models;
 using AdagioMachineAgent.Services;
 using Microsoft.AspNetCore.Http;
@@ -301,6 +301,42 @@ public sealed class AutomationControllerTests
         Assert.Equal("ok", payload.Status);
     }
 
+
+    [Fact]
+    public void SetCheckbox_ValidatesInputsAndReturnsOk()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        Assert.IsType<BadRequestObjectResult>(sut.SetCheckbox(new SetCheckboxRequest(0, "chk-eula", true)));
+        Assert.IsType<BadRequestObjectResult>(sut.SetCheckbox(new SetCheckboxRequest(1, "", true)));
+
+        var result = sut.SetCheckbox(new SetCheckboxRequest(42, "chk-eula", true));
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<StatusResponse>(ok.Value);
+        Assert.Equal("ok", payload.Status);
+        uiService.Verify(x => x.SetCheckbox(42, "chk-eula", true), Times.Once);
+    }
+
+    [Fact]
+    public void SelectOption_ValidatesInputsAndReturnsOk()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        Assert.IsType<BadRequestObjectResult>(sut.SelectOption(new SelectOptionRequest(0, "cmb-type", "Full")));
+        Assert.IsType<BadRequestObjectResult>(sut.SelectOption(new SelectOptionRequest(1, "")));
+        Assert.IsType<BadRequestObjectResult>(sut.SelectOption(new SelectOptionRequest(1, "cmb-type")));
+
+        var result = sut.SelectOption(new SelectOptionRequest(42, "cmb-type", "Full"));
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<StatusResponse>(ok.Value);
+        Assert.Equal("ok", payload.Status);
+        uiService.Verify(x => x.SelectOption(42, "cmb-type", "Full", null), Times.Once);
+    }
+
     [Fact]
     public void Click_ValidatesInputsAndMapsNotFound()
     {
@@ -346,6 +382,7 @@ public sealed class AutomationControllerTests
         var objectResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status501NotImplemented, objectResult.StatusCode);
     }
+
     [Fact]
     public void CopyFile_ReturnsBadRequestWhenDestinationPathMissing()
     {

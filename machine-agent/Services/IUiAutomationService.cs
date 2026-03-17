@@ -25,6 +25,12 @@ public interface IUiAutomationService : IDisposable
     /// <summary>Press a key combination in the application window.</summary>
     void PressHotkey(int pid, IReadOnlyList<string> keys);
 
+    /// <summary>Set a checkbox or radio button to the requested checked state.</summary>
+    void SetCheckbox(int pid, string elementId, bool isChecked);
+
+    /// <summary>Select an option in a combo box or list control by text label or zero-based index.</summary>
+    void SelectOption(int pid, string elementId, string? optionText, int? optionIndex);
+
     /// <summary>Return the current state snapshot of a UI element.</summary>
     ElementStateResponse GetElementState(int pid, string elementId);
 

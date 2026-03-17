@@ -62,6 +62,24 @@ interface PressHotkeyInput {
   keys: string[];
 }
 
+interface PressHotkeyInput {
+  pid: number;
+  keys: string[];
+}
+
+interface SetCheckboxInput {
+  pid: number;
+  elementId: string;
+  isChecked: boolean;
+}
+
+interface SelectOptionInput {
+  pid: number;
+  elementId: string;
+  optionText?: string;
+  optionIndex?: number;
+}
+
 // ─── Activation ──────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -92,7 +110,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand),
     vscode.commands.registerCommand("adagioAgent.setFocus", cmdSetFocus),
     vscode.commands.registerCommand("adagioAgent.sendKeys", cmdSendKeys),
-    vscode.commands.registerCommand("adagioAgent.pressHotkey", cmdPressHotkey)
+    vscode.commands.registerCommand("adagioAgent.pressHotkey", cmdPressHotkey),
+    vscode.commands.registerCommand("adagioAgent.setCheckbox", cmdSetCheckbox),
+    vscode.commands.registerCommand("adagioAgent.selectOption", cmdSelectOption)
   );
 
   // ── Copilot language-model tools ─────────────────────────────────────────
@@ -123,7 +143,9 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()),
       vscode.lm.registerTool("adagioAgent_setFocus", new SetFocusTool()),
       vscode.lm.registerTool("adagioAgent_sendKeys", new SendKeysTool()),
-      vscode.lm.registerTool("adagioAgent_pressHotkey", new PressHotkeyTool())
+      vscode.lm.registerTool("adagioAgent_pressHotkey", new PressHotkeyTool()),
+      vscode.lm.registerTool("adagioAgent_setCheckbox", new SetCheckboxTool()),
+      vscode.lm.registerTool("adagioAgent_selectOption", new SelectOptionTool())
     );
   }
 }
@@ -889,6 +911,115 @@ class SendKeysTool implements vscode.LanguageModelTool<SendKeysInput> {
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
         result.message ?? `Sent keys to process ${options.input.pid}.`
+      ),
+    ]);
+  }
+}
+
+async function cmdSetCheckbox(): Promise<void> {
+  const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+  if (!pidStr) return;
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    vscode.window.showErrorMessage("Invalid PID.");
+    return;
+  }
+
+  const elementId = await vscode.window.showInputBox({ prompt: "Element ID (checkbox/radio)" });
+  if (!elementId) return;
+
+  const stateStr = await vscode.window.showInputBox({
+    prompt: "Desired state",
+    placeHolder: "true / false",
+  });
+  if (stateStr === undefined) return;
+  const isChecked = stateStr.trim().toLowerCase() !== "false";
+
+  const client = createAgentClient();
+  const result = await client.setCheckbox({ pid, elementId, isChecked });
+  if (result.status === "ok") {
+    vscode.window.showInformationMessage(
+      `Set '${elementId}' to ${isChecked ? "checked" : "unchecked"}.`
+    );
+  } else {
+    vscode.window.showErrorMessage(result.message ?? `Failed to set checkbox '${elementId}'.`);
+  }
+}
+
+async function cmdSelectOption(): Promise<void> {
+  const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+  if (!pidStr) return;
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    vscode.window.showErrorMessage("Invalid PID.");
+    return;
+  }
+
+  const elementId = await vscode.window.showInputBox({ prompt: "Element ID (combo box / list)" });
+  if (!elementId) return;
+
+  const optionText = await vscode.window.showInputBox({
+    prompt: "Option text to select (leave empty to use index instead)",
+  });
+  let optionIndex: number | undefined;
+  if (!optionText) {
+    const idxStr = await vscode.window.showInputBox({
+      prompt: "Zero-based option index",
+      placeHolder: "0",
+    });
+    if (!idxStr) return;
+    optionIndex = Number(idxStr);
+    if (!Number.isInteger(optionIndex) || optionIndex < 0) {
+      vscode.window.showErrorMessage("Invalid option index.");
+      return;
+    }
+  }
+
+  const client = createAgentClient();
+  const result = await client.selectOption({
+    pid,
+    elementId,
+    optionText: optionText || undefined,
+    optionIndex,
+  });
+  if (result.status === "ok") {
+    vscode.window.showInformationMessage(
+      `Selected option in '${elementId}'.`
+    );
+  } else {
+    vscode.window.showErrorMessage(result.message ?? `Failed to select option in '${elementId}'.`);
+  }
+}
+
+class SetCheckboxTool implements vscode.LanguageModelTool<SetCheckboxInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<SetCheckboxInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.setCheckbox(options.input);
+    const state = options.input.isChecked ? "checked" : "unchecked";
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        result.message ?? `Set element '${options.input.elementId}' to ${state}.`
+      ),
+    ]);
+  }
+}
+
+class SelectOptionTool implements vscode.LanguageModelTool<SelectOptionInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<SelectOptionInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.selectOption(options.input);
+    const selection = options.input.optionText
+      ? `"${options.input.optionText}"`
+      : `index ${options.input.optionIndex}`;
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        result.message ?? `Selected option ${selection} in element '${options.input.elementId}'.`
       ),
     ]);
   }
