@@ -109,7 +109,7 @@ class AgentClient {
         if (!response.ok) {
             let detail;
             try {
-                const err = (await response.json());
+                const err = (await response.clone().json());
                 detail = err.detail ?? err.error;
             }
             catch {

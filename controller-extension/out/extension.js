@@ -100,6 +100,10 @@ async function cmdClickElement() {
         return;
     }
     const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
     const elementId = await vscode.window.showInputBox({
         prompt: "Element ID (from UI tree)",
     });
@@ -123,6 +127,10 @@ async function cmdGetScreenshot() {
         return;
     }
     const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
     const client = (0, agentClient_1.createAgentClient)();
     const screenshot = await client.getScreenshot(pid);
     // Write the image to a temp file and open it
@@ -137,6 +145,10 @@ async function cmdTypeText() {
         return;
     }
     const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
     const elementId = await vscode.window.showInputBox({
         prompt: "Element ID",
     });
