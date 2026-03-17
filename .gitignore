@@ -397,6 +397,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 controller-extension/out/
+controller-extension/test-results/
 !.vscode/launch.json
 !.vscode/extensions.json
 *.code-workspace
