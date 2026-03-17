@@ -222,6 +222,9 @@ export interface TypeResponse {
 export interface HealthResponse {
   status: "healthy";
   version: string;
+  apiVersion: number;
+  minSupportedClientVersion?: string;
+  maxSupportedClientVersion?: string;
 }
 
 export interface AgentError {

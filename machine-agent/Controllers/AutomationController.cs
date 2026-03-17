@@ -35,7 +35,11 @@ public sealed class AutomationController : ControllerBase
     [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status200OK)]
     public IActionResult Health()
     {
-        return Ok(new HealthResponse("healthy", AgentVersion));
+        return Ok(new HealthResponse(
+            Status: "healthy",
+            Version: AgentVersion,
+            ApiVersion: 1,
+            MinSupportedClientVersion: "0.1.0"));
     }
 
     // ── POST /run ────────────────────────────────────────────────────────────

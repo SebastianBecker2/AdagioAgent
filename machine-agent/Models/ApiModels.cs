@@ -162,7 +162,12 @@ public sealed record ScreenshotResponse(string ImageBase64);
 public sealed record StatusResponse(string Status, string? Message = null);
 
 /// <summary>Health check response.</summary>
-public sealed record HealthResponse(string Status, string Version);
+public sealed record HealthResponse(
+    string Status,
+    string Version,
+    int ApiVersion,
+    string? MinSupportedClientVersion = null,
+    string? MaxSupportedClientVersion = null);
 
 /// <summary>Problem details returned on error (RFC 7807-style).</summary>
 public sealed record ErrorResponse(string Error, string? Detail = null);

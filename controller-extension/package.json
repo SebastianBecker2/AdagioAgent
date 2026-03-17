@@ -136,8 +136,8 @@
       "properties": {
         "adagioAgent.vmAgentUrl": {
           "type": "string",
-          "default": "https://127.0.0.1:5443",
-          "description": "Base URL of the VM agent (prefer https://127.0.0.1:5443)"
+          "default": "https://127.0.0.1:5443/api/v1",
+          "description": "Base URL of the VM agent (prefer https://127.0.0.1:5443/api/v1)"
         },
         "adagioAgent.vmAgentApiKey": {
           "type": "string",

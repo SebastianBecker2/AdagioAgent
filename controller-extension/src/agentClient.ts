@@ -374,7 +374,7 @@ export class AgentClient {
  */
 export function createAgentClient(): AgentClient {
   const config = vscode.workspace.getConfiguration("adagioAgent");
-  const url = config.get<string>("vmAgentUrl") ?? "https://127.0.0.1:5443";
+  const url = config.get<string>("vmAgentUrl") ?? "https://127.0.0.1:5443/api/v1";
   const requireHttps = config.get<boolean>("requireHttps") ?? true;
   const apiKey = config.get<string>("vmAgentApiKey");
 

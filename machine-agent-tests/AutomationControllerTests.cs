@@ -24,6 +24,7 @@ public sealed class AutomationControllerTests
         var payload = Assert.IsType<HealthResponse>(ok.Value);
         Assert.Equal("healthy", payload.Status);
         Assert.False(string.IsNullOrWhiteSpace(payload.Version));
+        Assert.Equal(1, payload.ApiVersion);
     }
 
     [Fact]

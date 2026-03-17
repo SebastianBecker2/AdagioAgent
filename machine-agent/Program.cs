@@ -44,6 +44,17 @@ SecurityPolicy.ValidateSecurityOptions(securityOptions);
 var app = builder.Build();
 
 // ── Middleware ────────────────────────────────────────────────────────────────
+app.Use(async (context, next) =>
+{
+    // Support versioned API paths while keeping legacy routes available.
+    if (context.Request.Path.StartsWithSegments("/api/v1", out var remainingPath))
+    {
+        context.Request.Path = remainingPath.HasValue ? remainingPath : "/";
+    }
+
+    await next();
+});
+
 if (securityOptions.RequireHttps)
 {
     if (!app.Environment.IsDevelopment())

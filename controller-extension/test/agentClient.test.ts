@@ -222,7 +222,7 @@ describe("AgentClient", () => {
     });
 
     const fallback = createAgentClient() as unknown as { baseUrl: string };
-    expect(fallback.baseUrl).toBe("https://127.0.0.1:5443");
+    expect(fallback.baseUrl).toBe("https://127.0.0.1:5443/api/v1");
   });
 
   it("createAgentClient rejects non-https URL when requireHttps is enabled", () => {
