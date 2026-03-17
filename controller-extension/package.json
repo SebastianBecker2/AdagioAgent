@@ -964,7 +964,8 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "package:vsix": "npx.cmd --yes @vscode/vsce package --allow-missing-repository --skip-license"
   },
   "devDependencies": {
     "@types/node": "20.11.5",
