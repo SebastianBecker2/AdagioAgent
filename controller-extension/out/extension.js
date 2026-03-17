@@ -1,0 +1,231 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AgentClient = void 0;
+exports.activate = activate;
+exports.deactivate = deactivate;
+const vscode = __importStar(require("vscode"));
+const os = __importStar(require("os"));
+const agentClient_1 = require("./agentClient");
+Object.defineProperty(exports, "AgentClient", { enumerable: true, get: function () { return agentClient_1.AgentClient; } });
+// ─── Activation ──────────────────────────────────────────────────────────────
+function activate(context) {
+    // ── VS Code commands (palette / keybindings) ─────────────────────────────
+    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText));
+    // ── Copilot language-model tools ─────────────────────────────────────────
+    if (typeof vscode.lm !== "undefined" && "registerTool" in vscode.lm) {
+        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()));
+    }
+}
+function deactivate() {
+    // Nothing to clean up
+}
+// ─── Palette command implementations ─────────────────────────────────────────
+async function cmdRunExecutable() {
+    const command = await vscode.window.showInputBox({
+        prompt: "Full path to executable on the VM (e.g. C:\\Apps\\MyApp.exe)",
+        placeHolder: "C:\\Apps\\MyApp.exe",
+    });
+    if (!command) {
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Adagio Agent: Starting executable…",
+        cancellable: false,
+    }, async () => {
+        const result = await client.runExecutable({ command });
+        vscode.window.showInformationMessage(`Executable started – PID ${result.pid} (${result.status})`);
+    });
+}
+async function cmdGetUiTree() {
+    const pidStr = await vscode.window.showInputBox({
+        prompt: "Process ID of the executable",
+        placeHolder: "1234",
+    });
+    if (!pidStr) {
+        return;
+    }
+    const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const tree = await client.getUiTree(pid);
+    const doc = await vscode.workspace.openTextDocument({
+        language: "json",
+        content: JSON.stringify(tree, null, 2),
+    });
+    await vscode.window.showTextDocument(doc);
+}
+async function cmdClickElement() {
+    const pidStr = await vscode.window.showInputBox({
+        prompt: "Process ID",
+    });
+    if (!pidStr) {
+        return;
+    }
+    const pid = Number(pidStr);
+    const elementId = await vscode.window.showInputBox({
+        prompt: "Element ID (from UI tree)",
+    });
+    if (!elementId) {
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.clickElement(pid, elementId);
+    if (result.status === "ok") {
+        vscode.window.showInformationMessage(`Clicked element '${elementId}'.`);
+    }
+    else {
+        vscode.window.showErrorMessage(`Click failed: ${result.message ?? "unknown error"}`);
+    }
+}
+async function cmdGetScreenshot() {
+    const pidStr = await vscode.window.showInputBox({
+        prompt: "Process ID",
+    });
+    if (!pidStr) {
+        return;
+    }
+    const pid = Number(pidStr);
+    const client = (0, agentClient_1.createAgentClient)();
+    const screenshot = await client.getScreenshot(pid);
+    // Write the image to a temp file and open it
+    const tmpUri = vscode.Uri.joinPath(vscode.Uri.file(os.tmpdir()), `adagio-screenshot-${pid}-${Date.now()}.png`);
+    const imageBytes = new Uint8Array(Buffer.from(screenshot.imageBase64, "base64"));
+    await vscode.workspace.fs.writeFile(tmpUri, imageBytes);
+    await vscode.commands.executeCommand("vscode.open", tmpUri);
+}
+async function cmdTypeText() {
+    const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+    if (!pidStr) {
+        return;
+    }
+    const pid = Number(pidStr);
+    const elementId = await vscode.window.showInputBox({
+        prompt: "Element ID",
+    });
+    if (!elementId) {
+        return;
+    }
+    const text = await vscode.window.showInputBox({ prompt: "Text to type" });
+    if (text === undefined) {
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.typeText(pid, elementId, text);
+    if (result.status === "ok") {
+        vscode.window.showInformationMessage(`Typed text into element '${elementId}'.`);
+    }
+    else {
+        vscode.window.showErrorMessage(`Type failed: ${result.message ?? "unknown error"}`);
+    }
+}
+// ─── Copilot tool implementations ────────────────────────────────────────────
+function uiTreeSummary(elements, depth = 0) {
+    return elements
+        .map((el) => {
+        const indent = "  ".repeat(depth);
+        const bounds = el.bounds
+            ? ` [${el.bounds.x},${el.bounds.y} ${el.bounds.width}×${el.bounds.height}]`
+            : "";
+        const line = `${indent}${el.type} "${el.name}" id=${el.id}${bounds}`;
+        const children = el.children && el.children.length > 0
+            ? "\n" + uiTreeSummary(el.children, depth + 1)
+            : "";
+        return line + children;
+    })
+        .join("\n");
+}
+class RunExecutableTool {
+    async invoke(options, _token) {
+        const { command, arguments: args, workingDirectory } = options.input;
+        const request = { command, arguments: args, workingDirectory };
+        const client = (0, agentClient_1.createAgentClient)();
+        const result = await client.runExecutable(request);
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(`Executable started.\n- PID: ${result.pid}\n- Status: ${result.status}\n- Started at: ${result.startedAt}`),
+        ]);
+    }
+}
+class GetUiTreeTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const tree = await client.getUiTree(options.input.pid);
+        const summary = uiTreeSummary(tree.elements);
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(`Window: "${tree.windowTitle}"\n\nUI elements:\n${summary}`),
+        ]);
+    }
+}
+class GetScreenshotTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const screenshot = await client.getScreenshot(options.input.pid);
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(`Screenshot captured (base64 PNG, ${screenshot.imageBase64.length} chars).`),
+        ]);
+    }
+}
+class ClickElementTool {
+    async invoke(options, _token) {
+        const { pid, elementId } = options.input;
+        const client = (0, agentClient_1.createAgentClient)();
+        const result = await client.clickElement(pid, elementId);
+        const text = result.status === "ok"
+            ? `Successfully clicked element '${elementId}'.`
+            : `Failed to click element '${elementId}': ${result.message ?? "unknown error"}`;
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(text),
+        ]);
+    }
+}
+class TypeTextTool {
+    async invoke(options, _token) {
+        const { pid, elementId, text } = options.input;
+        const client = (0, agentClient_1.createAgentClient)();
+        const result = await client.typeText(pid, elementId, text);
+        const msg = result.status === "ok"
+            ? `Successfully typed text into element '${elementId}'.`
+            : `Failed to type text into element '${elementId}': ${result.message ?? "unknown error"}`;
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(msg),
+        ]);
+    }
+}
+//# sourceMappingURL=extension.js.map

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  WiX v4 installer project for Adagio Machine Agent.
+  WiX v6 installer project for Adagio Machine Agent.
 
   Building this project automatically:
     1. Publishes machine-agent as a self-contained win-x64 Release build.
@@ -8,12 +8,12 @@
     3. Produces AdagioMachineAgentSetup.msi in the output directory.
 
   Prerequisites
-  ─────────────
+  ──────────────
   • .NET 8 SDK
-  • WiX v4 toolset (installed automatically via the WixToolset.Sdk NuGet SDK)
+  • WiX v6 toolset (installed automatically via the WixToolset.Sdk NuGet SDK)
 
   Build
-  ─────
+  ──────
   From this directory (or the repo root):
 
       msbuild installer\AdagioMachineAgent.Setup.wixproj -r -p:Configuration=Release
@@ -24,7 +24,7 @@
 
       msbuild ... -p:PublishDir=C:\custom\publish\
 -->
-<Project Sdk="WixToolset.Sdk/4.0.5">
+<Project Sdk="WixToolset.Sdk/6.0.2">
 
   <PropertyGroup>
     <OutputName>AdagioMachineAgentSetup</OutputName>
@@ -35,6 +35,11 @@
       Override with -p:PublishDir=<path> when calling msbuild/dotnet build.
     -->
     <PublishDir Condition="'$(PublishDir)'==''">$(MSBuildThisFileDirectory)publish\</PublishDir>
+    <!--
+      Forward PublishDir to the WiX preprocessor so that Package.wxs can
+      reference it via $(var.PublishDir) in File/@Source attributes.
+    -->
+    <DefineConstants>$(DefineConstants);PublishDir=$(PublishDir)</DefineConstants>
   </PropertyGroup>
 
   <!--
@@ -51,7 +56,7 @@
     building the installer on its own.
   -->
   <Target Name="PublishMachineAgent" BeforeTargets="BeforeBuild">
-    <Exec Command="dotnet publish &quot;$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj&quot; -r win-x64 -c Release --self-contained -o &quot;$(PublishDir)&quot; --nologo" />
+    <Exec Command="dotnet publish &quot;$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj&quot; -r win-x64 -c Release --self-contained -o &quot;$(PublishDir.TrimEnd('\'))&quot; --nologo" />
   </Target>
 
   <!--
