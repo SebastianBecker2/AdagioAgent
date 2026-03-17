@@ -18,6 +18,42 @@ namespace AdagioMachineAgent.Services;
 public sealed class WindowsUiAutomationService : IUiAutomationService
 {
     private readonly UIA3Automation _automation = new();
+    private const uint KeyeventfKeyup = 0x0002;
+
+    private static readonly Dictionary<string, byte> VirtualKeyMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["alt"] = 0x12,
+        ["ctrl"] = 0x11,
+        ["control"] = 0x11,
+        ["shift"] = 0x10,
+        ["enter"] = 0x0D,
+        ["esc"] = 0x1B,
+        ["escape"] = 0x1B,
+        ["tab"] = 0x09,
+        ["space"] = 0x20,
+        ["left"] = 0x25,
+        ["up"] = 0x26,
+        ["right"] = 0x27,
+        ["down"] = 0x28,
+        ["delete"] = 0x2E,
+        ["backspace"] = 0x08,
+        ["home"] = 0x24,
+        ["end"] = 0x23,
+        ["pageup"] = 0x21,
+        ["pagedown"] = 0x22,
+        ["f1"] = 0x70,
+        ["f2"] = 0x71,
+        ["f3"] = 0x72,
+        ["f4"] = 0x73,
+        ["f5"] = 0x74,
+        ["f6"] = 0x75,
+        ["f7"] = 0x76,
+        ["f8"] = 0x77,
+        ["f9"] = 0x78,
+        ["f10"] = 0x79,
+        ["f11"] = 0x7A,
+        ["f12"] = 0x7B,
+    };
 
     // ── UI tree ──────────────────────────────────────────────────────────────
 
@@ -87,6 +123,40 @@ public sealed class WindowsUiAutomationService : IUiAutomationService
 
         mainWindow.Focus();
         Keyboard.Type(text);
+    }
+
+    /// <summary>
+    /// Press a hotkey combination in the focused application window.
+    /// </summary>
+    public void PressHotkey(int pid, IReadOnlyList<string> keys)
+    {
+        if (keys.Count == 0)
+        {
+            throw new InvalidOperationException("At least one key is required.");
+        }
+
+        var app = Application.Attach(pid);
+        var mainWindow = app.GetMainWindow(_automation);
+
+        if (mainWindow == null)
+        {
+            throw new InvalidOperationException(
+                $"No main window found for process {pid}.");
+        }
+
+        mainWindow.Focus();
+        Thread.Sleep(50);
+
+        var virtualKeys = keys.Select(ParseVirtualKey).ToList();
+        foreach (var key in virtualKeys)
+        {
+            keybd_event(key, 0, 0, 0);
+        }
+
+        for (var i = virtualKeys.Count - 1; i >= 0; i--)
+        {
+            keybd_event(virtualKeys[i], 0, KeyeventfKeyup, 0);
+        }
     }
 
     /// <summary>
@@ -256,5 +326,27 @@ public sealed class WindowsUiAutomationService : IUiAutomationService
         else if (!string.IsNullOrEmpty(el.Name)) parts.Add(el.Name.Replace(' ', '-'));
         return string.Join("-", parts).ToLowerInvariant();
     }
+
+    private static byte ParseVirtualKey(string key)
+    {
+        if (VirtualKeyMap.TryGetValue(key, out var known))
+        {
+            return known;
+        }
+
+        if (key.Length == 1)
+        {
+            char ch = char.ToUpperInvariant(key[0]);
+            if ((ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9'))
+            {
+                return (byte)ch;
+            }
+        }
+
+        throw new InvalidOperationException($"Unsupported hotkey key '{key}'.");
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, nuint dwExtraInfo);
 }
 #endif

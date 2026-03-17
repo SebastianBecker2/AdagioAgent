@@ -48,6 +48,9 @@ public sealed record SetFocusRequest(int Pid, string ElementId);
 /// <summary>Send keystrokes to the focused application window.</summary>
 public sealed record SendKeysRequest(int Pid, string Text);
 
+/// <summary>Press a key combination in the focused application window.</summary>
+public sealed record PressHotkeyRequest(int Pid, List<string> Keys);
+
 // ─── Responses ────────────────────────────────────────────────────────────────
 
 /// <summary>Result of starting a process.</summary>

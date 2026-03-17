@@ -73,6 +73,10 @@
       {
         "command": "adagioAgent.sendKeys",
         "title": "Adagio Agent: Send Keys"
+      },
+      {
+        "command": "adagioAgent.pressHotkey",
+        "title": "Adagio Agent: Press Hotkey"
       }
     ],
     "configuration": {
@@ -416,6 +420,31 @@
           "required": [
             "pid",
             "text"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_pressHotkey",
+        "displayName": "Press Hotkey",
+        "modelDescription": "Press a key combination like Alt+N or Ctrl+Tab in the application window.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pid": {
+              "type": "number",
+              "description": "Process ID returned by runExecutable"
+            },
+            "keys": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Key names, for example [\"alt\", \"n\"]"
+            }
+          },
+          "required": [
+            "pid",
+            "keys"
           ]
         }
       }

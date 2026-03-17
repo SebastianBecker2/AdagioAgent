@@ -286,6 +286,22 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void PressHotkey_ValidatesInputsAndReturnsOk()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        Assert.IsType<BadRequestObjectResult>(sut.PressHotkey(new PressHotkeyRequest(0, ["alt", "n"])));
+        Assert.IsType<BadRequestObjectResult>(sut.PressHotkey(new PressHotkeyRequest(1, [])));
+
+        var result = sut.PressHotkey(new PressHotkeyRequest(42, ["alt", "n"]));
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<StatusResponse>(ok.Value);
+        Assert.Equal("ok", payload.Status);
+    }
+
+    [Fact]
     public void Click_ValidatesInputsAndMapsNotFound()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);

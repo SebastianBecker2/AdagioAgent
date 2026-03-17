@@ -304,4 +304,25 @@ describe("AgentClient", () => {
       })
     );
   });
+
+  it("calls press-hotkey endpoint with expected payload", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ status: "ok" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const client = new AgentClient("http://localhost:5000");
+    await client.pressHotkey({ pid: 77, keys: ["alt", "n"] });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:5000/press-hotkey",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ pid: 77, keys: ["alt", "n"] }),
+      })
+    );
+  });
 });

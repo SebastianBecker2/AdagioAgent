@@ -91,6 +91,13 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
     }
 
     /// <inheritdoc/>
+    public void PressHotkey(int pid, IReadOnlyList<string> keys)
+    {
+        throw new PlatformNotSupportedException(
+            "Generic hotkey simulation is not implemented on Linux yet.");
+    }
+
+    /// <inheritdoc/>
     public ElementStateResponse GetElementState(int pid, string elementId)
     {
         var conn = GetConnection();

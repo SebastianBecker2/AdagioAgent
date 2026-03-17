@@ -381,6 +381,46 @@ public sealed class AutomationController : ControllerBase
         }
     }
 
+    // ── POST /press-hotkey ────────────────────────────────────────────────
+
+    /// <summary>Press a key combination in the application window.</summary>
+    [HttpPost("/press-hotkey")]
+    [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public IActionResult PressHotkey([FromBody] PressHotkeyRequest request)
+    {
+        if (request.Pid <= 0)
+        {
+            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+        }
+
+        if (request.Keys is null || request.Keys.Count == 0)
+        {
+            return BadRequest(new ErrorResponse("keys must contain at least one key."));
+        }
+
+        try
+        {
+            _uiService.PressHotkey(request.Pid, request.Keys);
+            return Ok(new StatusResponse("ok"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new ErrorResponse(ex.Message));
+        }
+        catch (PlatformNotSupportedException ex)
+        {
+            return StatusCode(StatusCodes.Status501NotImplemented,
+                new ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PressHotkey failed for pid {Pid}.", request.Pid);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to press hotkey.", ex.Message));
+        }
+    }
+
     // ── GET /screenshot ──────────────────────────────────────────────────────
 
     /// <summary>Capture a screenshot of the process window.</summary>

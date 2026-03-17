@@ -140,7 +140,7 @@ describe("extension activation and commands", () => {
 
     activate(context as never);
 
-    expect(registerCommandMock).toHaveBeenCalledTimes(15);
+    expect(registerCommandMock).toHaveBeenCalledTimes(16);
     expect(commandHandlers.has("adagioAgent.runExecutable")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getUiTree")).toBe(true);
     expect(commandHandlers.has("adagioAgent.clickElement")).toBe(true);
@@ -156,8 +156,9 @@ describe("extension activation and commands", () => {
     expect(commandHandlers.has("adagioAgent.waitForElement")).toBe(true);
     expect(commandHandlers.has("adagioAgent.setFocus")).toBe(true);
     expect(commandHandlers.has("adagioAgent.sendKeys")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.pressHotkey")).toBe(true);
 
-    expect(registerToolMock).toHaveBeenCalledTimes(15);
+    expect(registerToolMock).toHaveBeenCalledTimes(16);
     expect(toolHandlers.has("adagioAgent_runExecutable")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getUiTree")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getScreenshot")).toBe(true);
@@ -173,6 +174,7 @@ describe("extension activation and commands", () => {
     expect(toolHandlers.has("adagioAgent_waitForElement")).toBe(true);
     expect(toolHandlers.has("adagioAgent_setFocus")).toBe(true);
     expect(toolHandlers.has("adagioAgent_sendKeys")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_pressHotkey")).toBe(true);
   });
 
   it("getUiTree command rejects invalid pid without calling API", async () => {

@@ -155,6 +155,12 @@ class AgentClient {
     async sendKeys(request) {
         return this.post("/send-keys", request);
     }
+    /**
+     * Press a hotkey combination in the application window.
+     */
+    async pressHotkey(request) {
+        return this.post("/press-hotkey", request);
+    }
     // ─── Helpers ─────────────────────────────────────────────────────────────
     async get(path) {
         const url = `${this.baseUrl}${path}`;

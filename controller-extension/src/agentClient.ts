@@ -27,6 +27,7 @@ import {
   WaitForElementResponse,
   SetFocusRequest,
   SendKeysRequest,
+  PressHotkeyRequest,
 } from "./schema";
 
 /**
@@ -173,6 +174,13 @@ export class AgentClient {
    */
   async sendKeys(request: SendKeysRequest): Promise<StatusResponse> {
     return this.post<StatusResponse>("/send-keys", request);
+  }
+
+  /**
+   * Press a hotkey combination in the application window.
+   */
+  async pressHotkey(request: PressHotkeyRequest): Promise<StatusResponse> {
+    return this.post<StatusResponse>("/press-hotkey", request);
   }
   // ─── Helpers ─────────────────────────────────────────────────────────────
 

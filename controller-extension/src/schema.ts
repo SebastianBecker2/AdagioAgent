@@ -68,6 +68,11 @@ export interface SendKeysRequest {
   text: string;
 }
 
+export interface PressHotkeyRequest {
+  pid: number;
+  keys: string[];
+}
+
 // ─── Responses ───────────────────────────────────────────────────────────────
 
 export interface RunResponse {

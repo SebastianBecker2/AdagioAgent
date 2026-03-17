@@ -22,6 +22,9 @@ public interface IUiAutomationService : IDisposable
     /// <summary>Send keystrokes to the application window.</summary>
     void SendKeys(int pid, string text);
 
+    /// <summary>Press a key combination in the application window.</summary>
+    void PressHotkey(int pid, IReadOnlyList<string> keys);
+
     /// <summary>Return the current state snapshot of a UI element.</summary>
     ElementStateResponse GetElementState(int pid, string elementId);
 

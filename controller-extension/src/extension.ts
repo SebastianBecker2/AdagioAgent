@@ -57,6 +57,11 @@ interface SendKeysInput {
   text: string;
 }
 
+interface PressHotkeyInput {
+  pid: number;
+  keys: string[];
+}
+
 // ─── Activation ──────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -86,7 +91,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState),
     vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand),
     vscode.commands.registerCommand("adagioAgent.setFocus", cmdSetFocus),
-    vscode.commands.registerCommand("adagioAgent.sendKeys", cmdSendKeys)
+    vscode.commands.registerCommand("adagioAgent.sendKeys", cmdSendKeys),
+    vscode.commands.registerCommand("adagioAgent.pressHotkey", cmdPressHotkey)
   );
 
   // ── Copilot language-model tools ─────────────────────────────────────────
@@ -116,7 +122,8 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()),
       vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()),
       vscode.lm.registerTool("adagioAgent_setFocus", new SetFocusTool()),
-      vscode.lm.registerTool("adagioAgent_sendKeys", new SendKeysTool())
+      vscode.lm.registerTool("adagioAgent_sendKeys", new SendKeysTool()),
+      vscode.lm.registerTool("adagioAgent_pressHotkey", new PressHotkeyTool())
     );
   }
 }
@@ -555,6 +562,41 @@ async function cmdSendKeys(): Promise<void> {
   }
 }
 
+async function cmdPressHotkey(): Promise<void> {
+  const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+  if (!pidStr) {
+    return;
+  }
+
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    vscode.window.showErrorMessage("Invalid PID.");
+    return;
+  }
+
+  const keysStr = await vscode.window.showInputBox({
+    prompt: "Hotkey combination (comma-separated)",
+    placeHolder: "alt,n",
+  });
+  if (!keysStr) {
+    return;
+  }
+
+  const keys = keysStr.split(",").map((key) => key.trim()).filter(Boolean);
+  if (keys.length === 0) {
+    vscode.window.showErrorMessage("Invalid hotkey.");
+    return;
+  }
+
+  const client = createAgentClient();
+  const result = await client.pressHotkey({ pid, keys });
+  if (result.status === "ok") {
+    vscode.window.showInformationMessage(`Pressed hotkey ${keys.join("+")} on process ${pid}.`);
+  } else {
+    vscode.window.showErrorMessage(result.message ?? `Failed to press hotkey on process ${pid}.`);
+  }
+}
+
 // ─── Copilot tool implementations ────────────────────────────────────────────
 
 function uiTreeSummary(elements: UiElement[], depth = 0): string {
@@ -847,6 +889,21 @@ class SendKeysTool implements vscode.LanguageModelTool<SendKeysInput> {
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
         result.message ?? `Sent keys to process ${options.input.pid}.`
+      ),
+    ]);
+  }
+}
+
+class PressHotkeyTool implements vscode.LanguageModelTool<PressHotkeyInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<PressHotkeyInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.pressHotkey(options.input);
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        result.message ?? `Pressed hotkey ${options.input.keys.join("+")} on process ${options.input.pid}.`
       ),
     ]);
   }
