@@ -10,6 +10,8 @@ import {
   TypeResponse,
   HealthResponse,
   AgentError,
+  CopyFileRequest,
+  CopyFileResponse,
 } from "./schema";
 
 /**
@@ -82,7 +84,15 @@ export class AgentClient {
   async getScreenshot(pid: number): Promise<ScreenshotResponse> {
     return this.get<ScreenshotResponse>(`/screenshot?pid=${pid}`);
   }
+  // ─── File Copy ────────────────────────────────────────────────────────
 
+  /**
+   * Copy a file to the target system.
+   * @param request File copy parameters (destination, base64 content, overwrite flag)
+   */
+  async copyFile(request: CopyFileRequest): Promise<CopyFileResponse> {
+    return this.post<CopyFileResponse>("/copy-file", request);
+  }
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
   private async get<T>(path: string): Promise<T> {

@@ -22,6 +22,12 @@ export interface TypeRequest {
   text: string;
 }
 
+export interface CopyFileRequest {
+  destinationPath: string;
+  fileContentBase64: string;
+  overwriteIfExists?: boolean;
+}
+
 // ─── Responses ───────────────────────────────────────────────────────────────
 
 export interface RunResponse {
@@ -73,4 +79,9 @@ export interface HealthResponse {
 export interface AgentError {
   error: string;
   detail?: string;
+}
+
+export interface CopyFileResponse {
+  destinationPath: string;
+  bytesWritten: number;
 }

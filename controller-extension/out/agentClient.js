@@ -90,6 +90,14 @@ class AgentClient {
     async getScreenshot(pid) {
         return this.get(`/screenshot?pid=${pid}`);
     }
+    // ─── File Copy ────────────────────────────────────────────────────────
+    /**
+     * Copy a file to the target system.
+     * @param request File copy parameters (destination, base64 content, overwrite flag)
+     */
+    async copyFile(request) {
+        return this.post("/copy-file", request);
+    }
     // ─── Helpers ─────────────────────────────────────────────────────────────
     async get(path) {
         const url = `${this.baseUrl}${path}`;

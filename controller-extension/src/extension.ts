@@ -218,6 +218,45 @@ async function cmdTypeText(): Promise<void> {
   }
 }
 
+async function cmdCopyFile(): Promise<void> {
+  const filePath = await vscode.window.showInputBox({
+    prompt: "Path to file to copy (on local machine)",
+    placeHolder: "C:\\path\\to\\file.txt",
+  });
+  if (!filePath) {
+    return;
+  }
+
+  const destinationPath = await vscode.window.showInputBox({
+    prompt: "Destination path on target system",
+    placeHolder: "C:\\Apps\\file.txt",
+  });
+  if (!destinationPath) {
+    return;
+  }
+
+  try {
+    const fileUri = vscode.Uri.file(filePath);
+    const fileBytes = await vscode.workspace.fs.readFile(fileUri);
+    const base64Content = Buffer.from(fileBytes).toString("base64");
+
+    const client = createAgentClient();
+    const result = await client.copyFile({
+      destinationPath,
+      fileContentBase64: base64Content,
+      overwriteIfExists: false,
+    });
+
+    vscode.window.showInformationMessage(
+      `File copied successfully (${result.bytesWritten} bytes)`
+    );
+  } catch (err) {
+    vscode.window.showErrorMessage(
+      `Failed to copy file: ${err}`
+    );
+  }
+}
+
 // ─── Copilot tool implementations ────────────────────────────────────────────
 
 function uiTreeSummary(elements: UiElement[], depth = 0): string {
@@ -317,6 +356,37 @@ class TypeTextTool implements vscode.LanguageModelTool<TypeInput> {
         : `Failed to type text into element '${elementId}': ${result.message ?? "unknown error"}`;
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(msg),
+    ]);
+  }
+}
+
+interface CopyFileInput {
+  localFilePath: string;
+  destinationPath: string;
+  overwriteIfExists?: boolean;
+}
+
+class CopyFileTool implements vscode.LanguageModelTool<CopyFileInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<CopyFileInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const { localFilePath, destinationPath, overwriteIfExists } = options.input;
+    const fileUri = vscode.Uri.file(localFilePath);
+    const fileBytes = await vscode.workspace.fs.readFile(fileUri);
+    const base64Content = Buffer.from(fileBytes).toString("base64");
+
+    const client = createAgentClient();
+    const result = await client.copyFile({
+      destinationPath,
+      fileContentBase64: base64Content,
+      overwriteIfExists: overwriteIfExists ?? true,
+    });
+
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        `File copied to ${result.destinationPath} (${result.bytesWritten} bytes)`
+      ),
     ]);
   }
 }

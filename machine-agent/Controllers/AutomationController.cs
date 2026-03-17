@@ -1,6 +1,7 @@
 using AdagioMachineAgent.Models;
 using AdagioMachineAgent.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace AdagioMachineAgent.Controllers;
 
@@ -231,6 +232,77 @@ public sealed class AutomationController : ControllerBase
             _logger.LogError(ex, "Type failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed to type text.", ex.Message));
+        }
+    }
+
+    // ── POST /copy-file ──────────────────────────────────────────────────────
+
+    /// <summary>Copy a file to the target system.</summary>
+    [HttpPost("/copy-file")]
+    [ProducesResponseType(typeof(CopyFileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public IActionResult CopyFile([FromBody] CopyFileRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.DestinationPath))
+        {
+            return BadRequest(new ErrorResponse("DestinationPath is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.FileContentBase64))
+        {
+            return BadRequest(new ErrorResponse("FileContentBase64 is required."));
+        }
+
+        try
+        {
+            var destinationPath = Path.GetFullPath(request.DestinationPath);
+            
+            // Validate destination path is in an allowed location (same whitelist as commands)
+            var options = HttpContext.RequestServices.GetRequiredService<IOptions<AgentOptions>>();
+            var allowed = options.Value.AllowedExecutablePaths.Any(dir =>
+                destinationPath.StartsWith(
+                    Path.GetFullPath(dir),
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (!allowed)
+            {
+                return BadRequest(new ErrorResponse(
+                    $"Destination path '{request.DestinationPath}' is not in an allowed directory. " +
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedExecutablePaths)}"));
+            }
+
+            // Check if file exists and overwrite flag
+            if (System.IO.File.Exists(destinationPath) && !request.OverwriteIfExists)
+            {
+                return BadRequest(new ErrorResponse(
+                    $"File already exists at '{request.DestinationPath}' and overwrite is not enabled."));
+            }
+
+            // Decode and write file
+            byte[] fileBytes = Convert.FromBase64String(request.FileContentBase64);
+            
+            // Ensure directory exists
+            var directory = System.IO.Path.GetDirectoryName(destinationPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                System.IO.Directory.CreateDirectory(directory);
+            }
+
+            System.IO.File.WriteAllBytes(destinationPath, fileBytes);
+
+            _logger.LogInformation("File copied to {Path} ({Bytes} bytes)", destinationPath, fileBytes.Length);
+            return Ok(new CopyFileResponse(destinationPath, fileBytes.Length));
+        }
+        catch (FormatException ex)
+        {
+            _logger.LogWarning(ex, "Invalid base64 format for file content.");
+            return BadRequest(new ErrorResponse("FileContentBase64 must be valid base64.", ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to copy file.");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to copy file.", ex.Message));
         }
     }
 }

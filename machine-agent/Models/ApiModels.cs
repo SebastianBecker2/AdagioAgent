@@ -14,6 +14,12 @@ public sealed record ClickRequest(int Pid, string ElementId);
 /// <summary>Type text into a UI element.</summary>
 public sealed record TypeRequest(int Pid, string ElementId, string Text);
 
+/// <summary>Copy a file to the target system.</summary>
+public sealed record CopyFileRequest(
+    string DestinationPath,
+    string FileContentBase64,
+    bool OverwriteIfExists = false);
+
 // ─── Responses ────────────────────────────────────────────────────────────────
 
 /// <summary>Result of starting a process.</summary>
@@ -45,3 +51,6 @@ public sealed record HealthResponse(string Status, string Version);
 
 /// <summary>Problem details returned on error (RFC 7807-style).</summary>
 public sealed record ErrorResponse(string Error, string? Detail = null);
+
+/// <summary>Result of copying a file.</summary>
+public sealed record CopyFileResponse(string DestinationPath, int BytesWritten);

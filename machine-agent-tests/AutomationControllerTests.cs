@@ -167,13 +167,139 @@ public sealed class AutomationControllerTests
         var objectResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status501NotImplemented, objectResult.StatusCode);
     }
-
-    private static AutomationController CreateController(ProcessService processService, IUiAutomationService uiService)
+    [Fact]
+    public void CopyFile_ReturnsBadRequestWhenDestinationPathMissing()
     {
-        return new AutomationController(
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var result = sut.CopyFile(new CopyFileRequest("", "base64data", false));
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result);
+        var payload = Assert.IsType<ErrorResponse>(bad.Value);
+        Assert.Equal("DestinationPath is required.", payload.Error);
+    }
+
+    [Fact]
+    public void CopyFile_ReturnsBadRequestWhenFileContentMissing()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var result = sut.CopyFile(new CopyFileRequest(Path.Combine(Path.GetTempPath(), "file.txt"), "", false));
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result);
+        var payload = Assert.IsType<ErrorResponse>(bad.Value);
+        Assert.Equal("FileContentBase64 is required.", payload.Error);
+    }
+
+    [Fact]
+    public void CopyFile_ReturnsBadRequestWhenPathNotWhitelisted()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var result = sut.CopyFile(new CopyFileRequest("C:\\Windows\\System32\\test.txt", "SGVsbG8=", false));
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result);
+        var payload = Assert.IsType<ErrorResponse>(bad.Value);
+        Assert.Contains("not in an allowed directory", payload.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void CopyFile_ReturnsBadRequestWhenFileExistsAndOverwriteFalse()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), "test-copy.txt");
+        File.WriteAllText(tempFile, "existing");
+        try
+        {
+            using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+            var uiService = new Mock<IUiAutomationService>();
+            var sut = CreateController(processService, uiService.Object);
+
+            var result = sut.CopyFile(new CopyFileRequest(tempFile, "SGVsbG8=", false));
+
+            var bad = Assert.IsType<BadRequestObjectResult>(result);
+            var payload = Assert.IsType<ErrorResponse>(bad.Value);
+            Assert.Contains("already exists", payload.Error, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void CopyFile_ReturnsOkWhenSuccessful()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), "test-new-copy.txt");
+        try
+        {
+            using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+            var uiService = new Mock<IUiAutomationService>();
+            var sut = CreateController(processService, uiService.Object);
+
+            var testContent = "Hello, World!";
+            var base64Content = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(testContent));
+            var result = sut.CopyFile(new CopyFileRequest(tempFile, base64Content, false));
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var payload = Assert.IsType<CopyFileResponse>(ok.Value);
+            Assert.Equal(tempFile, payload.DestinationPath);
+            Assert.Equal(testContent.Length, payload.BytesWritten);
+            Assert.True(File.Exists(tempFile));
+            Assert.Equal(testContent, File.ReadAllText(tempFile));
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void CopyFile_ReturnsBadRequestWhenBase64Invalid()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var result = sut.CopyFile(new CopyFileRequest(Path.Combine(Path.GetTempPath(), "file.txt"), "not-valid-base64!!!", false));
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result);
+        var payload = Assert.IsType<ErrorResponse>(bad.Value);
+        Assert.Equal("FileContentBase64 must be valid base64.", payload.Error);
+    }
+    private static AutomationController CreateController(ProcessService processService, IUiAutomationService uiService, IOptions<AgentOptions>? options = null)
+    {
+        var controller = new AutomationController(
             processService,
             uiService,
             NullLogger<AutomationController>.Instance);
+
+        // Set up mock HttpContext with RequestServices for CopyFile endpoint
+        options ??= Options.Create(new global::AgentOptions
+        {
+            AllowedExecutablePaths = [Path.GetTempPath()],
+            MaxConcurrentProcesses = 2,
+            ProcessTimeoutSeconds = 60,
+        });
+
+        var httpContextMock = new Mock<HttpContext>();
+        var serviceProviderMock = new Mock<IServiceProvider>();
+        serviceProviderMock
+            .Setup(x => x.GetService(typeof(IOptions<AgentOptions>)))
+            .Returns(options);
+
+        httpContextMock.Setup(x => x.RequestServices).Returns(serviceProviderMock.Object);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = httpContextMock.Object,
+        };
+
+        return controller;
     }
 
     private static ProcessService CreateProcessService(List<string> allowedExecutablePaths)
