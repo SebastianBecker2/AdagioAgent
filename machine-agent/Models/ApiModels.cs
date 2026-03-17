@@ -26,6 +26,12 @@ public sealed record WaitForExitRequest(int Pid, int TimeoutMilliseconds = 30000
 /// <summary>Terminate a tracked process.</summary>
 public sealed record TerminateProcessRequest(int Pid);
 
+/// <summary>Read a text file from the target machine.</summary>
+public sealed record ReadTextFileRequest(string Path);
+
+/// <summary>Read the last N lines from a text file.</summary>
+public sealed record TailFileRequest(string Path, int Lines = 200);
+
 // ─── Responses ────────────────────────────────────────────────────────────────
 
 /// <summary>Result of starting a process.</summary>
@@ -71,3 +77,9 @@ public sealed record CopyFileResponse(string DestinationPath, int BytesWritten);
 
 /// <summary>Result of waiting for a process to exit.</summary>
 public sealed record WaitForExitResponse(bool Exited, ProcessStatusResponse Process);
+
+/// <summary>Text file content read from the target machine.</summary>
+public sealed record ReadTextFileResponse(string Path, string Content);
+
+/// <summary>Last lines read from a text file.</summary>
+public sealed record TailFileResponse(string Path, int Lines, string Content);

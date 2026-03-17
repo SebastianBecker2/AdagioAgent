@@ -37,6 +37,15 @@ export interface TerminateProcessRequest {
   pid: number;
 }
 
+export interface ReadTextFileRequest {
+  path: string;
+}
+
+export interface TailFileRequest {
+  path: string;
+  lines?: number;
+}
+
 // ─── Responses ───────────────────────────────────────────────────────────────
 
 export interface RunResponse {
@@ -111,4 +120,15 @@ export interface CopyFileResponse {
 export interface WaitForExitResponse {
   exited: boolean;
   process: ProcessStatusResponse;
+}
+
+export interface ReadTextFileResponse {
+  path: string;
+  content: string;
+}
+
+export interface TailFileResponse {
+  path: string;
+  lines: number;
+  content: string;
 }

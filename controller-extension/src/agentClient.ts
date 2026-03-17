@@ -17,6 +17,10 @@ import {
   WaitForExitResponse,
   TerminateProcessRequest,
   StatusResponse,
+  ReadTextFileRequest,
+  ReadTextFileResponse,
+  TailFileRequest,
+  TailFileResponse,
 } from "./schema";
 
 /**
@@ -121,6 +125,20 @@ export class AgentClient {
    */
   async copyFile(request: CopyFileRequest): Promise<CopyFileResponse> {
     return this.post<CopyFileResponse>("/copy-file", request);
+  }
+
+  /**
+   * Read a UTF-8 text file from the target machine.
+   */
+  async readTextFile(request: ReadTextFileRequest): Promise<ReadTextFileResponse> {
+    return this.post<ReadTextFileResponse>("/read-text-file", request);
+  }
+
+  /**
+   * Read the last lines from a UTF-8 text file on the target machine.
+   */
+  async tailFile(request: TailFileRequest): Promise<TailFileResponse> {
+    return this.post<TailFileResponse>("/tail-file", request);
   }
   // ─── Helpers ─────────────────────────────────────────────────────────────
 

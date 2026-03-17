@@ -356,6 +356,84 @@ public sealed class AutomationControllerTests
         var payload = Assert.IsType<ErrorResponse>(bad.Value);
         Assert.Equal("FileContentBase64 must be valid base64.", payload.Error);
     }
+
+    [Fact]
+    public void ReadTextFile_ReturnsBadRequestWhenPathMissing()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var result = sut.ReadTextFile(new ReadTextFileRequest(""));
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result);
+        var payload = Assert.IsType<ErrorResponse>(bad.Value);
+        Assert.Equal("Path is required.", payload.Error);
+    }
+
+    [Fact]
+    public void ReadTextFile_ReturnsContentWhenFileExists()
+    {
+        var filePath = Path.Combine(Path.GetTempPath(), "read-text-file-test.log");
+        File.WriteAllText(filePath, "alpha\nbeta");
+        try
+        {
+            using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+            var uiService = new Mock<IUiAutomationService>();
+            var sut = CreateController(processService, uiService.Object);
+
+            var result = sut.ReadTextFile(new ReadTextFileRequest(filePath));
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var payload = Assert.IsType<ReadTextFileResponse>(ok.Value);
+            Assert.Contains("alpha", payload.Content);
+            Assert.Contains("beta", payload.Content);
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
+    }
+
+    [Fact]
+    public void TailFile_ReturnsLastLinesWhenFileExists()
+    {
+        var filePath = Path.Combine(Path.GetTempPath(), "tail-file-test.log");
+        File.WriteAllLines(filePath, ["line1", "line2", "line3", "line4"]);
+        try
+        {
+            using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+            var uiService = new Mock<IUiAutomationService>();
+            var sut = CreateController(processService, uiService.Object);
+
+            var result = sut.TailFile(new TailFileRequest(filePath, 2));
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var payload = Assert.IsType<TailFileResponse>(ok.Value);
+            Assert.DoesNotContain("line1", payload.Content);
+            Assert.Contains("line3", payload.Content);
+            Assert.Contains("line4", payload.Content);
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
+    }
+
+    [Fact]
+    public void TailFile_ReturnsBadRequestWhenLineCountInvalid()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var result = sut.TailFile(new TailFileRequest(Path.Combine(Path.GetTempPath(), "a.log"), 0));
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result);
+        var payload = Assert.IsType<ErrorResponse>(bad.Value);
+        Assert.Equal("Lines must be a positive integer.", payload.Error);
+    }
+
     private static AutomationController CreateController(ProcessService processService, IUiAutomationService uiService, IOptions<AgentOptions>? options = null)
     {
         var controller = new AutomationController(

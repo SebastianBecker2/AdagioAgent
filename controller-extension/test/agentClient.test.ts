@@ -167,4 +167,43 @@ describe("AgentClient", () => {
       })
     );
   });
+
+  it("calls read-text-file and tail-file endpoints with expected payloads", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ path: "C:/Apps/setup.log", content: "line1\nline2" }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ path: "C:/Apps/setup.log", lines: 50, content: "tail" }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    const client = new AgentClient("http://localhost:5000");
+
+    await client.readTextFile({ path: "C:/Apps/setup.log" });
+    await client.tailFile({ path: "C:/Apps/setup.log", lines: 50 });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:5000/read-text-file",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ path: "C:/Apps/setup.log" }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:5000/tail-file",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ path: "C:/Apps/setup.log", lines: 50 }),
+      })
+    );
+  });
 });

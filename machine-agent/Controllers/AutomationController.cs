@@ -405,6 +405,99 @@ public sealed class AutomationController : ControllerBase
         }
     }
 
+    // ── POST /read-text-file ───────────────────────────────────────────────
+
+    /// <summary>Read a UTF-8 text file from the target machine.</summary>
+    [HttpPost("/read-text-file")]
+    [ProducesResponseType(typeof(ReadTextFileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public IActionResult ReadTextFile([FromBody] ReadTextFileRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Path))
+        {
+            return BadRequest(new ErrorResponse("Path is required."));
+        }
+
+        try
+        {
+            var fullPath = Path.GetFullPath(request.Path);
+            var options = HttpContext.RequestServices.GetRequiredService<IOptions<AgentOptions>>();
+            var allowed = options.Value.AllowedExecutablePaths.Any(dir =>
+                fullPath.StartsWith(Path.GetFullPath(dir), StringComparison.OrdinalIgnoreCase));
+
+            if (!allowed)
+            {
+                return BadRequest(new ErrorResponse(
+                    $"Path '{request.Path}' is not in an allowed directory. " +
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedExecutablePaths)}"));
+            }
+
+            if (!System.IO.File.Exists(fullPath))
+            {
+                return NotFound(new ErrorResponse($"File '{request.Path}' does not exist."));
+            }
+
+            var content = System.IO.File.ReadAllText(fullPath);
+            return Ok(new ReadTextFileResponse(fullPath, content));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to read file '{Path}'.", request.Path);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to read text file.", ex.Message));
+        }
+    }
+
+    // ── POST /tail-file ─────────────────────────────────────────────────────
+
+    /// <summary>Read the last N lines from a UTF-8 text file.</summary>
+    [HttpPost("/tail-file")]
+    [ProducesResponseType(typeof(TailFileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public IActionResult TailFile([FromBody] TailFileRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Path))
+        {
+            return BadRequest(new ErrorResponse("Path is required."));
+        }
+
+        if (request.Lines <= 0)
+        {
+            return BadRequest(new ErrorResponse("Lines must be a positive integer."));
+        }
+
+        try
+        {
+            var fullPath = Path.GetFullPath(request.Path);
+            var options = HttpContext.RequestServices.GetRequiredService<IOptions<AgentOptions>>();
+            var allowed = options.Value.AllowedExecutablePaths.Any(dir =>
+                fullPath.StartsWith(Path.GetFullPath(dir), StringComparison.OrdinalIgnoreCase));
+
+            if (!allowed)
+            {
+                return BadRequest(new ErrorResponse(
+                    $"Path '{request.Path}' is not in an allowed directory. " +
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedExecutablePaths)}"));
+            }
+
+            if (!System.IO.File.Exists(fullPath))
+            {
+                return NotFound(new ErrorResponse($"File '{request.Path}' does not exist."));
+            }
+
+            var allLines = System.IO.File.ReadAllLines(fullPath);
+            var start = Math.Max(0, allLines.Length - request.Lines);
+            var content = string.Join(Environment.NewLine, allLines.Skip(start));
+            return Ok(new TailFileResponse(fullPath, request.Lines, content));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to tail file '{Path}'.", request.Path);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to tail file.", ex.Message));
+        }
+    }
+
     private static ProcessStatusResponse ToProcessStatus(TrackedProcess tracked)
     {
         DateTimeOffset? exitedAt = null;

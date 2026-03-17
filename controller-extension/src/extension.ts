@@ -31,6 +31,15 @@ interface WaitForExitInput {
   timeoutMilliseconds?: number;
 }
 
+interface ReadTextFileInput {
+  path: string;
+}
+
+interface TailFileInput {
+  path: string;
+  lines?: number;
+}
+
 // ─── Activation ──────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -54,7 +63,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile),
     vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus),
     vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit),
-    vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess)
+    vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess),
+    vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile),
+    vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile)
   );
 
   // ── Copilot language-model tools ─────────────────────────────────────────
@@ -78,7 +89,9 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()),
       vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()),
       vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()),
-      vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool())
+      vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()),
+      vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()),
+      vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool())
     );
   }
 }
@@ -346,6 +359,56 @@ async function cmdTerminateProcess(): Promise<void> {
   }
 }
 
+async function cmdReadTextFile(): Promise<void> {
+  const path = await vscode.window.showInputBox({
+    prompt: "Target machine path to text file",
+    placeHolder: "C:\\Apps\\installer.log",
+  });
+  if (!path) {
+    return;
+  }
+
+  const client = createAgentClient();
+  const result = await client.readTextFile({ path });
+  const doc = await vscode.workspace.openTextDocument({
+    language: "log",
+    content: result.content,
+  });
+  await vscode.window.showTextDocument(doc);
+}
+
+async function cmdTailFile(): Promise<void> {
+  const path = await vscode.window.showInputBox({
+    prompt: "Target machine path to text file",
+    placeHolder: "C:\\Apps\\installer.log",
+  });
+  if (!path) {
+    return;
+  }
+
+  const linesStr = await vscode.window.showInputBox({
+    prompt: "Number of lines to read",
+    value: "200",
+  });
+  if (!linesStr) {
+    return;
+  }
+
+  const lines = Number(linesStr);
+  if (!Number.isInteger(lines) || lines <= 0) {
+    vscode.window.showErrorMessage("Invalid lines value.");
+    return;
+  }
+
+  const client = createAgentClient();
+  const result = await client.tailFile({ path, lines });
+  const doc = await vscode.workspace.openTextDocument({
+    language: "log",
+    content: result.content,
+  });
+  await vscode.window.showTextDocument(doc);
+}
+
 // ─── Copilot tool implementations ────────────────────────────────────────────
 
 function uiTreeSummary(elements: UiElement[], depth = 0): string {
@@ -535,6 +598,40 @@ class TerminateProcessTool implements vscode.LanguageModelTool<PidInput> {
     const result = await client.terminateProcess({ pid: options.input.pid });
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(result.message ?? `Process ${options.input.pid} terminated.`),
+    ]);
+  }
+}
+
+class ReadTextFileTool implements vscode.LanguageModelTool<ReadTextFileInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<ReadTextFileInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.readTextFile({ path: options.input.path });
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        `File: ${result.path}\n\n${result.content}`
+      ),
+    ]);
+  }
+}
+
+class TailFileTool implements vscode.LanguageModelTool<TailFileInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<TailFileInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const lines = options.input.lines ?? 200;
+    const result = await client.tailFile({
+      path: options.input.path,
+      lines,
+    });
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        `Tail (${result.lines}) ${result.path}\n\n${result.content}`
+      ),
     ]);
   }
 }

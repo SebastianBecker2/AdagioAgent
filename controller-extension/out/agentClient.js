@@ -119,6 +119,18 @@ class AgentClient {
     async copyFile(request) {
         return this.post("/copy-file", request);
     }
+    /**
+     * Read a UTF-8 text file from the target machine.
+     */
+    async readTextFile(request) {
+        return this.post("/read-text-file", request);
+    }
+    /**
+     * Read the last lines from a UTF-8 text file on the target machine.
+     */
+    async tailFile(request) {
+        return this.post("/tail-file", request);
+    }
     // ─── Helpers ─────────────────────────────────────────────────────────────
     async get(path) {
         const url = `${this.baseUrl}${path}`;

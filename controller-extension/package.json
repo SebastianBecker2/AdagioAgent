@@ -49,6 +49,14 @@
       {
         "command": "adagioAgent.terminateProcess",
         "title": "Adagio Agent: Terminate Process"
+      },
+      {
+        "command": "adagioAgent.readTextFile",
+        "title": "Adagio Agent: Read Text File"
+      },
+      {
+        "command": "adagioAgent.tailFile",
+        "title": "Adagio Agent: Tail File"
       }
     ],
     "configuration": {
@@ -258,6 +266,44 @@
           },
           "required": [
             "pid"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_readTextFile",
+        "displayName": "Read Text File",
+        "modelDescription": "Read a UTF-8 text file from the target machine.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Absolute path to a target text file"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_tailFile",
+        "displayName": "Tail File",
+        "modelDescription": "Read the last N lines of a UTF-8 text file from the target machine.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Absolute path to a target text file"
+            },
+            "lines": {
+              "type": "number",
+              "description": "Number of lines from the end of file"
+            }
+          },
+          "required": [
+            "path"
           ]
         }
       }

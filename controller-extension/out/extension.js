@@ -43,10 +43,10 @@ Object.defineProperty(exports, "AgentClient", { enumerable: true, get: function 
 // ─── Activation ──────────────────────────────────────────────────────────────
 function activate(context) {
     // ── VS Code commands (palette / keybindings) ─────────────────────────────
-    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText), vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile), vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus), vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit), vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess));
+    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText), vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile), vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus), vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit), vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess), vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile), vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile));
     // ── Copilot language-model tools ─────────────────────────────────────────
     if (typeof vscode.lm !== "undefined" && "registerTool" in vscode.lm) {
-        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()), vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()), vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()), vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()), vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()));
+        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()), vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()), vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()), vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()), vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()), vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()), vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()));
     }
 }
 function deactivate() {
@@ -261,6 +261,50 @@ async function cmdTerminateProcess() {
         vscode.window.showErrorMessage(result.message ?? `Failed to terminate process ${pid}.`);
     }
 }
+async function cmdReadTextFile() {
+    const path = await vscode.window.showInputBox({
+        prompt: "Target machine path to text file",
+        placeHolder: "C:\\Apps\\installer.log",
+    });
+    if (!path) {
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.readTextFile({ path });
+    const doc = await vscode.workspace.openTextDocument({
+        language: "log",
+        content: result.content,
+    });
+    await vscode.window.showTextDocument(doc);
+}
+async function cmdTailFile() {
+    const path = await vscode.window.showInputBox({
+        prompt: "Target machine path to text file",
+        placeHolder: "C:\\Apps\\installer.log",
+    });
+    if (!path) {
+        return;
+    }
+    const linesStr = await vscode.window.showInputBox({
+        prompt: "Number of lines to read",
+        value: "200",
+    });
+    if (!linesStr) {
+        return;
+    }
+    const lines = Number(linesStr);
+    if (!Number.isInteger(lines) || lines <= 0) {
+        vscode.window.showErrorMessage("Invalid lines value.");
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.tailFile({ path, lines });
+    const doc = await vscode.workspace.openTextDocument({
+        language: "log",
+        content: result.content,
+    });
+    await vscode.window.showTextDocument(doc);
+}
 // ─── Copilot tool implementations ────────────────────────────────────────────
 function uiTreeSummary(elements, depth = 0) {
     return elements
@@ -391,6 +435,28 @@ class TerminateProcessTool {
         const result = await client.terminateProcess({ pid: options.input.pid });
         return new vscode.LanguageModelToolResult([
             new vscode.LanguageModelTextPart(result.message ?? `Process ${options.input.pid} terminated.`),
+        ]);
+    }
+}
+class ReadTextFileTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const result = await client.readTextFile({ path: options.input.path });
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(`File: ${result.path}\n\n${result.content}`),
+        ]);
+    }
+}
+class TailFileTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const lines = options.input.lines ?? 200;
+        const result = await client.tailFile({
+            path: options.input.path,
+            lines,
+        });
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(`Tail (${result.lines}) ${result.path}\n\n${result.content}`),
         ]);
     }
 }
