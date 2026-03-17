@@ -40,6 +40,14 @@ interface TailFileInput {
   lines?: number;
 }
 
+interface ListDirectoryInput {
+  path: string;
+}
+
+interface FileExistsInput {
+  path: string;
+}
+
 interface ElementStateInput {
   pid: number;
   elementId: string;
@@ -106,6 +114,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess),
     vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile),
     vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile),
+    vscode.commands.registerCommand("adagioAgent.listDirectory", cmdListDirectory),
+    vscode.commands.registerCommand("adagioAgent.fileExists", cmdFileExists),
     vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState),
     vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand),
     vscode.commands.registerCommand("adagioAgent.setFocus", cmdSetFocus),
@@ -139,6 +149,8 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()),
       vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()),
       vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()),
+      vscode.lm.registerTool("adagioAgent_listDirectory", new ListDirectoryTool()),
+      vscode.lm.registerTool("adagioAgent_fileExists", new FileExistsTool()),
       vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()),
       vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()),
       vscode.lm.registerTool("adagioAgent_setFocus", new SetFocusTool()),
@@ -461,6 +473,42 @@ async function cmdTailFile(): Promise<void> {
     content: result.content,
   });
   await vscode.window.showTextDocument(doc);
+}
+
+async function cmdListDirectory(): Promise<void> {
+  const path = await vscode.window.showInputBox({
+    prompt: "Target machine directory path",
+    placeHolder: "C:\\Apps",
+  });
+  if (!path) {
+    return;
+  }
+
+  const client = createAgentClient();
+  const result = await client.listDirectory({ path });
+  const doc = await vscode.workspace.openTextDocument({
+    language: "json",
+    content: JSON.stringify(result, null, 2),
+  });
+  await vscode.window.showTextDocument(doc);
+}
+
+async function cmdFileExists(): Promise<void> {
+  const path = await vscode.window.showInputBox({
+    prompt: "Target machine file or directory path",
+    placeHolder: "C:\\Apps\\MyInstaller.msi",
+  });
+  if (!path) {
+    return;
+  }
+
+  const client = createAgentClient();
+  const result = await client.fileExists({ path });
+  vscode.window.showInformationMessage(
+    result.exists
+      ? `${result.path} exists (${result.isDirectory ? "directory" : "file"}).`
+      : `${result.path} does not exist.`
+  );
 }
 
 async function cmdGetElementState(): Promise<void> {
@@ -843,6 +891,42 @@ class TailFileTool implements vscode.LanguageModelTool<TailFileInput> {
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
         `Tail (${result.lines}) ${result.path}\n\n${result.content}`
+      ),
+    ]);
+  }
+}
+
+class ListDirectoryTool implements vscode.LanguageModelTool<ListDirectoryInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<ListDirectoryInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.listDirectory({ path: options.input.path });
+    const lines = result.entries.map((entry) =>
+      `${entry.isDirectory ? "[DIR]" : "[FILE]"} ${entry.name} (${entry.path})`
+    );
+
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        `Directory: ${result.path}\nEntries (${result.entries.length}):\n${lines.join("\n")}`
+      ),
+    ]);
+  }
+}
+
+class FileExistsTool implements vscode.LanguageModelTool<FileExistsInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<FileExistsInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.fileExists({ path: options.input.path });
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        result.exists
+          ? `${result.path} exists (${result.isDirectory ? "directory" : "file"}).`
+          : `${result.path} does not exist.`
       ),
     ]);
   }

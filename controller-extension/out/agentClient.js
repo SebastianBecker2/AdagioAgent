@@ -138,6 +138,18 @@ class AgentClient {
         return this.post("/tail-file", request);
     }
     /**
+     * List files and directories under a target directory on the machine.
+     */
+    async listDirectory(request) {
+        return this.post("/list-directory", request);
+    }
+    /**
+     * Check whether a file or directory exists on the machine.
+     */
+    async fileExists(request) {
+        return this.post("/file-exists", request);
+    }
+    /**
      * Wait for a UI element to appear.
      */
     async waitForElement(request) {

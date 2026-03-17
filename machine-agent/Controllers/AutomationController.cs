@@ -796,6 +796,99 @@ public sealed class AutomationController : ControllerBase
         }
     }
 
+    // ── POST /list-directory ──────────────────────────────────────────────
+
+    /// <summary>List files and directories under a target path.</summary>
+    [HttpPost("/list-directory")]
+    [ProducesResponseType(typeof(ListDirectoryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public IActionResult ListDirectory([FromBody] ListDirectoryRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Path))
+        {
+            return BadRequest(new ErrorResponse("Path is required."));
+        }
+
+        try
+        {
+            var fullPath = Path.GetFullPath(request.Path);
+            var options = HttpContext.RequestServices.GetRequiredService<IOptions<AgentOptions>>();
+            var allowed = PathPolicy.IsPathWithinAllowedDirectories(
+                fullPath,
+                options.Value.AllowedReadablePaths);
+
+            if (!allowed)
+            {
+                return BadRequest(new ErrorResponse(
+                    $"Path '{request.Path}' is not in an allowed directory. " +
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}"));
+            }
+
+            if (!Directory.Exists(fullPath))
+            {
+                return NotFound(new ErrorResponse($"Directory '{request.Path}' does not exist."));
+            }
+
+            var entries = Directory
+                .EnumerateFileSystemEntries(fullPath)
+                .OrderBy(Path.GetFileName)
+                .Select(path => new DirectoryEntry(
+                    Name: Path.GetFileName(path),
+                    Path: path,
+                    IsDirectory: Directory.Exists(path)))
+                .ToList();
+
+            return Ok(new ListDirectoryResponse(fullPath, entries));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to list directory '{Path}'.", request.Path);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to list directory.", ex.Message));
+        }
+    }
+
+    // ── POST /file-exists ─────────────────────────────────────────────────
+
+    /// <summary>Check whether a file or directory exists at the given path.</summary>
+    [HttpPost("/file-exists")]
+    [ProducesResponseType(typeof(FileExistsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public IActionResult FileExists([FromBody] FileExistsRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Path))
+        {
+            return BadRequest(new ErrorResponse("Path is required."));
+        }
+
+        try
+        {
+            var fullPath = Path.GetFullPath(request.Path);
+            var options = HttpContext.RequestServices.GetRequiredService<IOptions<AgentOptions>>();
+            var allowed = PathPolicy.IsPathWithinAllowedDirectories(
+                fullPath,
+                options.Value.AllowedReadablePaths);
+
+            if (!allowed)
+            {
+                return BadRequest(new ErrorResponse(
+                    $"Path '{request.Path}' is not in an allowed directory. " +
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}"));
+            }
+
+            var isDirectory = Directory.Exists(fullPath);
+            var exists = isDirectory || System.IO.File.Exists(fullPath);
+            return Ok(new FileExistsResponse(fullPath, exists, isDirectory));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check path existence '{Path}'.", request.Path);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to check path existence.", ex.Message));
+        }
+    }
+
     private static ProcessStatusResponse ToProcessStatus(TrackedProcess tracked)
     {
         DateTimeOffset? exitedAt = null;

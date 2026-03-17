@@ -46,6 +46,14 @@ export interface TailFileRequest {
   lines?: number;
 }
 
+export interface ListDirectoryRequest {
+  path: string;
+}
+
+export interface FileExistsRequest {
+  path: string;
+}
+
 export interface ElementStateRequest {
   pid: number;
   elementId: string;
@@ -181,6 +189,23 @@ export interface TailFileResponse {
   path: string;
   lines: number;
   content: string;
+}
+
+export interface DirectoryEntry {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+}
+
+export interface ListDirectoryResponse {
+  path: string;
+  entries: DirectoryEntry[];
+}
+
+export interface FileExistsResponse {
+  path: string;
+  exists: boolean;
+  isDirectory: boolean;
 }
 
 export interface WaitForElementResponse {

@@ -32,6 +32,12 @@ public sealed record ReadTextFileRequest(string Path);
 /// <summary>Read the last N lines from a text file.</summary>
 public sealed record TailFileRequest(string Path, int Lines = 200);
 
+/// <summary>List files and directories under a target directory.</summary>
+public sealed record ListDirectoryRequest(string Path);
+
+/// <summary>Check whether a file or directory exists at a path.</summary>
+public sealed record FileExistsRequest(string Path);
+
 /// <summary>Get the current state of a UI element.</summary>
 public sealed record ElementStateRequest(int Pid, string ElementId);
 
@@ -121,6 +127,15 @@ public sealed record ReadTextFileResponse(string Path, string Content);
 
 /// <summary>Last lines read from a text file.</summary>
 public sealed record TailFileResponse(string Path, int Lines, string Content);
+
+/// <summary>A single filesystem entry in a directory listing.</summary>
+public sealed record DirectoryEntry(string Name, string Path, bool IsDirectory);
+
+/// <summary>Directory listing response.</summary>
+public sealed record ListDirectoryResponse(string Path, List<DirectoryEntry> Entries);
+
+/// <summary>Path existence response.</summary>
+public sealed record FileExistsResponse(string Path, bool Exists, bool IsDirectory);
 
 /// <summary>Result of waiting for a UI element.</summary>
 public sealed record WaitForElementResponse(bool Found, ElementStateResponse? Element);

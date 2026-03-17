@@ -21,6 +21,10 @@ import {
   ReadTextFileResponse,
   TailFileRequest,
   TailFileResponse,
+  ListDirectoryRequest,
+  ListDirectoryResponse,
+  FileExistsRequest,
+  FileExistsResponse,
   ElementStateRequest,
   ElementStateResponse,
   WaitForElementRequest,
@@ -155,6 +159,20 @@ export class AgentClient {
    */
   async tailFile(request: TailFileRequest): Promise<TailFileResponse> {
     return this.post<TailFileResponse>("/tail-file", request);
+  }
+
+  /**
+   * List files and directories under a target directory on the machine.
+   */
+  async listDirectory(request: ListDirectoryRequest): Promise<ListDirectoryResponse> {
+    return this.post<ListDirectoryResponse>("/list-directory", request);
+  }
+
+  /**
+   * Check whether a file or directory exists on the machine.
+   */
+  async fileExists(request: FileExistsRequest): Promise<FileExistsResponse> {
+    return this.post<FileExistsResponse>("/file-exists", request);
   }
 
   /**

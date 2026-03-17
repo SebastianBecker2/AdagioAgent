@@ -592,6 +592,68 @@ public sealed class AutomationControllerTests
         Assert.Equal("Lines must be a positive integer.", payload.Error);
     }
 
+    [Fact]
+    public void ListDirectory_ReturnsEntriesWhenDirectoryExists()
+    {
+        var dirPath = Path.Combine(Path.GetTempPath(), $"adagio-list-{Guid.NewGuid():N}");
+        var subDirPath = Path.Combine(dirPath, "child");
+        var filePath = Path.Combine(dirPath, "a.txt");
+
+        Directory.CreateDirectory(subDirPath);
+        File.WriteAllText(filePath, "hello");
+
+        try
+        {
+            using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+            var uiService = new Mock<IUiAutomationService>();
+            var sut = CreateController(processService, uiService.Object);
+
+            var result = sut.ListDirectory(new ListDirectoryRequest(dirPath));
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var payload = Assert.IsType<ListDirectoryResponse>(ok.Value);
+            Assert.Equal(Path.GetFullPath(dirPath), payload.Path);
+            Assert.Contains(payload.Entries, e => e.Name == "a.txt" && !e.IsDirectory);
+            Assert.Contains(payload.Entries, e => e.Name == "child" && e.IsDirectory);
+        }
+        finally
+        {
+            Directory.Delete(dirPath, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void FileExists_ReturnsExpectedFlags()
+    {
+        var dirPath = Path.Combine(Path.GetTempPath(), $"adagio-exists-{Guid.NewGuid():N}");
+        var filePath = Path.Combine(dirPath, "exists.txt");
+
+        Directory.CreateDirectory(dirPath);
+        File.WriteAllText(filePath, "x");
+
+        try
+        {
+            using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+            var uiService = new Mock<IUiAutomationService>();
+            var sut = CreateController(processService, uiService.Object);
+
+            var fileResult = sut.FileExists(new FileExistsRequest(filePath));
+            var fileOk = Assert.IsType<OkObjectResult>(fileResult);
+            var filePayload = Assert.IsType<FileExistsResponse>(fileOk.Value);
+            Assert.True(filePayload.Exists);
+            Assert.False(filePayload.IsDirectory);
+
+            var missingResult = sut.FileExists(new FileExistsRequest(Path.Combine(dirPath, "missing.txt")));
+            var missingOk = Assert.IsType<OkObjectResult>(missingResult);
+            var missingPayload = Assert.IsType<FileExistsResponse>(missingOk.Value);
+            Assert.False(missingPayload.Exists);
+        }
+        finally
+        {
+            Directory.Delete(dirPath, recursive: true);
+        }
+    }
+
     private static AutomationController CreateController(ProcessService processService, IUiAutomationService uiService, IOptions<AgentOptions>? options = null)
     {
         var controller = new AutomationController(

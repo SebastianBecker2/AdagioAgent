@@ -59,6 +59,14 @@
         "title": "Adagio Agent: Tail File"
       },
       {
+        "command": "adagioAgent.listDirectory",
+        "title": "Adagio Agent: List Directory"
+      },
+      {
+        "command": "adagioAgent.fileExists",
+        "title": "Adagio Agent: File Exists"
+      },
+      {
         "command": "adagioAgent.getElementState",
         "title": "Adagio Agent: Get Element State"
       },
@@ -147,6 +155,40 @@
           },
           "required": [
             "pid"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_listDirectory",
+        "displayName": "List Directory",
+        "modelDescription": "List files and directories under a target path on the machine.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Directory path to enumerate"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_fileExists",
+        "displayName": "File Exists",
+        "modelDescription": "Check whether a file or directory exists at a target path.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "File or directory path to check"
+            }
+          },
+          "required": [
+            "path"
           ]
         }
       },

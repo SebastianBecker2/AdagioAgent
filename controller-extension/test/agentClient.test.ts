@@ -207,6 +207,45 @@ describe("AgentClient", () => {
     );
   });
 
+  it("calls list-directory and file-exists endpoints with expected payloads", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ path: "C:/Apps", entries: [{ name: "a.txt", path: "C:/Apps/a.txt", isDirectory: false }] }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ path: "C:/Apps/a.txt", exists: true, isDirectory: false }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    const client = new AgentClient("http://localhost:5000");
+
+    await client.listDirectory({ path: "C:/Apps" });
+    await client.fileExists({ path: "C:/Apps/a.txt" });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:5000/list-directory",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ path: "C:/Apps" }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:5000/file-exists",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ path: "C:/Apps/a.txt" }),
+      })
+    );
+  });
+
   it("calls element-state and wait-for-element endpoints with expected payloads", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock
