@@ -1,5 +1,7 @@
 # AdagioAgent
 
+[![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/SebastianBecker2/AdagioAgent?branch=main&svg=true)](https://ci.appveyor.com/project/SebastianBecker2/AdagioAgent)
+
 Automated execution harness connecting GitHub Copilot (via a VS Code
 extension) to a UI-automation agent running inside a Windows or Linux VM.
 
@@ -214,6 +216,24 @@ Restart-Service AdagioMachineAgent
   will be replaced by the native `Files` element for future versions.
 - **Build artifact**: MSI is produced at `installer/bin/x64/Release/` and is
   self-contained (69 MB); ready for distribution.
+
+---
+
+## CI test reports (AppVeyor)
+
+The AppVeyor pipeline runs both test suites on each build:
+
+- `.NET tests` via `dotnet test AdagioAgent.sln -c Release`
+- `Extension tests` via `npm test` in `controller-extension/`
+
+Test results are exported as downloadable AppVeyor artifacts:
+
+| Artifact name | Format | Source path |
+|---|---|---|
+| `DotNetTestResults` | TRX | `TestResults/**/*.trx` |
+| `ExtensionTestResults` | JUnit XML | `controller-extension/test-results/*.xml` |
+
+These are in addition to the installer artifact (`AdagioMachineAgentSetup`).
 
 ---
 

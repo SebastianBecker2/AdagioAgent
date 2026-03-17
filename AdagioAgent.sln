@@ -1,3 +1,4 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
@@ -6,22 +7,51 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "machine-agent", "machine-ag
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdagioMachineAgent", "machine-agent\AdagioMachineAgent.csproj", "{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "machine-agent-tests", "machine-agent-tests", "{7BAB0C0C-B51B-8DCE-2994-B3A9D2AD1745}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdagioMachineAgent.Tests", "machine-agent-tests\AdagioMachineAgent.Tests.csproj", "{7138454C-7DB1-49CA-879A-68D906237E3D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}.Debug|x64.Build.0 = Debug|Any CPU
+		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}.Debug|x86.Build.0 = Debug|Any CPU
 		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}.Release|x64.ActiveCfg = Release|Any CPU
+		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}.Release|x64.Build.0 = Release|Any CPU
+		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}.Release|x86.ActiveCfg = Release|Any CPU
+		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF}.Release|x86.Build.0 = Release|Any CPU
+		{7138454C-7DB1-49CA-879A-68D906237E3D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7138454C-7DB1-49CA-879A-68D906237E3D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7138454C-7DB1-49CA-879A-68D906237E3D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7138454C-7DB1-49CA-879A-68D906237E3D}.Debug|x64.Build.0 = Debug|Any CPU
+		{7138454C-7DB1-49CA-879A-68D906237E3D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7138454C-7DB1-49CA-879A-68D906237E3D}.Debug|x86.Build.0 = Debug|Any CPU
+		{7138454C-7DB1-49CA-879A-68D906237E3D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7138454C-7DB1-49CA-879A-68D906237E3D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7138454C-7DB1-49CA-879A-68D906237E3D}.Release|x64.ActiveCfg = Release|Any CPU
+		{7138454C-7DB1-49CA-879A-68D906237E3D}.Release|x64.Build.0 = Release|Any CPU
+		{7138454C-7DB1-49CA-879A-68D906237E3D}.Release|x86.ActiveCfg = Release|Any CPU
+		{7138454C-7DB1-49CA-879A-68D906237E3D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF} = {6E704E05-544F-482E-C092-3B4FF7A45332}
+		{7138454C-7DB1-49CA-879A-68D906237E3D} = {7BAB0C0C-B51B-8DCE-2994-B3A9D2AD1745}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {10CAAAEC-A95A-4A3E-A790-6FF34DB1EE99}

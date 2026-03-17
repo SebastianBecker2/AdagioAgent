@@ -33,7 +33,22 @@ build_script:
   # 3. Build the WiX MSI installer (also publishes the machine-agent internally)
   - dotnet build installer/AdagioMachineAgent.Setup.wixproj -p:Configuration=Release
 
+# ── Tests ────────────────────────────────────────────────────────────────────
+test_script:
+  # 1. Run .NET unit tests (machine-agent-tests project is part of the solution)
+  - dotnet test AdagioAgent.sln -c Release --logger "trx;LogFileName=dotnet-tests.trx" --results-directory .\TestResults
+
+  # 2. Run VS Code extension unit tests
+  - cd controller-extension
+  - if not exist test-results mkdir test-results
+  - npm test -- --reporter=default --reporter=junit --outputFile=.\test-results\vitest-junit.xml
+  - cd ..
+
 # ── Artifacts ────────────────────────────────────────────────────────────────
 artifacts:
   - path: installer/bin/x64/Release/AdagioMachineAgentSetup.msi
     name: AdagioMachineAgentSetup
+  - path: TestResults/**/*.trx
+    name: DotNetTestResults
+  - path: controller-extension/test-results/*.xml
+    name: ExtensionTestResults

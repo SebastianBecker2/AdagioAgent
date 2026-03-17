@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="9" failures="0" errors="0" time="0.533">
+    <testsuite name="test/agentClient.test.ts" timestamp="2026-03-17T11:04:31.788Z" hostname="EW-BECKER" tests="5" failures="0" errors="0" skipped="0" time="0.0054901">
+        <testcase classname="test/agentClient.test.ts" name="AgentClient &gt; normalizes trailing slash in base url" time="0.0024429">
+        </testcase>
+        <testcase classname="test/agentClient.test.ts" name="AgentClient &gt; sends POST body for runExecutable" time="0.000952">
+        </testcase>
+        <testcase classname="test/agentClient.test.ts" name="AgentClient &gt; throws with API detail when JSON error response is returned" time="0.0010244">
+        </testcase>
+        <testcase classname="test/agentClient.test.ts" name="AgentClient &gt; falls back to response text when JSON parsing fails" time="0.0003685">
+        </testcase>
+        <testcase classname="test/agentClient.test.ts" name="AgentClient &gt; createAgentClient uses configured URL or defaults to localhost" time="0.0002208">
+        </testcase>
+    </testsuite>
+    <testsuite name="test/extension.test.ts" timestamp="2026-03-17T11:04:31.793Z" hostname="EW-BECKER" tests="4" failures="0" errors="0" skipped="0" time="0.0028265">
+        <testcase classname="test/extension.test.ts" name="extension activation and commands &gt; registers all commands and tools on activate" time="0.0009714">
+        </testcase>
+        <testcase classname="test/extension.test.ts" name="extension activation and commands &gt; getUiTree command rejects invalid pid without calling API" time="0.0008595">
+        </testcase>
+        <testcase classname="test/extension.test.ts" name="extension activation and commands &gt; click/screenshot/type commands reject invalid pid" time="0.0002725">
+        </testcase>
+        <testcase classname="test/extension.test.ts" name="extension activation and commands &gt; GetUiTree tool renders recursive summary with bounds" time="0.0002767">
+        </testcase>
+    </testsuite>
+</testsuites>

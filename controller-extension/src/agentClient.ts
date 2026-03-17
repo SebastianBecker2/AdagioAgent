@@ -105,7 +105,7 @@ export class AgentClient {
     if (!response.ok) {
       let detail: string | undefined;
       try {
-        const err = (await response.json()) as AgentError;
+        const err = (await response.clone().json()) as AgentError;
         detail = err.detail ?? err.error;
       } catch {
         detail = await response.text();
