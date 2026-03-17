@@ -33,6 +33,10 @@
       {
         "command": "adagioAgent.typeText",
         "title": "Adagio Agent: Type Text"
+      },
+      {
+        "command": "adagioAgent.copyFile",
+        "title": "Adagio Agent: Copy File to Target"
       }
     ],
     "configuration": {
@@ -161,6 +165,32 @@
             "pid",
             "elementId",
             "text"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_copyFile",
+        "displayName": "Copy File to Target",
+        "modelDescription": "Copy a local file to the machine-agent target system.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "localFilePath": {
+              "type": "string",
+              "description": "Absolute local path to the source file"
+            },
+            "destinationPath": {
+              "type": "string",
+              "description": "Absolute destination path on the target machine"
+            },
+            "overwriteIfExists": {
+              "type": "boolean",
+              "description": "When true, overwrite an existing destination file"
+            }
+          },
+          "required": [
+            "localFilePath",
+            "destinationPath"
           ]
         }
       }

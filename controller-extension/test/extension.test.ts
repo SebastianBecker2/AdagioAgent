@@ -123,19 +123,21 @@ describe("extension activation and commands", () => {
 
     activate(context as never);
 
-    expect(registerCommandMock).toHaveBeenCalledTimes(5);
+    expect(registerCommandMock).toHaveBeenCalledTimes(6);
     expect(commandHandlers.has("adagioAgent.runExecutable")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getUiTree")).toBe(true);
     expect(commandHandlers.has("adagioAgent.clickElement")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getScreenshot")).toBe(true);
     expect(commandHandlers.has("adagioAgent.typeText")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.copyFile")).toBe(true);
 
-    expect(registerToolMock).toHaveBeenCalledTimes(5);
+    expect(registerToolMock).toHaveBeenCalledTimes(6);
     expect(toolHandlers.has("adagioAgent_runExecutable")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getUiTree")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getScreenshot")).toBe(true);
     expect(toolHandlers.has("adagioAgent_clickElement")).toBe(true);
     expect(toolHandlers.has("adagioAgent_typeText")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_copyFile")).toBe(true);
   });
 
   it("getUiTree command rejects invalid pid without calling API", async () => {

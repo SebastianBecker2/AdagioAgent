@@ -45,7 +45,8 @@ export function activate(context: vscode.ExtensionContext): void {
       "adagioAgent.getScreenshot",
       cmdGetScreenshot
     ),
-    vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText)
+    vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText),
+    vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile)
   );
 
   // ── Copilot language-model tools ─────────────────────────────────────────
@@ -65,7 +66,8 @@ export function activate(context: vscode.ExtensionContext): void {
         "adagioAgent_clickElement",
         new ClickElementTool()
       ),
-      vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool())
+      vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()),
+      vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool())
     );
   }
 }
