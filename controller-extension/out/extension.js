@@ -43,10 +43,10 @@ Object.defineProperty(exports, "AgentClient", { enumerable: true, get: function 
 // ─── Activation ──────────────────────────────────────────────────────────────
 function activate(context) {
     // ── VS Code commands (palette / keybindings) ─────────────────────────────
-    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText), vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile), vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus), vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit), vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess), vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile), vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile), vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState), vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand));
+    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText), vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile), vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus), vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit), vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess), vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile), vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile), vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState), vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand), vscode.commands.registerCommand("adagioAgent.setFocus", cmdSetFocus), vscode.commands.registerCommand("adagioAgent.sendKeys", cmdSendKeys));
     // ── Copilot language-model tools ─────────────────────────────────────────
     if (typeof vscode.lm !== "undefined" && "registerTool" in vscode.lm) {
-        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()), vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()), vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()), vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()), vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()), vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()), vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()), vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()), vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()));
+        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()), vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()), vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()), vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()), vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()), vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()), vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()), vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()), vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()), vscode.lm.registerTool("adagioAgent_setFocus", new SetFocusTool()), vscode.lm.registerTool("adagioAgent_sendKeys", new SendKeysTool()));
     }
 }
 function deactivate() {
@@ -359,6 +359,52 @@ async function cmdWaitForElementCommand() {
         ? `Element '${elementId}' became available.`
         : `Element '${elementId}' was not found before timeout.`);
 }
+async function cmdSetFocus() {
+    const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+    if (!pidStr) {
+        return;
+    }
+    const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
+    const elementId = await vscode.window.showInputBox({ prompt: "Element ID" });
+    if (!elementId) {
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.setFocus({ pid, elementId });
+    if (result.status === "ok") {
+        vscode.window.showInformationMessage(`Focused element '${elementId}'.`);
+    }
+    else {
+        vscode.window.showErrorMessage(result.message ?? `Failed to focus '${elementId}'.`);
+    }
+}
+async function cmdSendKeys() {
+    const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+    if (!pidStr) {
+        return;
+    }
+    const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
+    const text = await vscode.window.showInputBox({ prompt: "Keys/text to send" });
+    if (text === undefined || text.length === 0) {
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.sendKeys({ pid, text });
+    if (result.status === "ok") {
+        vscode.window.showInformationMessage(`Sent keys to process ${pid}.`);
+    }
+    else {
+        vscode.window.showErrorMessage(result.message ?? `Failed to send keys to process ${pid}.`);
+    }
+}
 // ─── Copilot tool implementations ────────────────────────────────────────────
 function uiTreeSummary(elements, depth = 0) {
     return elements
@@ -538,6 +584,24 @@ class WaitForElementUiTool {
             new vscode.LanguageModelTextPart(result.found
                 ? `Element '${options.input.elementId}' is available.`
                 : `Element '${options.input.elementId}' was not found before timeout.`),
+        ]);
+    }
+}
+class SetFocusTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const result = await client.setFocus(options.input);
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(result.message ?? `Focused element '${options.input.elementId}'.`),
+        ]);
+    }
+}
+class SendKeysTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const result = await client.sendKeys(options.input);
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(result.message ?? `Sent keys to process ${options.input.pid}.`),
         ]);
     }
 }

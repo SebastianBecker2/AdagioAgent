@@ -265,4 +265,43 @@ describe("AgentClient", () => {
       })
     );
   });
+
+  it("calls focus and send-keys endpoints with expected payloads", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: "ok" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: "ok" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+
+    const client = new AgentClient("http://localhost:5000");
+
+    await client.setFocus({ pid: 77, elementId: "button-next" });
+    await client.sendKeys({ pid: 77, text: "hello" });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:5000/focus",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ pid: 77, elementId: "button-next" }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:5000/send-keys",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ pid: 77, text: "hello" }),
+      })
+    );
+  });
 });

@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using AdagioMachineAgent.Models;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Input;
 using FlaUI.UIA3;
 
 namespace AdagioMachineAgent.Services;
@@ -59,6 +60,33 @@ public sealed class WindowsUiAutomationService : IUiAutomationService
         var element = FindElement(pid, elementId);
         element.Focus();
         element.AsTextBox()?.Enter(text);
+    }
+
+    /// <summary>
+    /// Focus a UI element.
+    /// </summary>
+    public void SetFocus(int pid, string elementId)
+    {
+        var element = FindElement(pid, elementId);
+        element.Focus();
+    }
+
+    /// <summary>
+    /// Send keystrokes to the focused application window.
+    /// </summary>
+    public void SendKeys(int pid, string text)
+    {
+        var app = Application.Attach(pid);
+        var mainWindow = app.GetMainWindow(_automation);
+
+        if (mainWindow == null)
+        {
+            throw new InvalidOperationException(
+                $"No main window found for process {pid}.");
+        }
+
+        mainWindow.Focus();
+        Keyboard.Type(text);
     }
 
     /// <summary>

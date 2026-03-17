@@ -58,6 +58,16 @@ export interface WaitForElementRequest {
   pollIntervalMilliseconds?: number;
 }
 
+export interface SetFocusRequest {
+  pid: number;
+  elementId: string;
+}
+
+export interface SendKeysRequest {
+  pid: number;
+  text: string;
+}
+
 // ─── Responses ───────────────────────────────────────────────────────────────
 
 export interface RunResponse {

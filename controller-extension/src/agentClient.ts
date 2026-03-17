@@ -25,6 +25,8 @@ import {
   ElementStateResponse,
   WaitForElementRequest,
   WaitForElementResponse,
+  SetFocusRequest,
+  SendKeysRequest,
 } from "./schema";
 
 /**
@@ -157,6 +159,20 @@ export class AgentClient {
    */
   async waitForElement(request: WaitForElementRequest): Promise<WaitForElementResponse> {
     return this.post<WaitForElementResponse>("/wait-for-element", request);
+  }
+
+  /**
+   * Focus a UI element.
+   */
+  async setFocus(request: SetFocusRequest): Promise<StatusResponse> {
+    return this.post<StatusResponse>("/focus", request);
+  }
+
+  /**
+   * Send keystrokes to the application window.
+   */
+  async sendKeys(request: SendKeysRequest): Promise<StatusResponse> {
+    return this.post<StatusResponse>("/send-keys", request);
   }
   // ─── Helpers ─────────────────────────────────────────────────────────────
 

@@ -251,6 +251,41 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void SetFocus_ValidatesInputsAndReturnsOk()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        Assert.IsType<BadRequestObjectResult>(sut.SetFocus(new SetFocusRequest(0, "button-next")));
+        Assert.IsType<BadRequestObjectResult>(sut.SetFocus(new SetFocusRequest(1, "")));
+
+        var result = sut.SetFocus(new SetFocusRequest(42, "button-next"));
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<StatusResponse>(ok.Value);
+        Assert.Equal("ok", payload.Status);
+    }
+
+    [Fact]
+    public void SendKeys_ValidatesInputsAndMapsPlatformNotSupported()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        Assert.IsType<BadRequestObjectResult>(sut.SendKeys(new SendKeysRequest(0, "abc")));
+        Assert.IsType<BadRequestObjectResult>(sut.SendKeys(new SendKeysRequest(1, "")));
+
+        uiService
+            .Setup(x => x.SendKeys(42, "abc"))
+            .Throws(new PlatformNotSupportedException("unsupported"));
+
+        var result = sut.SendKeys(new SendKeysRequest(42, "abc"));
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status501NotImplemented, objectResult.StatusCode);
+    }
+
+    [Fact]
     public void Click_ValidatesInputsAndMapsNotFound()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);

@@ -65,6 +65,14 @@
       {
         "command": "adagioAgent.waitForElement",
         "title": "Adagio Agent: Wait For Element"
+      },
+      {
+        "command": "adagioAgent.setFocus",
+        "title": "Adagio Agent: Set Focus"
+      },
+      {
+        "command": "adagioAgent.sendKeys",
+        "title": "Adagio Agent: Send Keys"
       }
     ],
     "configuration": {
@@ -364,6 +372,50 @@
           "required": [
             "pid",
             "elementId"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_setFocus",
+        "displayName": "Set Focus",
+        "modelDescription": "Focus a specific UI element in the application window.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pid": {
+              "type": "number",
+              "description": "Process ID returned by runExecutable"
+            },
+            "elementId": {
+              "type": "string",
+              "description": "Element ID from the UI tree"
+            }
+          },
+          "required": [
+            "pid",
+            "elementId"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_sendKeys",
+        "displayName": "Send Keys",
+        "modelDescription": "Send keystrokes to the currently focused application window.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pid": {
+              "type": "number",
+              "description": "Process ID returned by runExecutable"
+            },
+            "text": {
+              "type": "string",
+              "description": "Keys or text to send"
+            }
+          },
+          "required": [
+            "pid",
+            "text"
           ]
         }
       }

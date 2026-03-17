@@ -42,6 +42,12 @@ public sealed record WaitForElementRequest(
     int TimeoutMilliseconds = 30000,
     int PollIntervalMilliseconds = 250);
 
+/// <summary>Focus a UI element.</summary>
+public sealed record SetFocusRequest(int Pid, string ElementId);
+
+/// <summary>Send keystrokes to the focused application window.</summary>
+public sealed record SendKeysRequest(int Pid, string Text);
+
 // ─── Responses ────────────────────────────────────────────────────────────────
 
 /// <summary>Result of starting a process.</summary>

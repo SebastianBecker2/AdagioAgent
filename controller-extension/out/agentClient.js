@@ -143,6 +143,18 @@ class AgentClient {
     async waitForElement(request) {
         return this.post("/wait-for-element", request);
     }
+    /**
+     * Focus a UI element.
+     */
+    async setFocus(request) {
+        return this.post("/focus", request);
+    }
+    /**
+     * Send keystrokes to the application window.
+     */
+    async sendKeys(request) {
+        return this.post("/send-keys", request);
+    }
     // ─── Helpers ─────────────────────────────────────────────────────────────
     async get(path) {
         const url = `${this.baseUrl}${path}`;

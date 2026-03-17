@@ -76,6 +76,21 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
     }
 
     /// <inheritdoc/>
+    public void SetFocus(int pid, string elementId)
+    {
+        var conn = GetConnection();
+        var (elBus, elPath) = FindElementByPidAndId(conn, pid, elementId);
+        GrabFocus(conn, elBus, elPath);
+    }
+
+    /// <inheritdoc/>
+    public void SendKeys(int pid, string text)
+    {
+        throw new PlatformNotSupportedException(
+            "Generic send-keys is not implemented on Linux yet. Use Type on a focused editable element instead.");
+    }
+
+    /// <inheritdoc/>
     public ElementStateResponse GetElementState(int pid, string elementId)
     {
         var conn = GetConnection();

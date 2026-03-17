@@ -300,6 +300,87 @@ public sealed class AutomationController : ControllerBase
         }
     }
 
+    // ── POST /focus ────────────────────────────────────────────────────────
+
+    /// <summary>Focus a UI element.</summary>
+    [HttpPost("/focus")]
+    [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public IActionResult SetFocus([FromBody] SetFocusRequest request)
+    {
+        if (request.Pid <= 0)
+        {
+            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ElementId))
+        {
+            return BadRequest(new ErrorResponse("elementId is required."));
+        }
+
+        try
+        {
+            _uiService.SetFocus(request.Pid, request.ElementId);
+            return Ok(new StatusResponse("ok"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new ErrorResponse(ex.Message));
+        }
+        catch (PlatformNotSupportedException ex)
+        {
+            return StatusCode(StatusCodes.Status501NotImplemented,
+                new ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SetFocus failed for element {ElementId}.", request.ElementId);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to focus element.", ex.Message));
+        }
+    }
+
+    // ── POST /send-keys ────────────────────────────────────────────────────
+
+    /// <summary>Send keystrokes to the application window.</summary>
+    [HttpPost("/send-keys")]
+    [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public IActionResult SendKeys([FromBody] SendKeysRequest request)
+    {
+        if (request.Pid <= 0)
+        {
+            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Text))
+        {
+            return BadRequest(new ErrorResponse("text is required."));
+        }
+
+        try
+        {
+            _uiService.SendKeys(request.Pid, request.Text);
+            return Ok(new StatusResponse("ok"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new ErrorResponse(ex.Message));
+        }
+        catch (PlatformNotSupportedException ex)
+        {
+            return StatusCode(StatusCodes.Status501NotImplemented,
+                new ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SendKeys failed for pid {Pid}.", request.Pid);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to send keys.", ex.Message));
+        }
+    }
+
     // ── GET /screenshot ──────────────────────────────────────────────────────
 
     /// <summary>Capture a screenshot of the process window.</summary>

@@ -52,6 +52,11 @@ interface WaitForElementToolInput {
   pollIntervalMilliseconds?: number;
 }
 
+interface SendKeysInput {
+  pid: number;
+  text: string;
+}
+
 // ─── Activation ──────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -79,7 +84,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile),
     vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile),
     vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState),
-    vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand)
+    vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand),
+    vscode.commands.registerCommand("adagioAgent.setFocus", cmdSetFocus),
+    vscode.commands.registerCommand("adagioAgent.sendKeys", cmdSendKeys)
   );
 
   // ── Copilot language-model tools ─────────────────────────────────────────
@@ -107,7 +114,9 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()),
       vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()),
       vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()),
-      vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool())
+      vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()),
+      vscode.lm.registerTool("adagioAgent_setFocus", new SetFocusTool()),
+      vscode.lm.registerTool("adagioAgent_sendKeys", new SendKeysTool())
     );
   }
 }
@@ -494,6 +503,58 @@ async function cmdWaitForElementCommand(): Promise<void> {
   );
 }
 
+async function cmdSetFocus(): Promise<void> {
+  const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+  if (!pidStr) {
+    return;
+  }
+
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    vscode.window.showErrorMessage("Invalid PID.");
+    return;
+  }
+
+  const elementId = await vscode.window.showInputBox({ prompt: "Element ID" });
+  if (!elementId) {
+    return;
+  }
+
+  const client = createAgentClient();
+  const result = await client.setFocus({ pid, elementId });
+  if (result.status === "ok") {
+    vscode.window.showInformationMessage(`Focused element '${elementId}'.`);
+  } else {
+    vscode.window.showErrorMessage(result.message ?? `Failed to focus '${elementId}'.`);
+  }
+}
+
+async function cmdSendKeys(): Promise<void> {
+  const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+  if (!pidStr) {
+    return;
+  }
+
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    vscode.window.showErrorMessage("Invalid PID.");
+    return;
+  }
+
+  const text = await vscode.window.showInputBox({ prompt: "Keys/text to send" });
+  if (text === undefined || text.length === 0) {
+    return;
+  }
+
+  const client = createAgentClient();
+  const result = await client.sendKeys({ pid, text });
+  if (result.status === "ok") {
+    vscode.window.showInformationMessage(`Sent keys to process ${pid}.`);
+  } else {
+    vscode.window.showErrorMessage(result.message ?? `Failed to send keys to process ${pid}.`);
+  }
+}
+
 // ─── Copilot tool implementations ────────────────────────────────────────────
 
 function uiTreeSummary(elements: UiElement[], depth = 0): string {
@@ -756,6 +817,36 @@ class WaitForElementUiTool implements vscode.LanguageModelTool<WaitForElementToo
         result.found
           ? `Element '${options.input.elementId}' is available.`
           : `Element '${options.input.elementId}' was not found before timeout.`
+      ),
+    ]);
+  }
+}
+
+class SetFocusTool implements vscode.LanguageModelTool<ElementStateInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<ElementStateInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.setFocus(options.input);
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        result.message ?? `Focused element '${options.input.elementId}'.`
+      ),
+    ]);
+  }
+}
+
+class SendKeysTool implements vscode.LanguageModelTool<SendKeysInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<SendKeysInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.sendKeys(options.input);
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        result.message ?? `Sent keys to process ${options.input.pid}.`
       ),
     ]);
   }

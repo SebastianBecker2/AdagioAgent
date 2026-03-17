@@ -16,6 +16,12 @@ public interface IUiAutomationService : IDisposable
     /// <summary>Focus a UI element and type the given text into it.</summary>
     void Type(int pid, string elementId, string text);
 
+    /// <summary>Focus a specific UI element.</summary>
+    void SetFocus(int pid, string elementId);
+
+    /// <summary>Send keystrokes to the application window.</summary>
+    void SendKeys(int pid, string text);
+
     /// <summary>Return the current state snapshot of a UI element.</summary>
     ElementStateResponse GetElementState(int pid, string elementId);
 
