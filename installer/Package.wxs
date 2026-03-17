@@ -3,13 +3,13 @@
   WiX v6 installer for Adagio Machine Agent.
 
   Installs the machine-agent as a Windows Service (AdagioMachineAgent) that
-  starts automatically and listens on http://0.0.0.0:5000.
+  starts automatically and listens on https://127.0.0.1:5443 by default.
 
   Upgrade behaviour: major upgrades replace earlier versions automatically.
   Uninstall: stops the service, removes it, and removes all installed files.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:fire="http://wixtoolset.org/schemas/v4/wxs/firewall">
+>
 
   <Package Name="Adagio Machine Agent"
            Manufacturer="AdagioAgent"
@@ -54,22 +54,14 @@
     <ComponentGroup Id="AgentService" Directory="INSTALLFOLDER">
       <Component>
         <File Id="AdagioMachineAgentExe" Source="$(var.PublishDir)AdagioMachineAgent.exe" KeyPath="yes" />
-        <fire:FirewallException
-            Id="AdagioMachineAgentFirewallRule"
-            Name="Adagio Machine Agent"
-            Program="[INSTALLFOLDER]AdagioMachineAgent.exe"
-            Port="5000"
-            Protocol="tcp"
-            Scope="any"
-            Profile="all" />
         <ServiceInstall Id="ServiceInstall"
                         Name="AdagioMachineAgent"
                         DisplayName="Adagio Machine Agent"
-                        Description="REST API for process control and UI automation (listens on port 5000)."
+                        Description="REST API for process control and UI automation (HTTPS loopback by default)."
                         Type="ownProcess"
                         Start="auto"
                         ErrorControl="normal"
-                        Account="LocalSystem" />
+                        Account="NT AUTHORITY\LocalService" />
         <ServiceControl Id="ServiceControl"
                         Name="AdagioMachineAgent"
                         Start="install"

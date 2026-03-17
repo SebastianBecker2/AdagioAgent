@@ -57,9 +57,11 @@ import {
  */
 export class AgentClient {
   private baseUrl: string;
+  private apiKey?: string;
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string, apiKey?: string) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
+    this.apiKey = apiKey;
   }
 
   // ─── Health ──────────────────────────────────────────────────────────────
@@ -323,7 +325,9 @@ export class AgentClient {
 
   private async get<T>(path: string): Promise<T> {
     const url = `${this.baseUrl}${path}`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: this.buildHeaders(),
+    });
     return this.handleResponse<T>(response);
   }
 
@@ -331,10 +335,21 @@ export class AgentClient {
     const url = `${this.baseUrl}${path}`;
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        ...this.buildHeaders(),
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(body),
     });
     return this.handleResponse<T>(response);
+  }
+
+  private buildHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
+    if (this.apiKey) {
+      headers["X-API-Key"] = this.apiKey;
+    }
+    return headers;
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
@@ -359,6 +374,15 @@ export class AgentClient {
  */
 export function createAgentClient(): AgentClient {
   const config = vscode.workspace.getConfiguration("adagioAgent");
-  const url = config.get<string>("vmAgentUrl") ?? "http://localhost:5000";
-  return new AgentClient(url);
+  const url = config.get<string>("vmAgentUrl") ?? "https://127.0.0.1:5443";
+  const requireHttps = config.get<boolean>("requireHttps") ?? true;
+  const apiKey = config.get<string>("vmAgentApiKey");
+
+  if (requireHttps && !url.toLowerCase().startsWith("https://")) {
+    throw new Error(
+      "adagioAgent.vmAgentUrl must use HTTPS when adagioAgent.requireHttps is true."
+    );
+  }
+
+  return new AgentClient(url, apiKey);
 }

@@ -30,7 +30,9 @@ describe("AgentClient", () => {
     const client = new AgentClient("http://localhost:5000/");
     await client.health();
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:5000/health");
+    expect(fetchMock).toHaveBeenCalledWith("http://localhost:5000/health", {
+      headers: {},
+    });
   });
 
   it("sends POST body for runExecutable", async () => {
@@ -197,9 +199,19 @@ describe("AgentClient", () => {
     await expect(client.health()).rejects.toThrow("VM agent responded with 502: gateway down");
   });
 
-  it("createAgentClient uses configured URL or defaults to localhost", () => {
+  it("createAgentClient uses configured URL or defaults to secure localhost", () => {
     getConfigurationMock.mockReturnValueOnce({
-      get: vi.fn().mockReturnValue("http://remote-agent:7777"),
+      get: vi.fn((key: string) => {
+        if (key === "vmAgentUrl") {
+          return "http://remote-agent:7777";
+        }
+
+        if (key === "requireHttps") {
+          return false;
+        }
+
+        return undefined;
+      }),
     });
 
     const configured = createAgentClient() as unknown as { baseUrl: string };
@@ -210,7 +222,46 @@ describe("AgentClient", () => {
     });
 
     const fallback = createAgentClient() as unknown as { baseUrl: string };
-    expect(fallback.baseUrl).toBe("http://localhost:5000");
+    expect(fallback.baseUrl).toBe("https://127.0.0.1:5443");
+  });
+
+  it("createAgentClient rejects non-https URL when requireHttps is enabled", () => {
+    getConfigurationMock.mockReturnValueOnce({
+      get: vi.fn((key: string) => {
+        if (key === "vmAgentUrl") {
+          return "http://remote-agent:7777";
+        }
+
+        if (key === "requireHttps") {
+          return true;
+        }
+
+        return undefined;
+      }),
+    });
+
+    expect(() => createAgentClient()).toThrow(
+      "adagioAgent.vmAgentUrl must use HTTPS when adagioAgent.requireHttps is true."
+    );
+  });
+
+  it("sends X-API-Key header when configured", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ status: "healthy", version: "1.0.0" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const client = new AgentClient("https://127.0.0.1:5443", "secret-key");
+    await client.health();
+
+    expect(fetchMock).toHaveBeenCalledWith("https://127.0.0.1:5443/health", {
+      headers: {
+        "X-API-Key": "secret-key",
+      },
+    });
   });
 
   it("calls process lifecycle endpoints with expected paths and payloads", async () => {
@@ -256,7 +307,10 @@ describe("AgentClient", () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      "http://localhost:5000/process-status?pid=222"
+      "http://localhost:5000/process-status?pid=222",
+      {
+        headers: {},
+      }
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,

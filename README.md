@@ -97,7 +97,9 @@ npm run compile
 
 | Setting | Default | Description |
 |---|---|---|
-| `adagioAgent.vmAgentUrl` | `http://localhost:5000` | VM agent base URL |
+| `adagioAgent.vmAgentUrl` | `https://127.0.0.1:5443` | VM agent base URL |
+| `adagioAgent.vmAgentApiKey` | `""` | API key sent in `X-API-Key` header |
+| `adagioAgent.requireHttps` | `true` | Reject non-HTTPS `vmAgentUrl` values |
 | `adagioAgent.allowedExecutablePaths` | `["C:\\Apps"]` | Command whitelist |
 
 ---
@@ -159,7 +161,10 @@ dotnet build
 dotnet run
 ```
 
-Listens on `http://0.0.0.0:5000` by default (see `appsettings.json`).
+Listens on `https://127.0.0.1:5443` by default (see `appsettings.json`).
+
+By default the agent requires an API key in the `X-API-Key` header on all
+requests. Set `SecurityOptions.ApiKey` in `appsettings.json` before use.
 
 **Platform-specific UI automation backends:**
 
@@ -186,6 +191,8 @@ The `DISPLAY` and `DBUS_SESSION_BUS_ADDRESS` environment variables must be set
 
 **Safety guardrails:**
 
+- **API key authentication** - every request must include the configured
+  `X-API-Key` value (`SecurityOptions.RequireApiKey = true` by default).
 - **Command whitelist** — only paths under `AgentOptions.AllowedExecutablePaths`
   are allowed; all others are rejected with HTTP 400.
 - **Process timeout** — processes are forcibly killed after
@@ -227,7 +234,8 @@ installer/bin/x64/Release/AdagioMachineAgentSetup.msi
 | Service name | `AdagioMachineAgent` |
 | Service display name | `Adagio Machine Agent` |
 | Start type | Automatic (starts on boot) |
-| Listens on | `http://0.0.0.0:5000` |
+| Service account | `NT AUTHORITY\LocalService` |
+| Listens on | `https://127.0.0.1:5443` |
 | Uninstall | Stops & removes the service, deletes all installed files |
 | Upgrade | Major-upgrade (replaces earlier versions in-place) |
 
