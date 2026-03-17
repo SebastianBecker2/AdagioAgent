@@ -207,6 +207,50 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void GetElementState_ValidatesInputsAndReturnsState()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        Assert.IsType<BadRequestObjectResult>(sut.GetElementState(new ElementStateRequest(0, "button-ok")));
+        Assert.IsType<BadRequestObjectResult>(sut.GetElementState(new ElementStateRequest(1, "")));
+
+        uiService
+            .Setup(x => x.GetElementState(42, "button-ok"))
+            .Returns(new ElementStateResponse("button-ok", "button", "OK", "", null, true));
+
+        var result = sut.GetElementState(new ElementStateRequest(42, "button-ok"));
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<ElementStateResponse>(ok.Value);
+        Assert.Equal("button-ok", payload.Id);
+        Assert.True(payload.Available);
+    }
+
+    [Fact]
+    public void WaitForElement_ValidatesInputsAndReturnsResult()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        Assert.IsType<BadRequestObjectResult>(sut.WaitForElement(new WaitForElementRequest(0, "button-ok")));
+        Assert.IsType<BadRequestObjectResult>(sut.WaitForElement(new WaitForElementRequest(1, "", 1000, 100)));
+        Assert.IsType<BadRequestObjectResult>(sut.WaitForElement(new WaitForElementRequest(1, "button-ok", 0, 100)));
+        Assert.IsType<BadRequestObjectResult>(sut.WaitForElement(new WaitForElementRequest(1, "button-ok", 1000, 0)));
+
+        uiService
+            .Setup(x => x.WaitForElement(42, "button-ok", 1000, 100))
+            .Returns(new WaitForElementResponse(true, new ElementStateResponse("button-ok", "button", "OK", "", null, true)));
+
+        var result = sut.WaitForElement(new WaitForElementRequest(42, "button-ok", 1000, 100));
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<WaitForElementResponse>(ok.Value);
+        Assert.True(payload.Found);
+        Assert.NotNull(payload.Element);
+    }
+
+    [Fact]
     public void Click_ValidatesInputsAndMapsNotFound()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);

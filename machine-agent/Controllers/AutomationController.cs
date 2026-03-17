@@ -211,6 +211,95 @@ public sealed class AutomationController : ControllerBase
         }
     }
 
+    // ── POST /element-state ────────────────────────────────────────────────
+
+    /// <summary>Return the current state of a UI element.</summary>
+    [HttpPost("/element-state")]
+    [ProducesResponseType(typeof(ElementStateResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public IActionResult GetElementState([FromBody] ElementStateRequest request)
+    {
+        if (request.Pid <= 0)
+        {
+            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ElementId))
+        {
+            return BadRequest(new ErrorResponse("elementId is required."));
+        }
+
+        try
+        {
+            return Ok(_uiService.GetElementState(request.Pid, request.ElementId));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new ErrorResponse(ex.Message));
+        }
+        catch (PlatformNotSupportedException ex)
+        {
+            return StatusCode(StatusCodes.Status501NotImplemented,
+                new ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GetElementState failed for element {ElementId}.", request.ElementId);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to retrieve element state.", ex.Message));
+        }
+    }
+
+    // ── POST /wait-for-element ─────────────────────────────────────────────
+
+    /// <summary>Wait until a UI element becomes available or timeout is reached.</summary>
+    [HttpPost("/wait-for-element")]
+    [ProducesResponseType(typeof(WaitForElementResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public IActionResult WaitForElement([FromBody] WaitForElementRequest request)
+    {
+        if (request.Pid <= 0)
+        {
+            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ElementId))
+        {
+            return BadRequest(new ErrorResponse("elementId is required."));
+        }
+
+        if (request.TimeoutMilliseconds <= 0)
+        {
+            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer."));
+        }
+
+        if (request.PollIntervalMilliseconds <= 0)
+        {
+            return BadRequest(new ErrorResponse("pollIntervalMilliseconds must be a positive integer."));
+        }
+
+        try
+        {
+            return Ok(_uiService.WaitForElement(
+                request.Pid,
+                request.ElementId,
+                request.TimeoutMilliseconds,
+                request.PollIntervalMilliseconds));
+        }
+        catch (PlatformNotSupportedException ex)
+        {
+            return StatusCode(StatusCodes.Status501NotImplemented,
+                new ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "WaitForElement failed for element {ElementId}.", request.ElementId);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed while waiting for element.", ex.Message));
+        }
+    }
+
     // ── GET /screenshot ──────────────────────────────────────────────────────
 
     /// <summary>Capture a screenshot of the process window.</summary>

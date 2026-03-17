@@ -61,6 +61,36 @@ public sealed class WindowsUiAutomationService : IUiAutomationService
         element.AsTextBox()?.Enter(text);
     }
 
+    /// <summary>
+    /// Return the current state of a UI element.
+    /// </summary>
+    public ElementStateResponse GetElementState(int pid, string elementId)
+    {
+        var element = FindElement(pid, elementId);
+        return ToElementState(element);
+    }
+
+    /// <summary>
+    /// Wait for an element to become available until timeout.
+    /// </summary>
+    public WaitForElementResponse WaitForElement(int pid, string elementId, int timeoutMilliseconds, int pollIntervalMilliseconds)
+    {
+        var startedAt = DateTime.UtcNow;
+
+        while ((DateTime.UtcNow - startedAt).TotalMilliseconds < timeoutMilliseconds)
+        {
+            var match = TryFindElement(pid, elementId);
+            if (match is not null)
+            {
+                return new WaitForElementResponse(true, ToElementState(match));
+            }
+
+            Thread.Sleep(pollIntervalMilliseconds);
+        }
+
+        return new WaitForElementResponse(false, null);
+    }
+
     // ── Screenshot ───────────────────────────────────────────────────────────
 
     /// <summary>
@@ -100,6 +130,18 @@ public sealed class WindowsUiAutomationService : IUiAutomationService
 
     private AutomationElement FindElement(int pid, string elementId)
     {
+        var match = TryFindElement(pid, elementId);
+        if (match == null)
+        {
+            throw new InvalidOperationException(
+                $"Element '{elementId}' not found in the UI tree of process {pid}.");
+        }
+
+        return match;
+    }
+
+    private AutomationElement? TryFindElement(int pid, string elementId)
+    {
         var app = Application.Attach(pid);
         var mainWindow = app.GetMainWindow(_automation);
 
@@ -110,14 +152,7 @@ public sealed class WindowsUiAutomationService : IUiAutomationService
         }
 
         // Walk all descendants to find the one whose ID matches
-        var match = FindById(mainWindow, elementId);
-        if (match == null)
-        {
-            throw new InvalidOperationException(
-                $"Element '{elementId}' not found in the UI tree of process {pid}.");
-        }
-
-        return match;
+        return FindById(mainWindow, elementId);
     }
 
     private static AutomationElement? FindById(AutomationElement root, string id)
@@ -165,6 +200,22 @@ public sealed class WindowsUiAutomationService : IUiAutomationService
             AutomationId: el.AutomationId ?? string.Empty,
             Bounds: bounds,
             Children: children.Count > 0 ? children : null);
+    }
+
+    private static ElementStateResponse ToElementState(AutomationElement el)
+    {
+        var r = el.BoundingRectangle;
+        Bounds? bounds = r.IsEmpty
+            ? null
+            : new Bounds(r.X, r.Y, r.Width, r.Height);
+
+        return new ElementStateResponse(
+            Id: BuildId(el),
+            Type: el.ControlType.ToString(),
+            Name: el.Name ?? string.Empty,
+            AutomationId: el.AutomationId ?? string.Empty,
+            Bounds: bounds,
+            Available: true);
     }
 
     /// <summary>

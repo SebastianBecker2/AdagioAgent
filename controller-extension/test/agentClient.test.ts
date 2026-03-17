@@ -206,4 +206,63 @@ describe("AgentClient", () => {
       })
     );
   });
+
+  it("calls element-state and wait-for-element endpoints with expected payloads", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "button-next",
+            type: "button",
+            name: "Next",
+            automationId: "",
+            available: true,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            found: true,
+            element: {
+              id: "button-next",
+              type: "button",
+              name: "Next",
+              automationId: "",
+              available: true,
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    const client = new AgentClient("http://localhost:5000");
+
+    await client.getElementState({ pid: 77, elementId: "button-next" });
+    await client.waitForElement({ pid: 77, elementId: "button-next", timeoutMilliseconds: 1000, pollIntervalMilliseconds: 100 });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:5000/element-state",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ pid: 77, elementId: "button-next" }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:5000/wait-for-element",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          pid: 77,
+          elementId: "button-next",
+          timeoutMilliseconds: 1000,
+          pollIntervalMilliseconds: 100,
+        }),
+      })
+    );
+  });
 });

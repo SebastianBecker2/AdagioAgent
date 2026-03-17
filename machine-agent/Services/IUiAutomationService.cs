@@ -16,6 +16,16 @@ public interface IUiAutomationService : IDisposable
     /// <summary>Focus a UI element and type the given text into it.</summary>
     void Type(int pid, string elementId, string text);
 
+    /// <summary>Return the current state snapshot of a UI element.</summary>
+    ElementStateResponse GetElementState(int pid, string elementId);
+
+    /// <summary>Wait for a UI element to become available.</summary>
+    WaitForElementResponse WaitForElement(
+        int pid,
+        string elementId,
+        int timeoutMilliseconds,
+        int pollIntervalMilliseconds);
+
     /// <summary>
     /// Capture a screenshot of the main window for <paramref name="pid"/> and
     /// return it as a base64-encoded PNG string.

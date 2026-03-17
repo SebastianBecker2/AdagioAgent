@@ -76,6 +76,35 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
     }
 
     /// <inheritdoc/>
+    public ElementStateResponse GetElementState(int pid, string elementId)
+    {
+        var conn = GetConnection();
+        var (elBus, elPath) = FindElementByPidAndId(conn, pid, elementId);
+        return ToElementState(conn, elBus, elPath);
+    }
+
+    /// <inheritdoc/>
+    public WaitForElementResponse WaitForElement(int pid, string elementId, int timeoutMilliseconds, int pollIntervalMilliseconds)
+    {
+        var conn = GetConnection();
+        var startedAt = DateTime.UtcNow;
+
+        while ((DateTime.UtcNow - startedAt).TotalMilliseconds < timeoutMilliseconds)
+        {
+            var match = TryFindElementByPidAndId(conn, pid, elementId);
+            if (match is not null)
+            {
+                var (elBus, elPath) = match.Value;
+                return new WaitForElementResponse(true, ToElementState(conn, elBus, elPath));
+            }
+
+            Thread.Sleep(pollIntervalMilliseconds);
+        }
+
+        return new WaitForElementResponse(false, null);
+    }
+
+    /// <inheritdoc/>
     public string CaptureScreenshot(int pid)
     {
         var conn = GetConnection();
@@ -147,6 +176,19 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
     private (string busName, string path) FindElementByPidAndId(
         DBusConnection conn, int pid, string elementId)
     {
+        var match = TryFindElementByPidAndId(conn, pid, elementId);
+        if (match is null)
+        {
+            throw new InvalidOperationException(
+                $"Element '{elementId}' not found in the UI tree of process {pid}.");
+        }
+
+        return match.Value;
+    }
+
+    private (string busName, string path)? TryFindElementByPidAndId(
+        DBusConnection conn, int pid, string elementId)
+    {
         var (appBus, appPath) = FindApplicationByPid(conn, pid);
 
         var windows = GetAccessibleChildren(conn, appBus, appPath);
@@ -156,12 +198,7 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
 
         var (winBus, winPath) = windows[0];
 
-        var match = FindElementById(conn, winBus, winPath, elementId);
-        if (match is null)
-            throw new InvalidOperationException(
-                $"Element '{elementId}' not found in the UI tree of process {pid}.");
-
-        return match.Value;
+        return FindElementById(conn, winBus, winPath, elementId);
     }
 
     private (string, string)? FindElementById(
@@ -205,6 +242,23 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
             AutomationId: string.Empty,
             Bounds: bounds,
             Children: children.Count > 0 ? children : null);
+    }
+
+    private ElementStateResponse ToElementState(DBusConnection conn, string busName, string path)
+    {
+        var name = GetStringProperty(conn, busName, path, AtSpiAccessible, "Name");
+        var role = GetRoleName(conn, busName, path);
+        var (x, y, w, h) = TryGetExtents(conn, busName, path);
+
+        Bounds? bounds = (w > 0 && h > 0) ? new Bounds(x, y, w, h) : null;
+
+        return new ElementStateResponse(
+            Id: BuildId(role, name),
+            Type: role,
+            Name: name,
+            AutomationId: string.Empty,
+            Bounds: bounds,
+            Available: true);
     }
 
     /// <summary>Build a stable element ID: role + name (mirrors the Windows implementation).</summary>

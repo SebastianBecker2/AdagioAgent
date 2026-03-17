@@ -85,6 +85,12 @@ class AgentClient {
         return this.get(`/ui-tree?pid=${pid}`);
     }
     /**
+     * Retrieve the current state snapshot of a UI element.
+     */
+    async getElementState(request) {
+        return this.post("/element-state", request);
+    }
+    /**
      * Click a UI element by its element ID.
      * @param pid   Process ID
      * @param elementId  Element ID from the UI tree
@@ -130,6 +136,12 @@ class AgentClient {
      */
     async tailFile(request) {
         return this.post("/tail-file", request);
+    }
+    /**
+     * Wait for a UI element to appear.
+     */
+    async waitForElement(request) {
+        return this.post("/wait-for-element", request);
     }
     // ─── Helpers ─────────────────────────────────────────────────────────────
     async get(path) {

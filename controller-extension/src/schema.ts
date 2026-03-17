@@ -46,6 +46,18 @@ export interface TailFileRequest {
   lines?: number;
 }
 
+export interface ElementStateRequest {
+  pid: number;
+  elementId: string;
+}
+
+export interface WaitForElementRequest {
+  pid: number;
+  elementId: string;
+  timeoutMilliseconds?: number;
+  pollIntervalMilliseconds?: number;
+}
+
 // ─── Responses ───────────────────────────────────────────────────────────────
 
 export interface RunResponse {
@@ -81,6 +93,15 @@ export interface UiElement {
 export interface UiTreeResponse {
   windowTitle: string;
   elements: UiElement[];
+}
+
+export interface ElementStateResponse {
+  id: string;
+  type: string;
+  name: string;
+  automationId: string;
+  bounds?: Bounds;
+  available: boolean;
 }
 
 export interface ScreenshotResponse {
@@ -131,4 +152,9 @@ export interface TailFileResponse {
   path: string;
   lines: number;
   content: string;
+}
+
+export interface WaitForElementResponse {
+  found: boolean;
+  element?: ElementStateResponse;
 }

@@ -57,6 +57,14 @@
       {
         "command": "adagioAgent.tailFile",
         "title": "Adagio Agent: Tail File"
+      },
+      {
+        "command": "adagioAgent.getElementState",
+        "title": "Adagio Agent: Get Element State"
+      },
+      {
+        "command": "adagioAgent.waitForElement",
+        "title": "Adagio Agent: Wait For Element"
       }
     ],
     "configuration": {
@@ -304,6 +312,58 @@
           },
           "required": [
             "path"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_getElementState",
+        "displayName": "Get Element State",
+        "modelDescription": "Retrieve the current state snapshot of a UI element.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pid": {
+              "type": "number",
+              "description": "Process ID returned by runExecutable"
+            },
+            "elementId": {
+              "type": "string",
+              "description": "Element ID from the UI tree"
+            }
+          },
+          "required": [
+            "pid",
+            "elementId"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_waitForElement",
+        "displayName": "Wait For Element",
+        "modelDescription": "Wait until a UI element becomes available or timeout is reached.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pid": {
+              "type": "number",
+              "description": "Process ID returned by runExecutable"
+            },
+            "elementId": {
+              "type": "string",
+              "description": "Element ID from the UI tree"
+            },
+            "timeoutMilliseconds": {
+              "type": "number",
+              "description": "Maximum wait time in milliseconds"
+            },
+            "pollIntervalMilliseconds": {
+              "type": "number",
+              "description": "Polling interval in milliseconds"
+            }
+          },
+          "required": [
+            "pid",
+            "elementId"
           ]
         }
       }

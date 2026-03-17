@@ -21,6 +21,10 @@ import {
   ReadTextFileResponse,
   TailFileRequest,
   TailFileResponse,
+  ElementStateRequest,
+  ElementStateResponse,
+  WaitForElementRequest,
+  WaitForElementResponse,
 } from "./schema";
 
 /**
@@ -84,6 +88,13 @@ export class AgentClient {
   }
 
   /**
+   * Retrieve the current state snapshot of a UI element.
+   */
+  async getElementState(request: ElementStateRequest): Promise<ElementStateResponse> {
+    return this.post<ElementStateResponse>("/element-state", request);
+  }
+
+  /**
    * Click a UI element by its element ID.
    * @param pid   Process ID
    * @param elementId  Element ID from the UI tree
@@ -139,6 +150,13 @@ export class AgentClient {
    */
   async tailFile(request: TailFileRequest): Promise<TailFileResponse> {
     return this.post<TailFileResponse>("/tail-file", request);
+  }
+
+  /**
+   * Wait for a UI element to appear.
+   */
+  async waitForElement(request: WaitForElementRequest): Promise<WaitForElementResponse> {
+    return this.post<WaitForElementResponse>("/wait-for-element", request);
   }
   // ─── Helpers ─────────────────────────────────────────────────────────────
 

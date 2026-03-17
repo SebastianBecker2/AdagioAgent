@@ -32,6 +32,16 @@ public sealed record ReadTextFileRequest(string Path);
 /// <summary>Read the last N lines from a text file.</summary>
 public sealed record TailFileRequest(string Path, int Lines = 200);
 
+/// <summary>Get the current state of a UI element.</summary>
+public sealed record ElementStateRequest(int Pid, string ElementId);
+
+/// <summary>Wait until a UI element appears or timeout is reached.</summary>
+public sealed record WaitForElementRequest(
+    int Pid,
+    string ElementId,
+    int TimeoutMilliseconds = 30000,
+    int PollIntervalMilliseconds = 250);
+
 // ─── Responses ────────────────────────────────────────────────────────────────
 
 /// <summary>Result of starting a process.</summary>
@@ -60,6 +70,15 @@ public sealed record UiElement(
 /// <summary>UI element tree for a window.</summary>
 public sealed record UiTreeResponse(string WindowTitle, List<UiElement> Elements);
 
+/// <summary>Snapshot of a single UI element.</summary>
+public sealed record ElementStateResponse(
+    string Id,
+    string Type,
+    string Name,
+    string AutomationId,
+    Bounds? Bounds,
+    bool Available);
+
 /// <summary>Screenshot of the window as base64-encoded PNG.</summary>
 public sealed record ScreenshotResponse(string ImageBase64);
 
@@ -83,3 +102,6 @@ public sealed record ReadTextFileResponse(string Path, string Content);
 
 /// <summary>Last lines read from a text file.</summary>
 public sealed record TailFileResponse(string Path, int Lines, string Content);
+
+/// <summary>Result of waiting for a UI element.</summary>
+public sealed record WaitForElementResponse(bool Found, ElementStateResponse? Element);

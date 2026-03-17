@@ -43,10 +43,10 @@ Object.defineProperty(exports, "AgentClient", { enumerable: true, get: function 
 // ─── Activation ──────────────────────────────────────────────────────────────
 function activate(context) {
     // ── VS Code commands (palette / keybindings) ─────────────────────────────
-    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText), vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile), vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus), vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit), vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess), vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile), vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile));
+    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText), vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile), vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus), vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit), vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess), vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile), vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile), vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState), vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand));
     // ── Copilot language-model tools ─────────────────────────────────────────
     if (typeof vscode.lm !== "undefined" && "registerTool" in vscode.lm) {
-        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()), vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()), vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()), vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()), vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()), vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()), vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()));
+        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()), vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()), vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()), vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()), vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()), vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()), vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()), vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()), vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()));
     }
 }
 function deactivate() {
@@ -305,6 +305,60 @@ async function cmdTailFile() {
     });
     await vscode.window.showTextDocument(doc);
 }
+async function cmdGetElementState() {
+    const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+    if (!pidStr) {
+        return;
+    }
+    const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
+    const elementId = await vscode.window.showInputBox({ prompt: "Element ID" });
+    if (!elementId) {
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.getElementState({ pid, elementId });
+    vscode.window.showInformationMessage(`Element ${result.id}: ${result.type} '${result.name}'`);
+}
+async function cmdWaitForElementCommand() {
+    const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+    if (!pidStr) {
+        return;
+    }
+    const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
+    const elementId = await vscode.window.showInputBox({ prompt: "Element ID" });
+    if (!elementId) {
+        return;
+    }
+    const timeoutStr = await vscode.window.showInputBox({
+        prompt: "Timeout milliseconds",
+        value: "30000",
+    });
+    if (!timeoutStr) {
+        return;
+    }
+    const timeoutMilliseconds = Number(timeoutStr);
+    if (!Number.isInteger(timeoutMilliseconds) || timeoutMilliseconds <= 0) {
+        vscode.window.showErrorMessage("Invalid timeout.");
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.waitForElement({
+        pid,
+        elementId,
+        timeoutMilliseconds,
+    });
+    vscode.window.showInformationMessage(result.found
+        ? `Element '${elementId}' became available.`
+        : `Element '${elementId}' was not found before timeout.`);
+}
 // ─── Copilot tool implementations ────────────────────────────────────────────
 function uiTreeSummary(elements, depth = 0) {
     return elements
@@ -457,6 +511,31 @@ class TailFileTool {
         });
         return new vscode.LanguageModelToolResult([
             new vscode.LanguageModelTextPart(`Tail (${result.lines}) ${result.path}\n\n${result.content}`),
+        ]);
+    }
+}
+class GetElementStateTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const result = await client.getElementState(options.input);
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(`Element ${result.id}\nType: ${result.type}\nName: ${result.name}\nAvailable: ${result.available}`),
+        ]);
+    }
+}
+class WaitForElementUiTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const result = await client.waitForElement({
+            pid: options.input.pid,
+            elementId: options.input.elementId,
+            timeoutMilliseconds: options.input.timeoutMilliseconds ?? 30000,
+            pollIntervalMilliseconds: options.input.pollIntervalMilliseconds,
+        });
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(result.found
+                ? `Element '${options.input.elementId}' is available.`
+                : `Element '${options.input.elementId}' was not found before timeout.`),
         ]);
     }
 }

@@ -40,6 +40,18 @@ interface TailFileInput {
   lines?: number;
 }
 
+interface ElementStateInput {
+  pid: number;
+  elementId: string;
+}
+
+interface WaitForElementToolInput {
+  pid: number;
+  elementId: string;
+  timeoutMilliseconds?: number;
+  pollIntervalMilliseconds?: number;
+}
+
 // ─── Activation ──────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -65,7 +77,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit),
     vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess),
     vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile),
-    vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile)
+    vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile),
+    vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState),
+    vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand)
   );
 
   // ── Copilot language-model tools ─────────────────────────────────────────
@@ -91,7 +105,9 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()),
       vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()),
       vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()),
-      vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool())
+      vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()),
+      vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()),
+      vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool())
     );
   }
 }
@@ -409,6 +425,75 @@ async function cmdTailFile(): Promise<void> {
   await vscode.window.showTextDocument(doc);
 }
 
+async function cmdGetElementState(): Promise<void> {
+  const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+  if (!pidStr) {
+    return;
+  }
+
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    vscode.window.showErrorMessage("Invalid PID.");
+    return;
+  }
+
+  const elementId = await vscode.window.showInputBox({ prompt: "Element ID" });
+  if (!elementId) {
+    return;
+  }
+
+  const client = createAgentClient();
+  const result = await client.getElementState({ pid, elementId });
+  vscode.window.showInformationMessage(
+    `Element ${result.id}: ${result.type} '${result.name}'`
+  );
+}
+
+async function cmdWaitForElementCommand(): Promise<void> {
+  const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+  if (!pidStr) {
+    return;
+  }
+
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    vscode.window.showErrorMessage("Invalid PID.");
+    return;
+  }
+
+  const elementId = await vscode.window.showInputBox({ prompt: "Element ID" });
+  if (!elementId) {
+    return;
+  }
+
+  const timeoutStr = await vscode.window.showInputBox({
+    prompt: "Timeout milliseconds",
+    value: "30000",
+  });
+  if (!timeoutStr) {
+    return;
+  }
+
+  const timeoutMilliseconds = Number(timeoutStr);
+  if (!Number.isInteger(timeoutMilliseconds) || timeoutMilliseconds <= 0) {
+    vscode.window.showErrorMessage("Invalid timeout.");
+    return;
+  }
+
+  const client = createAgentClient();
+  const result = await client.waitForElement({
+    pid,
+    elementId,
+    timeoutMilliseconds,
+  });
+
+  vscode.window.showInformationMessage(
+    result.found
+      ? `Element '${elementId}' became available.`
+      : `Element '${elementId}' was not found before timeout.`
+  );
+}
+
 // ─── Copilot tool implementations ────────────────────────────────────────────
 
 function uiTreeSummary(elements: UiElement[], depth = 0): string {
@@ -631,6 +716,44 @@ class TailFileTool implements vscode.LanguageModelTool<TailFileInput> {
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
         `Tail (${result.lines}) ${result.path}\n\n${result.content}`
+      ),
+    ]);
+  }
+}
+
+class GetElementStateTool implements vscode.LanguageModelTool<ElementStateInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<ElementStateInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.getElementState(options.input);
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        `Element ${result.id}\nType: ${result.type}\nName: ${result.name}\nAvailable: ${result.available}`
+      ),
+    ]);
+  }
+}
+
+class WaitForElementUiTool implements vscode.LanguageModelTool<WaitForElementToolInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<WaitForElementToolInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.waitForElement({
+      pid: options.input.pid,
+      elementId: options.input.elementId,
+      timeoutMilliseconds: options.input.timeoutMilliseconds ?? 30000,
+      pollIntervalMilliseconds: options.input.pollIntervalMilliseconds,
+    });
+
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        result.found
+          ? `Element '${options.input.elementId}' is available.`
+          : `Element '${options.input.elementId}' was not found before timeout.`
       ),
     ]);
   }
