@@ -41,15 +41,49 @@ extension) to a UI-automation agent running inside a Windows or Linux VM.
 
 ### `controller-extension/` — VS Code Extension (TypeScript)
 
-Exposes five Copilot language-model tools and matching VS Code commands:
+Exposes a generalized set of Copilot language-model tools and matching VS Code
+commands for process execution, diagnostics, file transfer, and UI automation.
+
+Core workflow tools (generalized names):
 
 | Tool / Command | Description |
 |---|---|
-| `adagioAgent_runExecutable` | Start an executable on the VM |
+| `adagioAgent_runExecutable` | Start an executable on the target machine |
+| `adagioAgent_runAndCollectArtifacts` | Start a process and collect exit/log/event diagnostics |
+| `adagioAgent_runAndAssert` | Start a process, collect artifacts, and evaluate assertions |
+| `adagioAgent_collectProcessArtifacts` | Collect diagnostics for an existing tracked process |
+
+Interaction and assertion tools:
+
+| Tool / Command | Description |
+|---|---|
+| `adagioAgent_copyFile` | Copy a local file to the target machine |
+| `adagioAgent_getProcessStatus` | Query tracked process status |
+| `adagioAgent_waitForExit` | Wait for a process to exit |
+| `adagioAgent_assertProcessExited` | Assert process exit/exit-code expectations |
+| `adagioAgent_assertPathExists` | Assert file/directory existence |
+| `adagioAgent_assertLogContains` | Assert text in log/file content |
+| `adagioAgent_readTextFile` | Read a UTF-8 text file |
+| `adagioAgent_tailFile` | Read tail lines from a text file |
+| `adagioAgent_listDirectory` | Enumerate file system entries |
+| `adagioAgent_fileExists` | Check file/directory existence |
 | `adagioAgent_getUiTree` | Dump the UI element hierarchy |
+| `adagioAgent_getElementState` | Inspect one UI element state |
+| `adagioAgent_waitForElement` | Wait until UI element becomes available |
 | `adagioAgent_getScreenshot` | Capture a screenshot |
 | `adagioAgent_clickElement` | Click a UI element by ID |
 | `adagioAgent_typeText` | Type text into a UI element |
+| `adagioAgent_setFocus` | Focus a UI element |
+| `adagioAgent_sendKeys` | Send keystrokes to app window |
+| `adagioAgent_pressHotkey` | Press key combinations |
+| `adagioAgent_setCheckbox` | Toggle checkbox/radio controls |
+| `adagioAgent_selectOption` | Select combo/list options |
+
+Installer-named tools remain available as compatibility aliases:
+
+- `adagioAgent_runInstallerAndCollectArtifacts` (alias of run-and-collect workflow)
+- `adagioAgent_runInstallerAndAssert` (alias of run-and-assert workflow)
+- `adagioAgent_collectInstallArtifacts` (alias of collect-process-artifacts)
 
 **Build:**
 
@@ -80,10 +114,37 @@ automation. Supports **Windows** (via **FlaUI/UIA3**) and **Linux with a GUI**
 |---|---|---|
 | `GET` | `/health` | Health check |
 | `POST` | `/run` | Start an executable process |
+| `POST` | `/run-and-collect-artifacts` | Start process, wait, collect diagnostics |
+| `POST` | `/run-and-assert` | Start process, collect diagnostics, evaluate assertions |
+| `GET` | `/process-status?pid=N` | Query tracked process status |
+| `POST` | `/wait-for-exit` | Wait for tracked process exit |
+| `POST` | `/collect-process-artifacts` | Collect diagnostics for tracked process |
+| `POST` | `/terminate` | Terminate tracked process |
 | `GET` | `/ui-tree?pid=N` | Dump UI element tree |
+| `POST` | `/element-state` | Get state snapshot for one UI element |
+| `POST` | `/wait-for-element` | Wait for UI element availability |
+| `POST` | `/focus` | Focus a UI element |
+| `POST` | `/send-keys` | Send keystrokes |
+| `POST` | `/press-hotkey` | Send key combination |
+| `POST` | `/set-checkbox` | Set checkbox/radio checked state |
+| `POST` | `/select-option` | Select combo/list option |
 | `GET` | `/screenshot?pid=N` | Capture window screenshot (base64 PNG) |
 | `POST` | `/click` | Click a UI element |
 | `POST` | `/type` | Type text into a UI element |
+| `POST` | `/copy-file` | Copy file content to target path |
+| `POST` | `/read-text-file` | Read full UTF-8 text file |
+| `POST` | `/tail-file` | Read tail lines from file |
+| `POST` | `/list-directory` | List files/directories |
+| `POST` | `/file-exists` | Check path existence/type |
+| `POST` | `/assert-process-exited` | Assert process exits (optional exit code) |
+| `POST` | `/assert-path-exists` | Assert path exists/type |
+| `POST` | `/assert-log-contains` | Assert file contains expected text |
+
+Legacy installer-named route aliases are still supported for backward compatibility:
+
+- `/run-installer-and-collect-artifacts`
+- `/run-installer-and-assert`
+- `/collect-install-artifacts`
 
 **Build:**
 
@@ -239,7 +300,8 @@ These are in addition to the installer artifact (`AdagioMachineAgentSetup`).
 
 ## Typical flow
 
-1. Copilot calls **`adagioAgent_runExecutable`** → VS Code sends `POST /run` → agent starts the executable, returns PID.
-2. Copilot calls **`adagioAgent_getUiTree`** → VS Code sends `GET /ui-tree?pid=…` → agent returns element tree.
-3. Copilot reasons: *"I should click the Next button"* → calls **`adagioAgent_clickElement`** → VS Code sends `POST /click`.
-4. Repeat until the application exits.
+1. Copy binaries/assets if needed via **`adagioAgent_copyFile`**.
+2. Start and track execution via **`adagioAgent_runExecutable`** or the higher-level **`adagioAgent_runAndAssert`** workflow.
+3. For GUI apps, inspect and interact using **`adagioAgent_getUiTree`**, **`adagioAgent_clickElement`**, **`adagioAgent_typeText`**, and related UI tools.
+4. For CLI/background processes, inspect with **`adagioAgent_getProcessStatus`**, **`adagioAgent_collectProcessArtifacts`**, and assertion tools.
+5. Verify outcomes using assertion helpers (**process**, **path**, **log**) and terminate remaining processes if needed.
