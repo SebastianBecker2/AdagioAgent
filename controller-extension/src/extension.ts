@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as os from "os";
 import { AgentClient, createAgentClient } from "./agentClient";
+import { wrapCommand } from "./commandSafety";
 import { RunRequest, UiElement } from "./schema";
 
 // ─── Tool handler types ──────────────────────────────────────────────────────
@@ -144,54 +145,54 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand(
       "adagioAgent.runExecutable",
-      cmdRunExecutable
+      wrapCommand(cmdRunExecutable)
     ),
     vscode.commands.registerCommand(
       "adagioAgent.runInstallerAndCollectArtifacts",
-      cmdRunInstallerAndCollectArtifacts
+      wrapCommand(cmdRunInstallerAndCollectArtifacts)
     ),
     vscode.commands.registerCommand(
       "adagioAgent.runAndCollectArtifacts",
-      cmdRunInstallerAndCollectArtifacts
+      wrapCommand(cmdRunInstallerAndCollectArtifacts)
     ),
     vscode.commands.registerCommand(
       "adagioAgent.runInstallerAndAssert",
-      cmdRunInstallerAndAssert
+      wrapCommand(cmdRunInstallerAndAssert)
     ),
     vscode.commands.registerCommand(
       "adagioAgent.runAndAssert",
-      cmdRunInstallerAndAssert
+      wrapCommand(cmdRunInstallerAndAssert)
     ),
-    vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree),
+    vscode.commands.registerCommand("adagioAgent.getUiTree", wrapCommand(cmdGetUiTree)),
     vscode.commands.registerCommand(
       "adagioAgent.clickElement",
-      cmdClickElement
+      wrapCommand(cmdClickElement)
     ),
     vscode.commands.registerCommand(
       "adagioAgent.getScreenshot",
-      cmdGetScreenshot
+      wrapCommand(cmdGetScreenshot)
     ),
-    vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText),
-    vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile),
-    vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus),
-    vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit),
-    vscode.commands.registerCommand("adagioAgent.collectInstallArtifacts", cmdCollectInstallArtifacts),
-    vscode.commands.registerCommand("adagioAgent.collectProcessArtifacts", cmdCollectInstallArtifacts),
-    vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess),
-    vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile),
-    vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile),
-    vscode.commands.registerCommand("adagioAgent.listDirectory", cmdListDirectory),
-    vscode.commands.registerCommand("adagioAgent.fileExists", cmdFileExists),
-    vscode.commands.registerCommand("adagioAgent.assertProcessExited", cmdAssertProcessExited),
-    vscode.commands.registerCommand("adagioAgent.assertPathExists", cmdAssertPathExists),
-    vscode.commands.registerCommand("adagioAgent.assertLogContains", cmdAssertLogContains),
-    vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState),
-    vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand),
-    vscode.commands.registerCommand("adagioAgent.setFocus", cmdSetFocus),
-    vscode.commands.registerCommand("adagioAgent.sendKeys", cmdSendKeys),
-    vscode.commands.registerCommand("adagioAgent.pressHotkey", cmdPressHotkey),
-    vscode.commands.registerCommand("adagioAgent.setCheckbox", cmdSetCheckbox),
-    vscode.commands.registerCommand("adagioAgent.selectOption", cmdSelectOption)
+    vscode.commands.registerCommand("adagioAgent.typeText", wrapCommand(cmdTypeText)),
+    vscode.commands.registerCommand("adagioAgent.copyFile", wrapCommand(cmdCopyFile)),
+    vscode.commands.registerCommand("adagioAgent.getProcessStatus", wrapCommand(cmdGetProcessStatus)),
+    vscode.commands.registerCommand("adagioAgent.waitForExit", wrapCommand(cmdWaitForExit)),
+    vscode.commands.registerCommand("adagioAgent.collectInstallArtifacts", wrapCommand(cmdCollectInstallArtifacts)),
+    vscode.commands.registerCommand("adagioAgent.collectProcessArtifacts", wrapCommand(cmdCollectInstallArtifacts)),
+    vscode.commands.registerCommand("adagioAgent.terminateProcess", wrapCommand(cmdTerminateProcess)),
+    vscode.commands.registerCommand("adagioAgent.readTextFile", wrapCommand(cmdReadTextFile)),
+    vscode.commands.registerCommand("adagioAgent.tailFile", wrapCommand(cmdTailFile)),
+    vscode.commands.registerCommand("adagioAgent.listDirectory", wrapCommand(cmdListDirectory)),
+    vscode.commands.registerCommand("adagioAgent.fileExists", wrapCommand(cmdFileExists)),
+    vscode.commands.registerCommand("adagioAgent.assertProcessExited", wrapCommand(cmdAssertProcessExited)),
+    vscode.commands.registerCommand("adagioAgent.assertPathExists", wrapCommand(cmdAssertPathExists)),
+    vscode.commands.registerCommand("adagioAgent.assertLogContains", wrapCommand(cmdAssertLogContains)),
+    vscode.commands.registerCommand("adagioAgent.getElementState", wrapCommand(cmdGetElementState)),
+    vscode.commands.registerCommand("adagioAgent.waitForElement", wrapCommand(cmdWaitForElementCommand)),
+    vscode.commands.registerCommand("adagioAgent.setFocus", wrapCommand(cmdSetFocus)),
+    vscode.commands.registerCommand("adagioAgent.sendKeys", wrapCommand(cmdSendKeys)),
+    vscode.commands.registerCommand("adagioAgent.pressHotkey", wrapCommand(cmdPressHotkey)),
+    vscode.commands.registerCommand("adagioAgent.setCheckbox", wrapCommand(cmdSetCheckbox)),
+    vscode.commands.registerCommand("adagioAgent.selectOption", wrapCommand(cmdSelectOption))
   );
 
   // ── Copilot language-model tools ─────────────────────────────────────────
