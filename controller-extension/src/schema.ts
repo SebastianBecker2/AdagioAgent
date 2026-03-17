@@ -74,6 +74,23 @@ export interface FileExistsRequest {
   path: string;
 }
 
+export interface AssertProcessExitedRequest {
+  pid: number;
+  timeoutMilliseconds?: number;
+  expectedExitCode?: number;
+}
+
+export interface AssertPathExistsRequest {
+  path: string;
+  mustBeDirectory?: boolean;
+}
+
+export interface AssertLogContainsRequest {
+  path: string;
+  containsText: string;
+  ignoreCase?: boolean;
+}
+
 export interface ElementStateRequest {
   pid: number;
   elementId: string;
@@ -248,6 +265,11 @@ export interface FileExistsResponse {
   path: string;
   exists: boolean;
   isDirectory: boolean;
+}
+
+export interface AssertionResponse {
+  passed: boolean;
+  message: string;
 }
 
 export interface WaitForElementResponse {

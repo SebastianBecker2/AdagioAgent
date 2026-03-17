@@ -68,6 +68,23 @@ interface FileExistsInput {
   path: string;
 }
 
+interface AssertProcessExitedInput {
+  pid: number;
+  timeoutMilliseconds?: number;
+  expectedExitCode?: number;
+}
+
+interface AssertPathExistsInput {
+  path: string;
+  mustBeDirectory?: boolean;
+}
+
+interface AssertLogContainsInput {
+  path: string;
+  containsText: string;
+  ignoreCase?: boolean;
+}
+
 interface ElementStateInput {
   pid: number;
   elementId: string;
@@ -136,6 +153,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile),
     vscode.commands.registerCommand("adagioAgent.listDirectory", cmdListDirectory),
     vscode.commands.registerCommand("adagioAgent.fileExists", cmdFileExists),
+    vscode.commands.registerCommand("adagioAgent.assertProcessExited", cmdAssertProcessExited),
+    vscode.commands.registerCommand("adagioAgent.assertPathExists", cmdAssertPathExists),
+    vscode.commands.registerCommand("adagioAgent.assertLogContains", cmdAssertLogContains),
     vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState),
     vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand),
     vscode.commands.registerCommand("adagioAgent.setFocus", cmdSetFocus),
@@ -176,6 +196,9 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()),
       vscode.lm.registerTool("adagioAgent_listDirectory", new ListDirectoryTool()),
       vscode.lm.registerTool("adagioAgent_fileExists", new FileExistsTool()),
+      vscode.lm.registerTool("adagioAgent_assertProcessExited", new AssertProcessExitedTool()),
+      vscode.lm.registerTool("adagioAgent_assertPathExists", new AssertPathExistsTool()),
+      vscode.lm.registerTool("adagioAgent_assertLogContains", new AssertLogContainsTool()),
       vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()),
       vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()),
       vscode.lm.registerTool("adagioAgent_setFocus", new SetFocusTool()),
@@ -612,6 +635,51 @@ async function cmdFileExists(): Promise<void> {
       ? `${result.path} exists (${result.isDirectory ? "directory" : "file"}).`
       : `${result.path} does not exist.`
   );
+}
+
+async function cmdAssertProcessExited(): Promise<void> {
+  const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+  if (!pidStr) return;
+
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    vscode.window.showErrorMessage("Invalid PID.");
+    return;
+  }
+
+  const client = createAgentClient();
+  const result = await client.assertProcessExited({ pid });
+  vscode.window.showInformationMessage(result.message);
+}
+
+async function cmdAssertPathExists(): Promise<void> {
+  const path = await vscode.window.showInputBox({
+    prompt: "Target machine path",
+    placeHolder: "C:\\Apps\\MyApp",
+  });
+  if (!path) return;
+
+  const client = createAgentClient();
+  const result = await client.assertPathExists({ path });
+  vscode.window.showInformationMessage(result.message);
+}
+
+async function cmdAssertLogContains(): Promise<void> {
+  const path = await vscode.window.showInputBox({
+    prompt: "Target machine log file path",
+    placeHolder: "C:\\Apps\\installer.log",
+  });
+  if (!path) return;
+
+  const containsText = await vscode.window.showInputBox({
+    prompt: "Expected text",
+    placeHolder: "Installation completed successfully",
+  });
+  if (!containsText) return;
+
+  const client = createAgentClient();
+  const result = await client.assertLogContains({ path, containsText, ignoreCase: true });
+  vscode.window.showInformationMessage(result.message);
 }
 
 async function cmdGetElementState(): Promise<void> {
@@ -1092,6 +1160,45 @@ class FileExistsTool implements vscode.LanguageModelTool<FileExistsInput> {
           ? `${result.path} exists (${result.isDirectory ? "directory" : "file"}).`
           : `${result.path} does not exist.`
       ),
+    ]);
+  }
+}
+
+class AssertProcessExitedTool implements vscode.LanguageModelTool<AssertProcessExitedInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<AssertProcessExitedInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.assertProcessExited(options.input);
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(result.message),
+    ]);
+  }
+}
+
+class AssertPathExistsTool implements vscode.LanguageModelTool<AssertPathExistsInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<AssertPathExistsInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.assertPathExists(options.input);
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(result.message),
+    ]);
+  }
+}
+
+class AssertLogContainsTool implements vscode.LanguageModelTool<AssertLogContainsInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<AssertLogContainsInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.assertLogContains(options.input);
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(result.message),
     ]);
   }
 }

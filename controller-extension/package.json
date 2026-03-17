@@ -75,6 +75,18 @@
         "title": "Adagio Agent: File Exists"
       },
       {
+        "command": "adagioAgent.assertProcessExited",
+        "title": "Adagio Agent: Assert Process Exited"
+      },
+      {
+        "command": "adagioAgent.assertPathExists",
+        "title": "Adagio Agent: Assert Path Exists"
+      },
+      {
+        "command": "adagioAgent.assertLogContains",
+        "title": "Adagio Agent: Assert Log Contains"
+      },
+      {
         "command": "adagioAgent.getElementState",
         "title": "Adagio Agent: Get Element State"
       },
@@ -242,6 +254,78 @@
           },
           "required": [
             "path"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_assertProcessExited",
+        "displayName": "Assert Process Exited",
+        "modelDescription": "Assert that a tracked process exits, optionally with a specific exit code.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pid": {
+              "type": "number",
+              "description": "Tracked process ID"
+            },
+            "timeoutMilliseconds": {
+              "type": "number",
+              "description": "Maximum time to wait for process exit"
+            },
+            "expectedExitCode": {
+              "type": "number",
+              "description": "Optional expected process exit code"
+            }
+          },
+          "required": [
+            "pid"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_assertPathExists",
+        "displayName": "Assert Path Exists",
+        "modelDescription": "Assert that a file or directory path exists on the target machine.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Target path to verify"
+            },
+            "mustBeDirectory": {
+              "type": "boolean",
+              "description": "When true, assertion requires the path to be a directory"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_assertLogContains",
+        "displayName": "Assert Log Contains",
+        "modelDescription": "Assert that a text log file contains an expected text fragment.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Text log file path to inspect"
+            },
+            "containsText": {
+              "type": "string",
+              "description": "Expected text to find in the log content"
+            },
+            "ignoreCase": {
+              "type": "boolean",
+              "description": "When true, performs case-insensitive text matching"
+            }
+          },
+          "required": [
+            "path",
+            "containsText"
           ]
         }
       },

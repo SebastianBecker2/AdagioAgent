@@ -1010,6 +1010,165 @@ public sealed class AutomationController : ControllerBase
         }
     }
 
+    // ── POST /assert-process-exited ───────────────────────────────────────
+
+    /// <summary>Assert that a tracked process exits (and optionally with a specific exit code).</summary>
+    [HttpPost("/assert-process-exited")]
+    [ProducesResponseType(typeof(AssertionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public IActionResult AssertProcessExited([FromBody] AssertProcessExitedRequest request)
+    {
+        if (request.Pid <= 0)
+        {
+            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+        }
+
+        if (request.TimeoutMilliseconds <= 0)
+        {
+            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer."));
+        }
+
+        var tracked = _processService.Get(request.Pid);
+        if (tracked is null)
+        {
+            return NotFound(new ErrorResponse($"Process {request.Pid} is not tracked."));
+        }
+
+        try
+        {
+            var exited = tracked.Process.WaitForExit(request.TimeoutMilliseconds);
+            if (!exited)
+            {
+                return BadRequest(new ErrorResponse(
+                    $"Process {request.Pid} did not exit within {request.TimeoutMilliseconds}ms."));
+            }
+
+            if (request.ExpectedExitCode.HasValue &&
+                tracked.Process.ExitCode != request.ExpectedExitCode.Value)
+            {
+                return BadRequest(new ErrorResponse(
+                    $"Process {request.Pid} exited with code {tracked.Process.ExitCode}, " +
+                    $"expected {request.ExpectedExitCode.Value}."));
+            }
+
+            return Ok(new AssertionResponse(
+                true,
+                request.ExpectedExitCode.HasValue
+                    ? $"Process {request.Pid} exited with expected code {request.ExpectedExitCode.Value}."
+                    : $"Process {request.Pid} exited."));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AssertProcessExited failed for pid {Pid}.", request.Pid);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to assert process exit.", ex.Message));
+        }
+    }
+
+    // ── POST /assert-path-exists ─────────────────────────────────────────
+
+    /// <summary>Assert that a path exists (and optionally is a directory).</summary>
+    [HttpPost("/assert-path-exists")]
+    [ProducesResponseType(typeof(AssertionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public IActionResult AssertPathExists([FromBody] AssertPathExistsRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Path))
+        {
+            return BadRequest(new ErrorResponse("Path is required."));
+        }
+
+        try
+        {
+            var fullPath = ValidateReadablePath(request.Path);
+            var isDirectory = Directory.Exists(fullPath);
+            var exists = isDirectory || System.IO.File.Exists(fullPath);
+
+            if (!exists)
+            {
+                return BadRequest(new ErrorResponse($"Path '{request.Path}' does not exist."));
+            }
+
+            if (request.MustBeDirectory && !isDirectory)
+            {
+                return BadRequest(new ErrorResponse($"Path '{request.Path}' exists but is not a directory."));
+            }
+
+            return Ok(new AssertionResponse(
+                true,
+                request.MustBeDirectory
+                    ? $"Directory '{fullPath}' exists."
+                    : $"Path '{fullPath}' exists."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AssertPathExists failed for path '{Path}'.", request.Path);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to assert path existence.", ex.Message));
+        }
+    }
+
+    // ── POST /assert-log-contains ────────────────────────────────────────
+
+    /// <summary>Assert that a text file contains the expected text fragment.</summary>
+    [HttpPost("/assert-log-contains")]
+    [ProducesResponseType(typeof(AssertionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public IActionResult AssertLogContains([FromBody] AssertLogContainsRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Path))
+        {
+            return BadRequest(new ErrorResponse("Path is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ContainsText))
+        {
+            return BadRequest(new ErrorResponse("containsText is required."));
+        }
+
+        try
+        {
+            var fullPath = ValidateReadablePath(request.Path);
+
+            if (!System.IO.File.Exists(fullPath))
+            {
+                return NotFound(new ErrorResponse($"File '{request.Path}' does not exist."));
+            }
+
+            var content = System.IO.File.ReadAllText(fullPath);
+            var comparison = request.IgnoreCase
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+
+            var matched = content.Contains(request.ContainsText, comparison);
+            if (!matched)
+            {
+                return BadRequest(new ErrorResponse(
+                    $"File '{request.Path}' does not contain expected text '{request.ContainsText}'."));
+            }
+
+            return Ok(new AssertionResponse(
+                true,
+                $"File '{fullPath}' contains expected text '{request.ContainsText}'."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AssertLogContains failed for path '{Path}'.", request.Path);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to assert log content.", ex.Message));
+        }
+    }
+
     private static ProcessStatusResponse ToProcessStatus(TrackedProcess tracked)
     {
         DateTimeOffset? exitedAt = null;

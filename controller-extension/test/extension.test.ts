@@ -140,7 +140,7 @@ describe("extension activation and commands", () => {
 
     activate(context as never);
 
-    expect(registerCommandMock).toHaveBeenCalledTimes(22);
+    expect(registerCommandMock).toHaveBeenCalledTimes(25);
     expect(commandHandlers.has("adagioAgent.runExecutable")).toBe(true);
     expect(commandHandlers.has("adagioAgent.runInstallerAndCollectArtifacts")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getUiTree")).toBe(true);
@@ -156,6 +156,9 @@ describe("extension activation and commands", () => {
     expect(commandHandlers.has("adagioAgent.tailFile")).toBe(true);
     expect(commandHandlers.has("adagioAgent.listDirectory")).toBe(true);
     expect(commandHandlers.has("adagioAgent.fileExists")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.assertProcessExited")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.assertPathExists")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.assertLogContains")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getElementState")).toBe(true);
     expect(commandHandlers.has("adagioAgent.waitForElement")).toBe(true);
     expect(commandHandlers.has("adagioAgent.setFocus")).toBe(true);
@@ -164,7 +167,7 @@ describe("extension activation and commands", () => {
     expect(commandHandlers.has("adagioAgent.setCheckbox")).toBe(true);
     expect(commandHandlers.has("adagioAgent.selectOption")).toBe(true);
 
-    expect(registerToolMock).toHaveBeenCalledTimes(22);
+    expect(registerToolMock).toHaveBeenCalledTimes(25);
     expect(toolHandlers.has("adagioAgent_runExecutable")).toBe(true);
     expect(toolHandlers.has("adagioAgent_runInstallerAndCollectArtifacts")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getUiTree")).toBe(true);
@@ -180,6 +183,9 @@ describe("extension activation and commands", () => {
     expect(toolHandlers.has("adagioAgent_tailFile")).toBe(true);
     expect(toolHandlers.has("adagioAgent_listDirectory")).toBe(true);
     expect(toolHandlers.has("adagioAgent_fileExists")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_assertProcessExited")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_assertPathExists")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_assertLogContains")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getElementState")).toBe(true);
     expect(toolHandlers.has("adagioAgent_waitForElement")).toBe(true);
     expect(toolHandlers.has("adagioAgent_setFocus")).toBe(true);

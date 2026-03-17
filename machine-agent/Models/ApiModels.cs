@@ -58,6 +58,21 @@ public sealed record ListDirectoryRequest(string Path);
 /// <summary>Check whether a file or directory exists at a path.</summary>
 public sealed record FileExistsRequest(string Path);
 
+/// <summary>Assert that a tracked process exits (and optionally with a specific exit code).</summary>
+public sealed record AssertProcessExitedRequest(
+    int Pid,
+    int TimeoutMilliseconds = 30000,
+    int? ExpectedExitCode = null);
+
+/// <summary>Assert that a path exists (and optionally is a directory).</summary>
+public sealed record AssertPathExistsRequest(string Path, bool MustBeDirectory = false);
+
+/// <summary>Assert that a text file contains an expected fragment.</summary>
+public sealed record AssertLogContainsRequest(
+    string Path,
+    string ContainsText,
+    bool IgnoreCase = false);
+
 /// <summary>Get the current state of a UI element.</summary>
 public sealed record ElementStateRequest(int Pid, string ElementId);
 
@@ -164,6 +179,9 @@ public sealed record ListDirectoryResponse(string Path, List<DirectoryEntry> Ent
 
 /// <summary>Path existence response.</summary>
 public sealed record FileExistsResponse(string Path, bool Exists, bool IsDirectory);
+
+/// <summary>Result of a boolean assertion check.</summary>
+public sealed record AssertionResponse(bool Passed, string Message);
 
 /// <summary>Combined installer artifact collection response.</summary>
 public sealed record CollectInstallArtifactsResponse(

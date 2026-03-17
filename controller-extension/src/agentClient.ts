@@ -29,6 +29,10 @@ import {
   ListDirectoryResponse,
   FileExistsRequest,
   FileExistsResponse,
+  AssertProcessExitedRequest,
+  AssertPathExistsRequest,
+  AssertLogContainsRequest,
+  AssertionResponse,
   ElementStateRequest,
   ElementStateResponse,
   WaitForElementRequest,
@@ -198,6 +202,27 @@ export class AgentClient {
    */
   async fileExists(request: FileExistsRequest): Promise<FileExistsResponse> {
     return this.post<FileExistsResponse>("/file-exists", request);
+  }
+
+  /**
+   * Assert that a tracked process exits (optionally with a specific exit code).
+   */
+  async assertProcessExited(request: AssertProcessExitedRequest): Promise<AssertionResponse> {
+    return this.post<AssertionResponse>("/assert-process-exited", request);
+  }
+
+  /**
+   * Assert that a path exists (optionally as a directory).
+   */
+  async assertPathExists(request: AssertPathExistsRequest): Promise<AssertionResponse> {
+    return this.post<AssertionResponse>("/assert-path-exists", request);
+  }
+
+  /**
+   * Assert that a text file contains the expected text.
+   */
+  async assertLogContains(request: AssertLogContainsRequest): Promise<AssertionResponse> {
+    return this.post<AssertionResponse>("/assert-log-contains", request);
   }
 
   /**

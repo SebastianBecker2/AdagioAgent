@@ -162,6 +162,24 @@ class AgentClient {
         return this.post("/file-exists", request);
     }
     /**
+     * Assert that a tracked process exits (optionally with a specific exit code).
+     */
+    async assertProcessExited(request) {
+        return this.post("/assert-process-exited", request);
+    }
+    /**
+     * Assert that a path exists (optionally as a directory).
+     */
+    async assertPathExists(request) {
+        return this.post("/assert-path-exists", request);
+    }
+    /**
+     * Assert that a text file contains the expected text.
+     */
+    async assertLogContains(request) {
+        return this.post("/assert-log-contains", request);
+    }
+    /**
      * Wait for a UI element to appear.
      */
     async waitForElement(request) {

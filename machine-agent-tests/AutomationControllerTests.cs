@@ -759,6 +759,84 @@ public sealed class AutomationControllerTests
         }
     }
 
+    [Fact]
+    public void AssertProcessExited_ValidatesAndReturnsOkWhenExited()
+    {
+        var commandInfo = ResolveQuickExitCommand();
+        using var processService = CreateProcessService(
+            allowedExecutablePaths: [Path.GetDirectoryName(commandInfo.Command)!]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        Assert.IsType<BadRequestObjectResult>(sut.AssertProcessExited(new AssertProcessExitedRequest(0)));
+        Assert.IsType<NotFoundObjectResult>(sut.AssertProcessExited(new AssertProcessExitedRequest(999999)));
+
+        var runResult = Assert.IsType<OkObjectResult>(
+            sut.Run(new RunRequest(commandInfo.Command, commandInfo.Arguments, null)));
+        var runPayload = Assert.IsType<RunResponse>(runResult.Value);
+
+        var result = sut.AssertProcessExited(new AssertProcessExitedRequest(runPayload.Pid, 5000, 0));
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<AssertionResponse>(ok.Value);
+        Assert.True(payload.Passed);
+    }
+
+    [Fact]
+    public void AssertPathExists_ValidatesAndReturnsOkWhenPresent()
+    {
+        var dirPath = Path.Combine(Path.GetTempPath(), $"adagio-assert-path-{Guid.NewGuid():N}");
+        var filePath = Path.Combine(dirPath, "a.txt");
+        Directory.CreateDirectory(dirPath);
+        File.WriteAllText(filePath, "hello");
+
+        try
+        {
+            using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+            var uiService = new Mock<IUiAutomationService>();
+            var sut = CreateController(processService, uiService.Object);
+
+            Assert.IsType<BadRequestObjectResult>(sut.AssertPathExists(new AssertPathExistsRequest("")));
+
+            var fileResult = sut.AssertPathExists(new AssertPathExistsRequest(filePath));
+            var fileOk = Assert.IsType<OkObjectResult>(fileResult);
+            Assert.True(Assert.IsType<AssertionResponse>(fileOk.Value).Passed);
+
+            var dirResult = sut.AssertPathExists(new AssertPathExistsRequest(dirPath, MustBeDirectory: true));
+            var dirOk = Assert.IsType<OkObjectResult>(dirResult);
+            Assert.True(Assert.IsType<AssertionResponse>(dirOk.Value).Passed);
+        }
+        finally
+        {
+            Directory.Delete(dirPath, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AssertLogContains_ValidatesAndReturnsOkWhenMatchFound()
+    {
+        var filePath = Path.Combine(Path.GetTempPath(), $"adagio-assert-log-{Guid.NewGuid():N}.log");
+        File.WriteAllText(filePath, "Install completed successfully");
+
+        try
+        {
+            using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+            var uiService = new Mock<IUiAutomationService>();
+            var sut = CreateController(processService, uiService.Object);
+
+            Assert.IsType<BadRequestObjectResult>(sut.AssertLogContains(new AssertLogContainsRequest("", "ok")));
+            Assert.IsType<BadRequestObjectResult>(sut.AssertLogContains(new AssertLogContainsRequest(filePath, "")));
+
+            var result = sut.AssertLogContains(new AssertLogContainsRequest(filePath, "completed", IgnoreCase: true));
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var payload = Assert.IsType<AssertionResponse>(ok.Value);
+            Assert.True(payload.Passed);
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
+    }
+
     private static AutomationController CreateController(ProcessService processService, IUiAutomationService uiService, IOptions<AgentOptions>? options = null)
     {
         var controller = new AutomationController(

@@ -340,6 +340,60 @@ describe("AgentClient", () => {
     );
   });
 
+  it("calls assertion endpoints with expected payloads", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ passed: true, message: "Process exited." }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ passed: true, message: "Path exists." }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ passed: true, message: "Log contains text." }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+
+    const client = new AgentClient("http://localhost:5000");
+
+    await client.assertProcessExited({ pid: 77, timeoutMilliseconds: 5000, expectedExitCode: 0 });
+    await client.assertPathExists({ path: "C:/Apps/output", mustBeDirectory: true });
+    await client.assertLogContains({ path: "C:/Apps/install.log", containsText: "completed", ignoreCase: true });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:5000/assert-process-exited",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ pid: 77, timeoutMilliseconds: 5000, expectedExitCode: 0 }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:5000/assert-path-exists",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ path: "C:/Apps/output", mustBeDirectory: true }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "http://localhost:5000/assert-log-contains",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ path: "C:/Apps/install.log", containsText: "completed", ignoreCase: true }),
+      })
+    );
+  });
+
   it("calls element-state and wait-for-element endpoints with expected payloads", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock
