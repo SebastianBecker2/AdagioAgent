@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using AdagioMachineAgent.Services;
 using Microsoft.Extensions.Options;
@@ -34,18 +35,26 @@ builder.Services.AddSingleton<IUiAutomationService>(_ =>
 // Bind optional "AgentOptions" section from appsettings.json
 builder.Services.Configure<AgentOptions>(
     builder.Configuration.GetSection("AgentOptions"));
+var securityOptionsSection = builder.Configuration.GetSection("SecurityOptions");
 builder.Services.Configure<SecurityOptions>(
-    builder.Configuration.GetSection("SecurityOptions"));
+    securityOptionsSection);
+
+var securityOptions = securityOptionsSection.Get<SecurityOptions>() ?? new SecurityOptions();
+ConfigureTransportSecurity(builder, securityOptions);
+ValidateSecurityOptions(securityOptions);
 
 var app = builder.Build();
 
 // ── Middleware ────────────────────────────────────────────────────────────────
-if (!app.Environment.IsDevelopment())
+if (securityOptions.RequireHttps)
 {
-    app.UseHsts();
-}
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHsts();
+    }
 
-app.UseHttpsRedirection();
+    app.UseHttpsRedirection();
+}
 app.UseRouting();
 
 app.Use(async (context, next) =>
@@ -106,6 +115,83 @@ static bool IsApiKeyMatch(string candidate, string configured)
            CryptographicOperations.FixedTimeEquals(candidateBytes, configuredBytes);
 }
 
+static void ConfigureTransportSecurity(WebApplicationBuilder builder, SecurityOptions securityOptions)
+{
+    if (!securityOptions.RequireHttps)
+    {
+        return;
+    }
+
+    var configuredUrls = builder.Configuration["Urls"];
+    if (!string.IsNullOrWhiteSpace(configuredUrls))
+    {
+        var urls = configuredUrls
+            .Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+        if (urls.Any(url => url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException(
+                "SecurityOptions.RequireHttps is enabled but 'Urls' contains an HTTP endpoint. " +
+                "Use only HTTPS URLs when RequireHttps is true.");
+        }
+    }
+
+    if (string.IsNullOrWhiteSpace(securityOptions.HttpsCertificatePath))
+    {
+        if (builder.Environment.IsDevelopment() && securityOptions.AllowDevelopmentCertificateFallback)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            "SecurityOptions.RequireHttps is enabled but no certificate path is configured. " +
+            "Set SecurityOptions.HttpsCertificatePath and SecurityOptions.HttpsCertificatePassword.");
+    }
+
+    var certificatePath = Path.GetFullPath(securityOptions.HttpsCertificatePath);
+    if (!File.Exists(certificatePath))
+    {
+        throw new InvalidOperationException(
+            $"Configured HTTPS certificate file was not found: '{certificatePath}'.");
+    }
+
+    X509Certificate2 certificate;
+    try
+    {
+        certificate = new X509Certificate2(certificatePath, securityOptions.HttpsCertificatePassword);
+    }
+    catch (Exception ex)
+    {
+        throw new InvalidOperationException(
+            $"Failed to load HTTPS certificate from '{certificatePath}'. " +
+            "Verify the certificate path and password.",
+            ex);
+    }
+
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.ConfigureHttpsDefaults(httpsOptions =>
+        {
+            httpsOptions.ServerCertificate = certificate;
+        });
+    });
+}
+
+static void ValidateSecurityOptions(SecurityOptions securityOptions)
+{
+    if (!securityOptions.RequireApiKey)
+    {
+        return;
+    }
+
+    if (string.IsNullOrWhiteSpace(securityOptions.ApiKey) ||
+        string.Equals(securityOptions.ApiKey, "CHANGE_ME", StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException(
+            "SecurityOptions.RequireApiKey is enabled but SecurityOptions.ApiKey is unset or left as CHANGE_ME.");
+    }
+}
+
 // ─── Configuration model ──────────────────────────────────────────────────────
 
 /// <summary>Agent runtime configuration (appsettings.json / env vars).</summary>
@@ -139,6 +225,18 @@ public sealed class AgentOptions
 /// <summary>Transport and authentication settings for the REST API.</summary>
 public sealed class SecurityOptions
 {
+    /// <summary>Whether HTTPS is required for all endpoints.</summary>
+    public bool RequireHttps { get; set; } = true;
+
+    /// <summary>Path to the HTTPS server certificate (.pfx).</summary>
+    public string HttpsCertificatePath { get; set; } = string.Empty;
+
+    /// <summary>Password for the HTTPS server certificate file.</summary>
+    public string HttpsCertificatePassword { get; set; } = string.Empty;
+
+    /// <summary>Allow using dev certificate when explicit cert is not configured.</summary>
+    public bool AllowDevelopmentCertificateFallback { get; set; } = false;
+
     /// <summary>Whether every API request must include a valid API key header.</summary>
     public bool RequireApiKey { get; set; } = true;
 

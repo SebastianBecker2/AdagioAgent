@@ -166,6 +166,14 @@ Listens on `https://127.0.0.1:5443` by default (see `appsettings.json`).
 By default the agent requires an API key in the `X-API-Key` header on all
 requests. Set `SecurityOptions.ApiKey` in `appsettings.json` before use.
 
+The agent also requires an explicit HTTPS certificate by default. Configure:
+
+- `SecurityOptions.HttpsCertificatePath` (path to a `.pfx` file)
+- `SecurityOptions.HttpsCertificatePassword`
+
+Startup fails fast with a clear error if HTTPS is required but the certificate
+is missing/invalid, or if API key auth is required but the key is unset.
+
 **Platform-specific UI automation backends:**
 
 | Platform | Backend | Notes |
@@ -191,6 +199,8 @@ The `DISPLAY` and `DBUS_SESSION_BUS_ADDRESS` environment variables must be set
 
 **Safety guardrails:**
 
+- **HTTPS certificate fail-fast** - startup fails if `RequireHttps` is enabled
+  and the configured certificate path/password are invalid.
 - **API key authentication** - every request must include the configured
   `X-API-Key` value (`SecurityOptions.RequireApiKey = true` by default).
 - **Command whitelist** — only paths under `AgentOptions.AllowedExecutablePaths`
@@ -259,6 +269,12 @@ service:
 ```powershell
 Restart-Service AdagioMachineAgent
 ```
+
+Set these values before starting the service:
+
+- `SecurityOptions.ApiKey`
+- `SecurityOptions.HttpsCertificatePath`
+- `SecurityOptions.HttpsCertificatePassword`
 
 **UI automation and service account:**
 
