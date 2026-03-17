@@ -31,6 +31,15 @@ interface WaitForExitInput {
   timeoutMilliseconds?: number;
 }
 
+interface CollectInstallArtifactsInput {
+  pid: number;
+  timeoutMilliseconds?: number;
+  logPath?: string;
+  tailLines?: number;
+  includeMsiEvents?: boolean;
+  eventEntryCount?: number;
+}
+
 interface ReadTextFileInput {
   path: string;
 }
@@ -63,11 +72,6 @@ interface WaitForElementToolInput {
 interface SendKeysInput {
   pid: number;
   text: string;
-}
-
-interface PressHotkeyInput {
-  pid: number;
-  keys: string[];
 }
 
 interface PressHotkeyInput {
@@ -111,6 +115,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile),
     vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus),
     vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit),
+    vscode.commands.registerCommand("adagioAgent.collectInstallArtifacts", cmdCollectInstallArtifacts),
     vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess),
     vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile),
     vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile),
@@ -146,6 +151,7 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()),
       vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()),
       vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()),
+      vscode.lm.registerTool("adagioAgent_collectInstallArtifacts", new CollectInstallArtifactsTool()),
       vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()),
       vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()),
       vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()),
@@ -402,6 +408,51 @@ async function cmdWaitForExit(): Promise<void> {
       ? `Process ${pid} exited with status ${result.process.status}.`
       : `Process ${pid} is still running after timeout.`
   );
+}
+
+async function cmdCollectInstallArtifacts(): Promise<void> {
+  const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+  if (!pidStr) {
+    return;
+  }
+
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    vscode.window.showErrorMessage("Invalid PID.");
+    return;
+  }
+
+  const timeoutStr = await vscode.window.showInputBox({
+    prompt: "Timeout milliseconds",
+    value: "30000",
+  });
+  if (!timeoutStr) {
+    return;
+  }
+
+  const timeoutMilliseconds = Number(timeoutStr);
+  if (!Number.isInteger(timeoutMilliseconds) || timeoutMilliseconds <= 0) {
+    vscode.window.showErrorMessage("Invalid timeout.");
+    return;
+  }
+
+  const logPath = await vscode.window.showInputBox({
+    prompt: "Optional installer log path on the target machine",
+    placeHolder: "C:\\Apps\\installer.log",
+  });
+
+  const client = createAgentClient();
+  const result = await client.collectInstallArtifacts({
+    pid,
+    timeoutMilliseconds,
+    logPath: logPath || undefined,
+  });
+
+  const doc = await vscode.workspace.openTextDocument({
+    language: "json",
+    content: JSON.stringify(result, null, 2),
+  });
+  await vscode.window.showTextDocument(doc);
 }
 
 async function cmdTerminateProcess(): Promise<void> {
@@ -845,6 +896,40 @@ class WaitForExitTool implements vscode.LanguageModelTool<WaitForExitInput> {
           ? `Process ${result.process.pid} exited with status ${result.process.status}.`
           : `Process ${result.process.pid} is still running after ${timeoutMilliseconds}ms.`
       ),
+    ]);
+  }
+}
+
+class CollectInstallArtifactsTool implements vscode.LanguageModelTool<CollectInstallArtifactsInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<CollectInstallArtifactsInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.collectInstallArtifacts({
+      pid: options.input.pid,
+      timeoutMilliseconds: options.input.timeoutMilliseconds ?? 30000,
+      logPath: options.input.logPath,
+      tailLines: options.input.tailLines,
+      includeMsiEvents: options.input.includeMsiEvents,
+      eventEntryCount: options.input.eventEntryCount,
+    });
+
+    const summary = [
+      result.exited
+        ? `Process ${result.process.pid} exited with status ${result.process.status}.`
+        : `Process ${result.process.pid} is still running after timeout.`,
+      result.logTail
+        ? `Log tail captured from ${result.logTail.path}.`
+        : "No log tail captured.",
+      `MSI events captured: ${result.msiEvents.length}.`,
+      result.warnings.length > 0
+        ? `Warnings: ${result.warnings.join(" | ")}`
+        : "Warnings: none.",
+    ].join("\n");
+
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(summary),
     ]);
   }
 }

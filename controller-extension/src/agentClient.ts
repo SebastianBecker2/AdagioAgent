@@ -15,6 +15,8 @@ import {
   ProcessStatusResponse,
   WaitForExitRequest,
   WaitForExitResponse,
+  CollectInstallArtifactsRequest,
+  CollectInstallArtifactsResponse,
   TerminateProcessRequest,
   StatusResponse,
   ReadTextFileRequest,
@@ -76,6 +78,15 @@ export class AgentClient {
    */
   async waitForExit(request: WaitForExitRequest): Promise<WaitForExitResponse> {
     return this.post<WaitForExitResponse>("/wait-for-exit", request);
+  }
+
+  /**
+   * Wait for a process and collect installer diagnostics such as log tail and MSI events.
+   */
+  async collectInstallArtifacts(
+    request: CollectInstallArtifactsRequest
+  ): Promise<CollectInstallArtifactsResponse> {
+    return this.post<CollectInstallArtifactsResponse>("/collect-install-artifacts", request);
   }
 
   /**

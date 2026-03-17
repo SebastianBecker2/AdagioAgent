@@ -140,7 +140,7 @@ describe("extension activation and commands", () => {
 
     activate(context as never);
 
-    expect(registerCommandMock).toHaveBeenCalledTimes(20);
+    expect(registerCommandMock).toHaveBeenCalledTimes(21);
     expect(commandHandlers.has("adagioAgent.runExecutable")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getUiTree")).toBe(true);
     expect(commandHandlers.has("adagioAgent.clickElement")).toBe(true);
@@ -149,6 +149,7 @@ describe("extension activation and commands", () => {
     expect(commandHandlers.has("adagioAgent.copyFile")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getProcessStatus")).toBe(true);
     expect(commandHandlers.has("adagioAgent.waitForExit")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.collectInstallArtifacts")).toBe(true);
     expect(commandHandlers.has("adagioAgent.terminateProcess")).toBe(true);
     expect(commandHandlers.has("adagioAgent.readTextFile")).toBe(true);
     expect(commandHandlers.has("adagioAgent.tailFile")).toBe(true);
@@ -162,7 +163,7 @@ describe("extension activation and commands", () => {
     expect(commandHandlers.has("adagioAgent.setCheckbox")).toBe(true);
     expect(commandHandlers.has("adagioAgent.selectOption")).toBe(true);
 
-    expect(registerToolMock).toHaveBeenCalledTimes(20);
+    expect(registerToolMock).toHaveBeenCalledTimes(21);
     expect(toolHandlers.has("adagioAgent_runExecutable")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getUiTree")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getScreenshot")).toBe(true);
@@ -171,6 +172,7 @@ describe("extension activation and commands", () => {
     expect(toolHandlers.has("adagioAgent_copyFile")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getProcessStatus")).toBe(true);
     expect(toolHandlers.has("adagioAgent_waitForExit")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_collectInstallArtifacts")).toBe(true);
     expect(toolHandlers.has("adagioAgent_terminateProcess")).toBe(true);
     expect(toolHandlers.has("adagioAgent_readTextFile")).toBe(true);
     expect(toolHandlers.has("adagioAgent_tailFile")).toBe(true);

@@ -654,6 +654,60 @@ public sealed class AutomationControllerTests
         }
     }
 
+    [Fact]
+    public void CollectInstallArtifacts_ValidatesInputs()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        Assert.IsType<BadRequestObjectResult>(sut.CollectInstallArtifacts(new CollectInstallArtifactsRequest(0)));
+        Assert.IsType<BadRequestObjectResult>(sut.CollectInstallArtifacts(new CollectInstallArtifactsRequest(1, 0)));
+        Assert.IsType<BadRequestObjectResult>(sut.CollectInstallArtifacts(new CollectInstallArtifactsRequest(1, 1000, TailLines: 0)));
+        Assert.IsType<BadRequestObjectResult>(sut.CollectInstallArtifacts(new CollectInstallArtifactsRequest(1, 1000, EventEntryCount: 0)));
+    }
+
+    [Fact]
+    public void CollectInstallArtifacts_ReturnsProcessAndOptionalLogTail()
+    {
+        var commandInfo = ResolveQuickExitCommand();
+        var logPath = Path.Combine(Path.GetTempPath(), $"artifact-log-{Guid.NewGuid():N}.log");
+        File.WriteAllLines(logPath, ["line1", "line2", "line3"]);
+
+        using var processService = CreateProcessService(
+            allowedExecutablePaths: [Path.GetDirectoryName(commandInfo.Command)!]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        try
+        {
+            var runResult = Assert.IsType<OkObjectResult>(
+                sut.Run(new RunRequest(commandInfo.Command, commandInfo.Arguments, null)));
+            var runPayload = Assert.IsType<RunResponse>(runResult.Value);
+
+            var result = sut.CollectInstallArtifacts(new CollectInstallArtifactsRequest(
+                Pid: runPayload.Pid,
+                TimeoutMilliseconds: 5000,
+                LogPath: logPath,
+                TailLines: 2,
+                IncludeMsiEvents: false));
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var payload = Assert.IsType<CollectInstallArtifactsResponse>(ok.Value);
+            Assert.True(payload.Exited);
+            Assert.Equal(runPayload.Pid, payload.Process.Pid);
+            Assert.NotNull(payload.LogTail);
+            Assert.DoesNotContain("line1", payload.LogTail!.Content);
+            Assert.Contains("line2", payload.LogTail.Content);
+            Assert.Contains("line3", payload.LogTail.Content);
+            Assert.Empty(payload.MsiEvents);
+        }
+        finally
+        {
+            File.Delete(logPath);
+        }
+    }
+
     private static AutomationController CreateController(ProcessService processService, IUiAutomationService uiService, IOptions<AgentOptions>? options = null)
     {
         var controller = new AutomationController(

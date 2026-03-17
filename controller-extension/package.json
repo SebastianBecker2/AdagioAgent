@@ -47,6 +47,10 @@
         "title": "Adagio Agent: Wait For Process Exit"
       },
       {
+        "command": "adagioAgent.collectInstallArtifacts",
+        "title": "Adagio Agent: Collect Install Artifacts"
+      },
+      {
         "command": "adagioAgent.terminateProcess",
         "title": "Adagio Agent: Terminate Process"
       },
@@ -315,6 +319,43 @@
             "timeoutMilliseconds": {
               "type": "number",
               "description": "Maximum wait time in milliseconds"
+            }
+          },
+          "required": [
+            "pid"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_collectInstallArtifacts",
+        "displayName": "Collect Install Artifacts",
+        "modelDescription": "Wait for an installer process and collect diagnostic artifacts such as exit status, log tail, and recent MSI event log entries.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pid": {
+              "type": "number",
+              "description": "Tracked process ID returned by runExecutable"
+            },
+            "timeoutMilliseconds": {
+              "type": "number",
+              "description": "How long to wait for the process to exit before collecting artifacts"
+            },
+            "logPath": {
+              "type": "string",
+              "description": "Optional installer log path to tail on the target machine"
+            },
+            "tailLines": {
+              "type": "number",
+              "description": "Number of lines to include from the tail of the log file"
+            },
+            "includeMsiEvents": {
+              "type": "boolean",
+              "description": "Whether to include recent MsiInstaller event log entries"
+            },
+            "eventEntryCount": {
+              "type": "number",
+              "description": "Maximum number of MsiInstaller event log entries to return"
             }
           },
           "required": [

@@ -70,6 +70,12 @@ class AgentClient {
         return this.post("/wait-for-exit", request);
     }
     /**
+     * Wait for a process and collect installer diagnostics such as log tail and MSI events.
+     */
+    async collectInstallArtifacts(request) {
+        return this.post("/collect-install-artifacts", request);
+    }
+    /**
      * Terminate a tracked process.
      * @param request Process ID to terminate
      */

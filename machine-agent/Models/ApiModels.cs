@@ -23,6 +23,15 @@ public sealed record CopyFileRequest(
 /// <summary>Wait for a tracked process to exit.</summary>
 public sealed record WaitForExitRequest(int Pid, int TimeoutMilliseconds = 30000);
 
+/// <summary>Collect install diagnostics: wait result, optional log tail, and optional MSI event-log entries.</summary>
+public sealed record CollectInstallArtifactsRequest(
+    int Pid,
+    int TimeoutMilliseconds = 30000,
+    string? LogPath = null,
+    int TailLines = 200,
+    bool IncludeMsiEvents = true,
+    int EventEntryCount = 20);
+
 /// <summary>Terminate a tracked process.</summary>
 public sealed record TerminateProcessRequest(int Pid);
 
@@ -122,6 +131,14 @@ public sealed record CopyFileResponse(string DestinationPath, int BytesWritten);
 /// <summary>Result of waiting for a process to exit.</summary>
 public sealed record WaitForExitResponse(bool Exited, ProcessStatusResponse Process);
 
+/// <summary>A single installer-related event log entry.</summary>
+public sealed record InstallEventLogEntry(
+    DateTimeOffset TimeCreated,
+    int EventId,
+    string Level,
+    string Source,
+    string Message);
+
 /// <summary>Text file content read from the target machine.</summary>
 public sealed record ReadTextFileResponse(string Path, string Content);
 
@@ -136,6 +153,14 @@ public sealed record ListDirectoryResponse(string Path, List<DirectoryEntry> Ent
 
 /// <summary>Path existence response.</summary>
 public sealed record FileExistsResponse(string Path, bool Exists, bool IsDirectory);
+
+/// <summary>Combined installer artifact collection response.</summary>
+public sealed record CollectInstallArtifactsResponse(
+    bool Exited,
+    ProcessStatusResponse Process,
+    TailFileResponse? LogTail,
+    List<InstallEventLogEntry> MsiEvents,
+    List<string> Warnings);
 
 /// <summary>Result of waiting for a UI element.</summary>
 public sealed record WaitForElementResponse(bool Found, ElementStateResponse? Element);

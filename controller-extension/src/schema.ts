@@ -33,6 +33,15 @@ export interface WaitForExitRequest {
   timeoutMilliseconds?: number;
 }
 
+export interface CollectInstallArtifactsRequest {
+  pid: number;
+  timeoutMilliseconds?: number;
+  logPath?: string;
+  tailLines?: number;
+  includeMsiEvents?: boolean;
+  eventEntryCount?: number;
+}
+
 export interface TerminateProcessRequest {
   pid: number;
 }
@@ -178,6 +187,22 @@ export interface CopyFileResponse {
 export interface WaitForExitResponse {
   exited: boolean;
   process: ProcessStatusResponse;
+}
+
+export interface InstallEventLogEntry {
+  timeCreated: string;
+  eventId: number;
+  level: string;
+  source: string;
+  message: string;
+}
+
+export interface CollectInstallArtifactsResponse {
+  exited: boolean;
+  process: ProcessStatusResponse;
+  logTail?: TailFileResponse;
+  msiEvents: InstallEventLogEntry[];
+  warnings: string[];
 }
 
 export interface ReadTextFileResponse {

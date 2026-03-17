@@ -137,6 +137,97 @@ public sealed class AutomationController : ControllerBase
         }
     }
 
+    // ── POST /collect-install-artifacts ──────────────────────────────────
+
+    /// <summary>
+    /// Wait for a tracked process, then collect install diagnostics such as log tail
+    /// and recent Windows MSI event-log entries.
+    /// </summary>
+    [HttpPost("/collect-install-artifacts")]
+    [ProducesResponseType(typeof(CollectInstallArtifactsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public IActionResult CollectInstallArtifacts([FromBody] CollectInstallArtifactsRequest request)
+    {
+        if (request.Pid <= 0)
+        {
+            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+        }
+
+        if (request.TimeoutMilliseconds <= 0)
+        {
+            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer."));
+        }
+
+        if (request.TailLines <= 0)
+        {
+            return BadRequest(new ErrorResponse("tailLines must be a positive integer."));
+        }
+
+        if (request.EventEntryCount <= 0)
+        {
+            return BadRequest(new ErrorResponse("eventEntryCount must be a positive integer."));
+        }
+
+        var tracked = _processService.Get(request.Pid);
+        if (tracked is null)
+        {
+            return NotFound(new ErrorResponse($"Process {request.Pid} is not tracked."));
+        }
+
+        try
+        {
+            var exited = tracked.Process.WaitForExit(request.TimeoutMilliseconds);
+            var process = ToProcessStatus(tracked);
+            var warnings = new List<string>();
+            TailFileResponse? logTail = null;
+            var msiEvents = new List<InstallEventLogEntry>();
+
+            if (!string.IsNullOrWhiteSpace(request.LogPath))
+            {
+                var fullPath = Path.GetFullPath(request.LogPath);
+                var options = HttpContext.RequestServices.GetRequiredService<IOptions<AgentOptions>>();
+                var allowed = PathPolicy.IsPathWithinAllowedDirectories(
+                    fullPath,
+                    options.Value.AllowedReadablePaths);
+
+                if (!allowed)
+                {
+                    return BadRequest(new ErrorResponse(
+                        $"Path '{request.LogPath}' is not in an allowed directory. " +
+                        $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}"));
+                }
+
+                if (System.IO.File.Exists(fullPath))
+                {
+                    logTail = ReadTailFile(fullPath, request.TailLines);
+                }
+                else
+                {
+                    warnings.Add($"Log file '{request.LogPath}' does not exist.");
+                }
+            }
+
+            if (request.IncludeMsiEvents)
+            {
+                var (entries, warning) = ReadInstallerEvents(tracked.StartedAt, request.EventEntryCount);
+                msiEvents = entries;
+                if (!string.IsNullOrWhiteSpace(warning))
+                {
+                    warnings.Add(warning);
+                }
+            }
+
+            return Ok(new CollectInstallArtifactsResponse(exited, process, logTail, msiEvents, warnings));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to collect install artifacts for pid {Pid}.", request.Pid);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to collect install artifacts.", ex.Message));
+        }
+    }
+
     // ── POST /terminate ─────────────────────────────────────────────────────
 
     /// <summary>Terminate a tracked process.</summary>
@@ -783,10 +874,7 @@ public sealed class AutomationController : ControllerBase
                 return NotFound(new ErrorResponse($"File '{request.Path}' does not exist."));
             }
 
-            var allLines = System.IO.File.ReadAllLines(fullPath);
-            var start = Math.Max(0, allLines.Length - request.Lines);
-            var content = string.Join(Environment.NewLine, allLines.Skip(start));
-            return Ok(new TailFileResponse(fullPath, request.Lines, content));
+            return Ok(ReadTailFile(fullPath, request.Lines));
         }
         catch (Exception ex)
         {
@@ -907,4 +995,71 @@ public sealed class AutomationController : ControllerBase
             exitedAt,
             exitCode);
     }
+
+    private static TailFileResponse ReadTailFile(string fullPath, int lines)
+    {
+        var allLines = System.IO.File.ReadAllLines(fullPath);
+        var start = Math.Max(0, allLines.Length - lines);
+        var content = string.Join(Environment.NewLine, allLines.Skip(start));
+        return new TailFileResponse(fullPath, lines, content);
+    }
+
+    private static (List<InstallEventLogEntry> Entries, string? Warning) ReadInstallerEvents(
+        DateTimeOffset since,
+        int maxEntries)
+    {
+#if WINDOWS
+        try
+        {
+            var query = new System.Diagnostics.Eventing.Reader.EventLogQuery(
+                "Application",
+                System.Diagnostics.Eventing.Reader.PathType.LogName,
+                $"*[System[Provider[@Name='MsiInstaller'] and TimeCreated[@SystemTime >= '{since.UtcDateTime:O}']]]")
+            {
+                ReverseDirection = true,
+            };
+
+            using var reader = new System.Diagnostics.Eventing.Reader.EventLogReader(query);
+            var events = new List<InstallEventLogEntry>();
+
+            for (var record = reader.ReadEvent(); record is not null && events.Count < maxEntries; record = reader.ReadEvent())
+            {
+                using (record)
+                {
+                    events.Add(new InstallEventLogEntry(
+                        TimeCreated: record.TimeCreated is DateTime time
+                            ? new DateTimeOffset(time.ToUniversalTime())
+                            : since,
+                        EventId: record.Id,
+                        Level: record.LevelDisplayName ?? "Information",
+                        Source: record.ProviderName ?? "MsiInstaller",
+                        Message: SafeFormatDescription(record)));
+                }
+            }
+
+            events.Reverse();
+            return (events, null);
+        }
+        catch (Exception ex)
+        {
+            return ([], $"MSI event log collection failed: {ex.Message}");
+        }
+#else
+        return ([], "MSI event log collection is only available on Windows.");
+#endif
+    }
+
+#if WINDOWS
+    private static string SafeFormatDescription(System.Diagnostics.Eventing.Reader.EventRecord record)
+    {
+        try
+        {
+            return record.FormatDescription() ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+#endif
 }

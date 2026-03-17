@@ -168,6 +168,52 @@ describe("AgentClient", () => {
     );
   });
 
+  it("calls collect-install-artifacts endpoint with expected payload", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          exited: true,
+          process: {
+            pid: 222,
+            status: "exited",
+            startedAt: "2026-03-17T00:00:00Z",
+            exitedAt: "2026-03-17T00:00:05Z",
+            exitCode: 0,
+          },
+          msiEvents: [],
+          warnings: [],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const client = new AgentClient("http://localhost:5000");
+    await client.collectInstallArtifacts({
+      pid: 222,
+      timeoutMilliseconds: 5000,
+      logPath: "C:/Apps/setup.log",
+      tailLines: 100,
+      includeMsiEvents: true,
+      eventEntryCount: 10,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:5000/collect-install-artifacts",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          pid: 222,
+          timeoutMilliseconds: 5000,
+          logPath: "C:/Apps/setup.log",
+          tailLines: 100,
+          includeMsiEvents: true,
+          eventEntryCount: 10,
+        }),
+      })
+    );
+  });
+
   it("calls read-text-file and tail-file endpoints with expected payloads", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock
