@@ -264,6 +264,43 @@ describe("AgentClient", () => {
     });
   });
 
+  it("createAgentClient forwards configured API key to requests", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ status: "healthy", version: "1.0.0" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    getConfigurationMock.mockReturnValueOnce({
+      get: vi.fn((key: string) => {
+        if (key === "vmAgentUrl") {
+          return "https://127.0.0.1:5443";
+        }
+
+        if (key === "requireHttps") {
+          return true;
+        }
+
+        if (key === "vmAgentApiKey") {
+          return "configured-key";
+        }
+
+        return undefined;
+      }),
+    });
+
+    const client = createAgentClient();
+    await client.health();
+
+    expect(fetchMock).toHaveBeenCalledWith("https://127.0.0.1:5443/health", {
+      headers: {
+        "X-API-Key": "configured-key",
+      },
+    });
+  });
+
   it("calls process lifecycle endpoints with expected paths and payloads", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock

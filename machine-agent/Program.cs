@@ -1,7 +1,5 @@
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using AdagioMachineAgent.Services;
 using Microsoft.Extensions.Options;
 
@@ -41,7 +39,7 @@ builder.Services.Configure<SecurityOptions>(
 
 var securityOptions = securityOptionsSection.Get<SecurityOptions>() ?? new SecurityOptions();
 ConfigureTransportSecurity(builder, securityOptions);
-ValidateSecurityOptions(securityOptions);
+SecurityPolicy.ValidateSecurityOptions(securityOptions);
 
 var app = builder.Build();
 
@@ -89,7 +87,7 @@ app.Use(async (context, next) =>
         return;
     }
 
-    if (!IsApiKeyMatch(suppliedKey.ToString(), securityOptions.ApiKey))
+    if (!SecurityPolicy.IsApiKeyMatch(suppliedKey.ToString(), securityOptions.ApiKey))
     {
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
         await context.Response.WriteAsJsonAsync(new
@@ -106,67 +104,22 @@ app.MapControllers();
 
 app.Run();
 
-static bool IsApiKeyMatch(string candidate, string configured)
-{
-    var candidateBytes = Encoding.UTF8.GetBytes(candidate);
-    var configuredBytes = Encoding.UTF8.GetBytes(configured);
-
-    return candidateBytes.Length == configuredBytes.Length &&
-           CryptographicOperations.FixedTimeEquals(candidateBytes, configuredBytes);
-}
-
 static void ConfigureTransportSecurity(WebApplicationBuilder builder, SecurityOptions securityOptions)
 {
-    if (!securityOptions.RequireHttps)
+    SecurityPolicy.ValidateTransportSecurity(
+        securityOptions,
+        builder.Configuration["Urls"],
+        builder.Environment.IsDevelopment());
+
+    if (!securityOptions.RequireHttps ||
+        SecurityPolicy.ShouldUseDevelopmentCertificateFallback(securityOptions, builder.Environment.IsDevelopment()))
     {
         return;
     }
 
-    var configuredUrls = builder.Configuration["Urls"];
-    if (!string.IsNullOrWhiteSpace(configuredUrls))
-    {
-        var urls = configuredUrls
-            .Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-
-        if (urls.Any(url => url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)))
-        {
-            throw new InvalidOperationException(
-                "SecurityOptions.RequireHttps is enabled but 'Urls' contains an HTTP endpoint. " +
-                "Use only HTTPS URLs when RequireHttps is true.");
-        }
-    }
-
-    if (string.IsNullOrWhiteSpace(securityOptions.HttpsCertificatePath))
-    {
-        if (builder.Environment.IsDevelopment() && securityOptions.AllowDevelopmentCertificateFallback)
-        {
-            return;
-        }
-
-        throw new InvalidOperationException(
-            "SecurityOptions.RequireHttps is enabled but no certificate path is configured. " +
-            "Set SecurityOptions.HttpsCertificatePath and SecurityOptions.HttpsCertificatePassword.");
-    }
-
-    var certificatePath = Path.GetFullPath(securityOptions.HttpsCertificatePath);
-    if (!File.Exists(certificatePath))
-    {
-        throw new InvalidOperationException(
-            $"Configured HTTPS certificate file was not found: '{certificatePath}'.");
-    }
-
-    X509Certificate2 certificate;
-    try
-    {
-        certificate = new X509Certificate2(certificatePath, securityOptions.HttpsCertificatePassword);
-    }
-    catch (Exception ex)
-    {
-        throw new InvalidOperationException(
-            $"Failed to load HTTPS certificate from '{certificatePath}'. " +
-            "Verify the certificate path and password.",
-            ex);
-    }
+    var certificate = SecurityPolicy.LoadHttpsCertificate(
+        securityOptions.HttpsCertificatePath,
+        securityOptions.HttpsCertificatePassword);
 
     builder.WebHost.ConfigureKestrel(options =>
     {
@@ -175,21 +128,6 @@ static void ConfigureTransportSecurity(WebApplicationBuilder builder, SecurityOp
             httpsOptions.ServerCertificate = certificate;
         });
     });
-}
-
-static void ValidateSecurityOptions(SecurityOptions securityOptions)
-{
-    if (!securityOptions.RequireApiKey)
-    {
-        return;
-    }
-
-    if (string.IsNullOrWhiteSpace(securityOptions.ApiKey) ||
-        string.Equals(securityOptions.ApiKey, "CHANGE_ME", StringComparison.Ordinal))
-    {
-        throw new InvalidOperationException(
-            "SecurityOptions.RequireApiKey is enabled but SecurityOptions.ApiKey is unset or left as CHANGE_ME.");
-    }
 }
 
 // ─── Configuration model ──────────────────────────────────────────────────────
