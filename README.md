@@ -5,6 +5,8 @@
 Automated execution harness connecting GitHub Copilot (via a VS Code
 extension) to a UI-automation agent running inside a Windows or Linux VM.
 
+> Note: This project is AI-generated.
+
 ---
 
 ## Architecture
