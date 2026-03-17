@@ -19,6 +19,8 @@ import {
   CollectInstallArtifactsResponse,
   RunInstallerAndCollectArtifactsRequest,
   RunInstallerAndCollectArtifactsResponse,
+  RunInstallerAndAssertRequest,
+  RunInstallerAndAssertResponse,
   TerminateProcessRequest,
   StatusResponse,
   ReadTextFileRequest,
@@ -103,6 +105,18 @@ export class AgentClient {
   ): Promise<RunInstallerAndCollectArtifactsResponse> {
     return this.post<RunInstallerAndCollectArtifactsResponse>(
       "/run-installer-and-collect-artifacts",
+      request
+    );
+  }
+
+  /**
+   * Start an installer process, collect diagnostics, and evaluate workflow assertions.
+   */
+  async runInstallerAndAssert(
+    request: RunInstallerAndAssertRequest
+  ): Promise<RunInstallerAndAssertResponse> {
+    return this.post<RunInstallerAndAssertResponse>(
+      "/run-installer-and-assert",
       request
     );
   }

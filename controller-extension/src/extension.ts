@@ -22,6 +22,22 @@ interface RunInstallerAndCollectArtifactsInput {
   eventEntryCount?: number;
 }
 
+interface RunInstallerAndAssertInput {
+  command: string;
+  arguments?: string;
+  workingDirectory?: string;
+  timeoutMilliseconds?: number;
+  logPath?: string;
+  tailLines?: number;
+  includeMsiEvents?: boolean;
+  eventEntryCount?: number;
+  expectedExitCode?: number;
+  expectedPath?: string;
+  expectedPathMustBeDirectory?: boolean;
+  logMustContainText?: string;
+  logContainsIgnoreCase?: boolean;
+}
+
 interface PidInput {
   pid: number;
 }
@@ -134,6 +150,10 @@ export function activate(context: vscode.ExtensionContext): void {
       "adagioAgent.runInstallerAndCollectArtifacts",
       cmdRunInstallerAndCollectArtifacts
     ),
+    vscode.commands.registerCommand(
+      "adagioAgent.runInstallerAndAssert",
+      cmdRunInstallerAndAssert
+    ),
     vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree),
     vscode.commands.registerCommand(
       "adagioAgent.clickElement",
@@ -176,6 +196,10 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.lm.registerTool(
         "adagioAgent_runInstallerAndCollectArtifacts",
         new RunInstallerAndCollectArtifactsTool()
+      ),
+      vscode.lm.registerTool(
+        "adagioAgent_runInstallerAndAssert",
+        new RunInstallerAndAssertTool()
       ),
       vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()),
       vscode.lm.registerTool(
@@ -265,6 +289,54 @@ async function cmdRunInstallerAndCollectArtifacts(): Promise<void> {
     command,
     arguments: argumentsValue || undefined,
     logPath: logPath || undefined,
+  });
+
+  const doc = await vscode.workspace.openTextDocument({
+    language: "json",
+    content: JSON.stringify(result, null, 2),
+  });
+  await vscode.window.showTextDocument(doc);
+}
+
+async function cmdRunInstallerAndAssert(): Promise<void> {
+  const command = await vscode.window.showInputBox({
+    prompt: "Full path to installer on the target machine",
+    placeHolder: "C:\\Apps\\setup.exe",
+  });
+  if (!command) {
+    return;
+  }
+
+  const argumentsValue = await vscode.window.showInputBox({
+    prompt: "Optional installer arguments",
+    placeHolder: "/quiet /norestart",
+  });
+
+  const logPath = await vscode.window.showInputBox({
+    prompt: "Optional installer log path on the target machine",
+    placeHolder: "C:\\Apps\\installer.log",
+  });
+
+  const expectedPath = await vscode.window.showInputBox({
+    prompt: "Optional expected file/directory path created by installer",
+    placeHolder: "C:\\Program Files\\MyApp",
+  });
+
+  const logMustContainText = await vscode.window.showInputBox({
+    prompt: "Optional expected log text",
+    placeHolder: "Installation completed successfully",
+  });
+
+  const client = createAgentClient();
+  const result = await client.runInstallerAndAssert({
+    command,
+    arguments: argumentsValue || undefined,
+    logPath: logPath || undefined,
+    expectedExitCode: 0,
+    expectedPath: expectedPath || undefined,
+    expectedPathMustBeDirectory: true,
+    logMustContainText: logMustContainText || undefined,
+    logContainsIgnoreCase: true,
   });
 
   const doc = await vscode.workspace.openTextDocument({
@@ -888,6 +960,37 @@ class RunInstallerAndCollectArtifactsTool implements vscode.LanguageModelTool<Ru
           result.artifacts.exited
             ? `Process exited with status ${result.artifacts.process.status}.`
             : `Process is still running after timeout.`,
+          result.artifacts.logTail
+            ? `Log tail captured from ${result.artifacts.logTail.path}.`
+            : "No log tail captured.",
+          `MSI events captured: ${result.artifacts.msiEvents.length}.`,
+          result.artifacts.warnings.length > 0
+            ? `Warnings: ${result.artifacts.warnings.join(" | ")}`
+            : "Warnings: none.",
+        ].join("\n")
+      ),
+    ]);
+  }
+}
+
+class RunInstallerAndAssertTool implements vscode.LanguageModelTool<RunInstallerAndAssertInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<RunInstallerAndAssertInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.runInstallerAndAssert(options.input);
+
+    const assertionLines = result.assertions.map((assertion) =>
+      `${assertion.passed ? "PASS" : "FAIL"}: ${assertion.message}`
+    );
+
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        [
+          `Installer started with PID ${result.pid}.`,
+          result.passed ? "Workflow assertions passed." : "Workflow assertions failed.",
+          ...assertionLines,
           result.artifacts.logTail
             ? `Log tail captured from ${result.artifacts.logTail.path}.`
             : "No log tail captured.",

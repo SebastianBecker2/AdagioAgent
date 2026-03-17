@@ -53,6 +53,22 @@ export interface RunInstallerAndCollectArtifactsRequest {
   eventEntryCount?: number;
 }
 
+export interface RunInstallerAndAssertRequest {
+  command: string;
+  arguments?: string;
+  workingDirectory?: string;
+  timeoutMilliseconds?: number;
+  logPath?: string;
+  tailLines?: number;
+  includeMsiEvents?: boolean;
+  eventEntryCount?: number;
+  expectedExitCode?: number;
+  expectedPath?: string;
+  expectedPathMustBeDirectory?: boolean;
+  logMustContainText?: string;
+  logContainsIgnoreCase?: boolean;
+}
+
 export interface TerminateProcessRequest {
   pid: number;
 }
@@ -237,6 +253,14 @@ export interface RunInstallerAndCollectArtifactsResponse {
   pid: number;
   startedAt: string;
   artifacts: CollectInstallArtifactsResponse;
+}
+
+export interface RunInstallerAndAssertResponse {
+  pid: number;
+  startedAt: string;
+  artifacts: CollectInstallArtifactsResponse;
+  assertions: AssertionResponse[];
+  passed: boolean;
 }
 
 export interface ReadTextFileResponse {

@@ -43,6 +43,22 @@ public sealed record RunInstallerAndCollectArtifactsRequest(
     bool IncludeMsiEvents = true,
     int EventEntryCount = 20);
 
+/// <summary>Launch an installer, collect artifacts, and evaluate common workflow assertions.</summary>
+public sealed record RunInstallerAndAssertRequest(
+    string Command,
+    string? Arguments = null,
+    string? WorkingDirectory = null,
+    int TimeoutMilliseconds = 30000,
+    string? LogPath = null,
+    int TailLines = 200,
+    bool IncludeMsiEvents = true,
+    int EventEntryCount = 20,
+    int? ExpectedExitCode = null,
+    string? ExpectedPath = null,
+    bool ExpectedPathMustBeDirectory = false,
+    string? LogMustContainText = null,
+    bool LogContainsIgnoreCase = true);
+
 /// <summary>Terminate a tracked process.</summary>
 public sealed record TerminateProcessRequest(int Pid);
 
@@ -196,6 +212,14 @@ public sealed record RunInstallerAndCollectArtifactsResponse(
     int Pid,
     DateTimeOffset StartedAt,
     CollectInstallArtifactsResponse Artifacts);
+
+/// <summary>Combined installer launch, artifacts, and assertion summary.</summary>
+public sealed record RunInstallerAndAssertResponse(
+    int Pid,
+    DateTimeOffset StartedAt,
+    CollectInstallArtifactsResponse Artifacts,
+    List<AssertionResponse> Assertions,
+    bool Passed);
 
 /// <summary>Result of waiting for a UI element.</summary>
 public sealed record WaitForElementResponse(bool Found, ElementStateResponse? Element);

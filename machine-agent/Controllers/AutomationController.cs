@@ -140,6 +140,95 @@ public sealed class AutomationController : ControllerBase
         }
     }
 
+    // ── POST /run-installer-and-assert ─────────────────────────────────────
+
+    /// <summary>
+    /// Start an installer process, collect artifacts, and evaluate common
+    /// assertions such as exit status, expected output path, and expected log text.
+    /// </summary>
+    [HttpPost("/run-installer-and-assert")]
+    [ProducesResponseType(typeof(RunInstallerAndAssertResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public IActionResult RunInstallerAndAssert([FromBody] RunInstallerAndAssertRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Command))
+        {
+            return BadRequest(new ErrorResponse("Command is required."));
+        }
+
+        if (request.TimeoutMilliseconds <= 0)
+        {
+            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer."));
+        }
+
+        if (request.TailLines <= 0)
+        {
+            return BadRequest(new ErrorResponse("tailLines must be a positive integer."));
+        }
+
+        if (request.EventEntryCount <= 0)
+        {
+            return BadRequest(new ErrorResponse("eventEntryCount must be a positive integer."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.LogMustContainText) && string.IsNullOrWhiteSpace(request.LogPath))
+        {
+            return BadRequest(new ErrorResponse("logPath is required when logMustContainText is provided."));
+        }
+
+        try
+        {
+            var tracked = _processService.Start(
+                request.Command,
+                request.Arguments,
+                request.WorkingDirectory);
+
+            var artifacts = CollectArtifactsForTrackedProcess(
+                tracked,
+                request.TimeoutMilliseconds,
+                request.LogPath,
+                request.TailLines,
+                request.IncludeMsiEvents,
+                request.EventEntryCount);
+
+            var assertions = new List<AssertionResponse>
+            {
+                EvaluateProcessExitAssertion(artifacts, tracked.Process.Id, request.ExpectedExitCode),
+            };
+
+            if (!string.IsNullOrWhiteSpace(request.ExpectedPath))
+            {
+                assertions.Add(EvaluatePathExistsAssertion(request.ExpectedPath, request.ExpectedPathMustBeDirectory));
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.LogMustContainText) && !string.IsNullOrWhiteSpace(request.LogPath))
+            {
+                assertions.Add(EvaluateLogContainsAssertion(
+                    request.LogPath,
+                    request.LogMustContainText,
+                    request.LogContainsIgnoreCase));
+            }
+
+            return Ok(new RunInstallerAndAssertResponse(
+                tracked.Process.Id,
+                tracked.StartedAt,
+                artifacts,
+                assertions,
+                assertions.All(a => a.Passed)));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "RunInstallerAndAssert rejected: {Message}", ex.Message);
+            return BadRequest(new ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to run installer and assert workflow.");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to run installer and assert workflow.", ex.Message));
+        }
+    }
+
     // ── GET /process-status ────────────────────────────────────────────────
 
     /// <summary>Get status for a tracked process.</summary>
@@ -1186,6 +1275,88 @@ public sealed class AutomationController : ControllerBase
             tracked.StartedAt,
             exitedAt,
             exitCode);
+    }
+
+    private static AssertionResponse EvaluateProcessExitAssertion(
+        CollectInstallArtifactsResponse artifacts,
+        int pid,
+        int? expectedExitCode)
+    {
+        if (!artifacts.Exited)
+        {
+            return new AssertionResponse(false, $"Process {pid} did not exit before timeout.");
+        }
+
+        if (expectedExitCode.HasValue && artifacts.Process.ExitCode != expectedExitCode.Value)
+        {
+            return new AssertionResponse(
+                false,
+                $"Process {pid} exited with code {artifacts.Process.ExitCode}, expected {expectedExitCode.Value}.");
+        }
+
+        return new AssertionResponse(
+            true,
+            expectedExitCode.HasValue
+                ? $"Process {pid} exited with expected code {expectedExitCode.Value}."
+                : $"Process {pid} exited.");
+    }
+
+    private AssertionResponse EvaluatePathExistsAssertion(string path, bool mustBeDirectory)
+    {
+        try
+        {
+            var fullPath = ValidateReadablePath(path);
+            var isDirectory = Directory.Exists(fullPath);
+            var exists = isDirectory || System.IO.File.Exists(fullPath);
+
+            if (!exists)
+            {
+                return new AssertionResponse(false, $"Path '{path}' does not exist.");
+            }
+
+            if (mustBeDirectory && !isDirectory)
+            {
+                return new AssertionResponse(false, $"Path '{path}' exists but is not a directory.");
+            }
+
+            return new AssertionResponse(
+                true,
+                mustBeDirectory
+                    ? $"Directory '{fullPath}' exists."
+                    : $"Path '{fullPath}' exists.");
+        }
+        catch (Exception ex)
+        {
+            return new AssertionResponse(false, ex.Message);
+        }
+    }
+
+    private AssertionResponse EvaluateLogContainsAssertion(string path, string containsText, bool ignoreCase)
+    {
+        try
+        {
+            var fullPath = ValidateReadablePath(path);
+            if (!System.IO.File.Exists(fullPath))
+            {
+                return new AssertionResponse(false, $"File '{path}' does not exist.");
+            }
+
+            var content = System.IO.File.ReadAllText(fullPath);
+            var comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+            if (!content.Contains(containsText, comparison))
+            {
+                return new AssertionResponse(
+                    false,
+                    $"File '{path}' does not contain expected text '{containsText}'.");
+            }
+
+            return new AssertionResponse(true, $"File '{fullPath}' contains expected text '{containsText}'.");
+        }
+        catch (Exception ex)
+        {
+            return new AssertionResponse(false, ex.Message);
+        }
     }
 
     private CollectInstallArtifactsResponse CollectArtifactsForTrackedProcess(

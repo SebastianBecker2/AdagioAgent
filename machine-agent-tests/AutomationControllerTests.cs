@@ -760,6 +760,72 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void RunInstallerAndAssert_ValidatesInputs()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("")));
+        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", TimeoutMilliseconds: 0)));
+        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", TailLines: 0)));
+        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", EventEntryCount: 0)));
+        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", LogMustContainText: "done")));
+    }
+
+    [Fact]
+    public void RunInstallerAndAssert_ReturnsPassedWhenAllAssertionsSucceed()
+    {
+        var commandInfo = ResolveQuickExitCommand();
+        var rootPath = Path.Combine(Path.GetTempPath(), $"adagio-run-assert-{Guid.NewGuid():N}");
+        var expectedDir = Path.Combine(rootPath, "installed");
+        var logPath = Path.Combine(rootPath, "install.log");
+
+        Directory.CreateDirectory(expectedDir);
+        File.WriteAllText(logPath, "Installation completed successfully.");
+
+        var options = Options.Create(new global::AgentOptions
+        {
+            AllowedExecutablePaths = [Path.GetDirectoryName(commandInfo.Command)!],
+            AllowedWritablePaths = [Path.GetTempPath()],
+            AllowedReadablePaths = [Path.GetTempPath()],
+            MaxConcurrentProcesses = 2,
+            ProcessTimeoutSeconds = 60,
+        });
+
+        using var processService = new ProcessService(options, NullLogger<ProcessService>.Instance);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object, options);
+
+        try
+        {
+            var result = sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest(
+                Command: commandInfo.Command,
+                Arguments: commandInfo.Arguments,
+                TimeoutMilliseconds: 5000,
+                LogPath: logPath,
+                IncludeMsiEvents: false,
+                ExpectedExitCode: 0,
+                ExpectedPath: expectedDir,
+                ExpectedPathMustBeDirectory: true,
+                LogMustContainText: "completed",
+                LogContainsIgnoreCase: true));
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var payload = Assert.IsType<RunInstallerAndAssertResponse>(ok.Value);
+            Assert.True(payload.Pid > 0);
+            Assert.True(payload.Passed);
+            Assert.True(payload.Artifacts.Exited);
+            Assert.Equal(3, payload.Assertions.Count);
+            Assert.All(payload.Assertions, assertion => Assert.True(assertion.Passed));
+        }
+        finally
+        {
+            Directory.Delete(rootPath, recursive: true);
+        }
+    }
+
+    [Fact]
     public void AssertProcessExited_ValidatesAndReturnsOkWhenExited()
     {
         var commandInfo = ResolveQuickExitCommand();

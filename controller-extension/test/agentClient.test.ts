@@ -106,6 +106,66 @@ describe("AgentClient", () => {
     );
   });
 
+  it("sends POST body for runInstallerAndAssert", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          pid: 123,
+          startedAt: "2026-03-17T00:00:00Z",
+          artifacts: {
+            exited: true,
+            process: {
+              pid: 123,
+              status: "exited",
+              startedAt: "2026-03-17T00:00:00Z",
+              exitedAt: "2026-03-17T00:00:10Z",
+              exitCode: 0,
+            },
+            msiEvents: [],
+            warnings: [],
+          },
+          assertions: [{ passed: true, message: "Process 123 exited with expected code 0." }],
+          passed: true,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+
+    const client = new AgentClient("http://localhost:5000");
+    await client.runInstallerAndAssert({
+      command: "C:/Apps/setup.exe",
+      arguments: "/quiet",
+      logPath: "C:/Apps/setup.log",
+      expectedExitCode: 0,
+      expectedPath: "C:/Program Files/MyApp",
+      expectedPathMustBeDirectory: true,
+      logMustContainText: "completed",
+      logContainsIgnoreCase: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:5000/run-installer-and-assert",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          command: "C:/Apps/setup.exe",
+          arguments: "/quiet",
+          logPath: "C:/Apps/setup.log",
+          expectedExitCode: 0,
+          expectedPath: "C:/Program Files/MyApp",
+          expectedPathMustBeDirectory: true,
+          logMustContainText: "completed",
+          logContainsIgnoreCase: true,
+        }),
+      })
+    );
+  });
+
   it("throws with API detail when JSON error response is returned", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock.mockResolvedValue(
