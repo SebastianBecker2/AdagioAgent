@@ -37,11 +37,9 @@
     <PublishDir Condition="'$(PublishDir)'==''">$(MSBuildThisFileDirectory)publish\</PublishDir>
     <!--
       Expose PublishDir to the WiX preprocessor so Package.wxs can reference it
-      as $(var.PublishDir).  Only appends the define if no prior constants exist
-      (avoids a leading semicolon that would produce an empty, invalid define).
+      as $(var.PublishDir).
     -->
-    <DefineConstants Condition="'$(DefineConstants)'==''">PublishDir=$(PublishDir)</DefineConstants>
-    <DefineConstants Condition="'$(DefineConstants)'!=''">$(DefineConstants);PublishDir=$(PublishDir)</DefineConstants>
+    <DefineConstants>PublishDir=$(PublishDir)</DefineConstants>
     <!--
       Strip the trailing path separator so that -o "$(PublishDirNoSlash)"
       in the dotnet publish command is quoted correctly on Windows.
