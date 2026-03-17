@@ -16,6 +16,7 @@ const {
   createAgentClientMock,
   LanguageModelTextPart,
   LanguageModelToolResult,
+  LanguageModelDataPart,
 } = vi.hoisted(() => {
   const hoistedCommandHandlers = new Map<string, (...args: unknown[]) => Promise<void> | void>();
   const hoistedToolHandlers = new Map<string, { invoke: (...args: unknown[]) => Promise<unknown> }>();
@@ -44,6 +45,20 @@ const {
     }
   }
 
+  class HoistedLanguageModelDataPart {
+    value: Uint8Array;
+    mime: string;
+
+    constructor(value: Uint8Array, mime: string) {
+      this.value = value;
+      this.mime = mime;
+    }
+
+    static image(data: Uint8Array, mime: string) {
+      return new HoistedLanguageModelDataPart(data, mime);
+    }
+  }
+
   return {
     commandHandlers: hoistedCommandHandlers,
     toolHandlers: hoistedToolHandlers,
@@ -60,6 +75,7 @@ const {
     createAgentClientMock: vi.fn(),
     LanguageModelTextPart: HoistedLanguageModelTextPart,
     LanguageModelToolResult: HoistedLanguageModelToolResult,
+    LanguageModelDataPart: HoistedLanguageModelDataPart,
   };
 });
 
@@ -98,6 +114,7 @@ vi.mock("vscode", () => ({
   },
   LanguageModelTextPart,
   LanguageModelToolResult,
+  LanguageModelDataPart,
 }));
 
 vi.mock("../src/agentClient", () => ({
@@ -216,5 +233,24 @@ describe("extension activation and commands", () => {
     expect(textPart.value).toContain('Window: "Calculator"');
     expect(textPart.value).toContain('button "7" id=button-seven [10,20 30×40]');
     expect(textPart.value).toContain('  text "child" id=text-child');
+  });
+
+  it("GetScreenshot tool returns an image data part", async () => {
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    createAgentClientMock.mockReturnValue({
+      getScreenshot: vi.fn().mockResolvedValue({
+        imageBase64: Buffer.from("png-bytes").toString("base64"),
+      }),
+    });
+
+    activate(context as never);
+
+    const tool = toolHandlers.get("adagioAgent_getScreenshot");
+    const result = await tool?.invoke({ input: { pid: 42 } }, {});
+    const parts = (result as { parts: Array<{ value?: string; mime?: string }> }).parts;
+
+    expect(parts).toHaveLength(2);
+    expect(parts[0].value).toContain("Screenshot captured for process 42.");
+    expect(parts[1].mime).toBe("image/png");
   });
 });

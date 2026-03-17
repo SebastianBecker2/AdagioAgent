@@ -400,8 +400,10 @@ class GetScreenshotTool {
     async invoke(options, _token) {
         const client = (0, agentClient_1.createAgentClient)();
         const screenshot = await client.getScreenshot(options.input.pid);
+        const imageBytes = new Uint8Array(Buffer.from(screenshot.imageBase64, "base64"));
         return new vscode.LanguageModelToolResult([
-            new vscode.LanguageModelTextPart(`Screenshot captured (base64 PNG, ${screenshot.imageBase64.length} chars).`),
+            new vscode.LanguageModelTextPart(`Screenshot captured for process ${options.input.pid}.`),
+            vscode.LanguageModelDataPart.image(imageBytes, "image/png"),
         ]);
     }
 }
