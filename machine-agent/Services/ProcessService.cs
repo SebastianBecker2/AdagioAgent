@@ -85,11 +85,9 @@ public sealed class ProcessService : IDisposable
 
     private void EnforceWhitelist(string command)
     {
-        var normalizedCommand = Path.GetFullPath(command);
-        var allowed = _options.AllowedExecutablePaths.Any(dir =>
-            normalizedCommand.StartsWith(
-                Path.GetFullPath(dir),
-                StringComparison.OrdinalIgnoreCase));
+        var allowed = PathPolicy.IsPathWithinAllowedDirectories(
+            command,
+            _options.AllowedExecutablePaths);
 
         if (!allowed)
         {

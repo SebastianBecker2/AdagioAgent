@@ -92,6 +92,27 @@ public sealed class ProcessServiceTests
         Assert.Equal("exited", tracked.Status);
     }
 
+    [Fact]
+    public void Start_RejectsPathPrefixBypassOutsideAllowedDirectory()
+    {
+        var allowedRoot = Path.Combine(Path.GetTempPath(), "allowed-root");
+        Directory.CreateDirectory(allowedRoot);
+
+        using var sut = CreateService(new global::AgentOptions
+        {
+            AllowedExecutablePaths = [allowedRoot],
+            AllowedWritablePaths = [allowedRoot],
+            AllowedReadablePaths = [allowedRoot],
+            MaxConcurrentProcesses = 1,
+            ProcessTimeoutSeconds = 60,
+        });
+
+        var bypassPath = Path.Combine(allowedRoot + "-evil", "installer.exe");
+
+        var ex = Assert.Throws<InvalidOperationException>(() => sut.Start(bypassPath, null, null));
+        Assert.Contains("not in an allowed executable path", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static ProcessService CreateService(global::AgentOptions options)
     {
         return new ProcessService(

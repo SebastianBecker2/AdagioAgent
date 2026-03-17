@@ -294,6 +294,32 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void CopyFile_RejectsPathPrefixBypass()
+    {
+        var allowedRoot = Path.Combine(Path.GetTempPath(), "allowed-copy-root");
+        Directory.CreateDirectory(allowedRoot);
+        var bypassPath = Path.Combine(allowedRoot + "-evil", "file.txt");
+
+        using var processService = CreateProcessService(allowedExecutablePaths: [allowedRoot]);
+        var uiService = new Mock<IUiAutomationService>();
+        var options = Options.Create(new global::AgentOptions
+        {
+            AllowedExecutablePaths = [allowedRoot],
+            AllowedWritablePaths = [allowedRoot],
+            AllowedReadablePaths = [allowedRoot],
+            MaxConcurrentProcesses = 2,
+            ProcessTimeoutSeconds = 60,
+        });
+        var sut = CreateController(processService, uiService.Object, options);
+
+        var result = sut.CopyFile(new CopyFileRequest(bypassPath, "SGVsbG8=", false));
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result);
+        var payload = Assert.IsType<ErrorResponse>(bad.Value);
+        Assert.Contains("not in an allowed directory", payload.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void CopyFile_ReturnsBadRequestWhenFileExistsAndOverwriteFalse()
     {
         var tempFile = Path.Combine(Path.GetTempPath(), "test-copy.txt");
@@ -445,6 +471,8 @@ public sealed class AutomationControllerTests
         options ??= Options.Create(new global::AgentOptions
         {
             AllowedExecutablePaths = [Path.GetTempPath()],
+            AllowedWritablePaths = [Path.GetTempPath()],
+            AllowedReadablePaths = [Path.GetTempPath()],
             MaxConcurrentProcesses = 2,
             ProcessTimeoutSeconds = 60,
         });

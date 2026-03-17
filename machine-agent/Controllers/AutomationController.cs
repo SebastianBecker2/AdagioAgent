@@ -355,19 +355,18 @@ public sealed class AutomationController : ControllerBase
         try
         {
             var destinationPath = Path.GetFullPath(request.DestinationPath);
-            
-            // Validate destination path is in an allowed location (same whitelist as commands)
+
+            // Validate destination path against writable-path policy.
             var options = HttpContext.RequestServices.GetRequiredService<IOptions<AgentOptions>>();
-            var allowed = options.Value.AllowedExecutablePaths.Any(dir =>
-                destinationPath.StartsWith(
-                    Path.GetFullPath(dir),
-                    StringComparison.OrdinalIgnoreCase));
+            var allowed = PathPolicy.IsPathWithinAllowedDirectories(
+                destinationPath,
+                options.Value.AllowedWritablePaths);
 
             if (!allowed)
             {
                 return BadRequest(new ErrorResponse(
                     $"Destination path '{request.DestinationPath}' is not in an allowed directory. " +
-                    $"Allowed paths: {string.Join(", ", options.Value.AllowedExecutablePaths)}"));
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedWritablePaths)}"));
             }
 
             // Check if file exists and overwrite flag
@@ -422,14 +421,15 @@ public sealed class AutomationController : ControllerBase
         {
             var fullPath = Path.GetFullPath(request.Path);
             var options = HttpContext.RequestServices.GetRequiredService<IOptions<AgentOptions>>();
-            var allowed = options.Value.AllowedExecutablePaths.Any(dir =>
-                fullPath.StartsWith(Path.GetFullPath(dir), StringComparison.OrdinalIgnoreCase));
+            var allowed = PathPolicy.IsPathWithinAllowedDirectories(
+                fullPath,
+                options.Value.AllowedReadablePaths);
 
             if (!allowed)
             {
                 return BadRequest(new ErrorResponse(
                     $"Path '{request.Path}' is not in an allowed directory. " +
-                    $"Allowed paths: {string.Join(", ", options.Value.AllowedExecutablePaths)}"));
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}"));
             }
 
             if (!System.IO.File.Exists(fullPath))
@@ -470,14 +470,15 @@ public sealed class AutomationController : ControllerBase
         {
             var fullPath = Path.GetFullPath(request.Path);
             var options = HttpContext.RequestServices.GetRequiredService<IOptions<AgentOptions>>();
-            var allowed = options.Value.AllowedExecutablePaths.Any(dir =>
-                fullPath.StartsWith(Path.GetFullPath(dir), StringComparison.OrdinalIgnoreCase));
+            var allowed = PathPolicy.IsPathWithinAllowedDirectories(
+                fullPath,
+                options.Value.AllowedReadablePaths);
 
             if (!allowed)
             {
                 return BadRequest(new ErrorResponse(
                     $"Path '{request.Path}' is not in an allowed directory. " +
-                    $"Allowed paths: {string.Join(", ", options.Value.AllowedExecutablePaths)}"));
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}"));
             }
 
             if (!System.IO.File.Exists(fullPath))

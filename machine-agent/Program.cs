@@ -51,6 +51,18 @@ public sealed class AgentOptions
             ? ["C:\\Apps"]
             : ["/usr/local/bin"];
 
+    /// <summary>Directories where the agent may write files.</summary>
+    public List<string> AllowedWritablePaths { get; set; } =
+        RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? ["C:\\Apps"]
+            : ["/tmp"];
+
+    /// <summary>Directories where the agent may read files/logs.</summary>
+    public List<string> AllowedReadablePaths { get; set; } =
+        RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? ["C:\\Apps"]
+            : ["/var/log", "/tmp"];
+
     /// <summary>Seconds before a managed process is forcibly killed.</summary>
     public int ProcessTimeoutSeconds { get; set; } = 300;
 
