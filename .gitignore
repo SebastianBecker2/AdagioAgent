@@ -443,6 +443,8 @@ docs/_book
 
 # TODO: where does this rule come from?
 test/
+!controller-extension/test/
+!controller-extension/test/**/*.ts
 
 hcc-ui/docs-dev/
 
