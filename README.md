@@ -141,19 +141,19 @@ installs and registers the machine-agent as a Windows Service
 **Prerequisites:**
 
 - .NET 8 SDK (used to publish the agent before packaging)
-- Visual Studio MSBuild **or** the [WiX Toolset v4](https://wixtoolset.org/)
-  CLI tools (downloaded automatically as NuGet packages on first build)
+- [WiX Toolset SDK v6.0.2](https://wixtoolset.org/) (downloaded automatically
+  as NuGet packages on first build; includes **WixToolset.Heat** for
+  directory-based file harvesting)
 
 **Build the installer (run from the repo root or the `installer/` directory):**
 
 ```powershell
-# Restore the WiX SDK and build the .msi
-msbuild installer\AdagioMachineAgent.Setup.wixproj -r -p:Configuration=Release
+dotnet build installer/AdagioMachineAgent.Setup.wixproj -p:Configuration=Release
 ```
 
 The installer is written to:
 ```
-installer\bin\Release\en-US\AdagioMachineAgentSetup.msi
+installer/bin/x64/Release/AdagioMachineAgentSetup.msi
 ```
 
 **What the installer does:**
@@ -203,6 +203,17 @@ sc.exe config AdagioMachineAgent obj= ".\YourUserName" password= "YourPassword"
 sc.exe config AdagioMachineAgent obj= "DOMAIN\YourUserName" password= "YourPassword"
 Restart-Service AdagioMachineAgent
 ```
+
+**Notes:**
+
+- **WiX 6.0.2**: Project upgraded from v4 to v6.0.2 to modernize the installer
+  toolchain. Build process is now fully managed by `dotnet build` with
+  transparent NuGet Package restoration.
+- **Heat (WixToolset.Heat)**: Automatically harvests runtime files from the
+  publish directory into the installer. Heat is **deprecated in WiX v7** and
+  will be replaced by the native `Files` element for future versions.
+- **Build artifact**: MSI is produced at `installer/bin/x64/Release/` and is
+  self-contained (69 MB); ready for distribution.
 
 ---
 
