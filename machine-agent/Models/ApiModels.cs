@@ -32,6 +32,17 @@ public sealed record CollectInstallArtifactsRequest(
     bool IncludeMsiEvents = true,
     int EventEntryCount = 20);
 
+/// <summary>Launch an installer process and collect diagnostics after it exits or times out.</summary>
+public sealed record RunInstallerAndCollectArtifactsRequest(
+    string Command,
+    string? Arguments = null,
+    string? WorkingDirectory = null,
+    int TimeoutMilliseconds = 30000,
+    string? LogPath = null,
+    int TailLines = 200,
+    bool IncludeMsiEvents = true,
+    int EventEntryCount = 20);
+
 /// <summary>Terminate a tracked process.</summary>
 public sealed record TerminateProcessRequest(int Pid);
 
@@ -161,6 +172,12 @@ public sealed record CollectInstallArtifactsResponse(
     TailFileResponse? LogTail,
     List<InstallEventLogEntry> MsiEvents,
     List<string> Warnings);
+
+/// <summary>Combined installer launch and artifact collection response.</summary>
+public sealed record RunInstallerAndCollectArtifactsResponse(
+    int Pid,
+    DateTimeOffset StartedAt,
+    CollectInstallArtifactsResponse Artifacts);
 
 /// <summary>Result of waiting for a UI element.</summary>
 public sealed record WaitForElementResponse(bool Found, ElementStateResponse? Element);

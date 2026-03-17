@@ -75,6 +75,57 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void RunInstallerAndCollectArtifacts_ValidatesInputs()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndCollectArtifacts(new RunInstallerAndCollectArtifactsRequest("")));
+        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndCollectArtifacts(new RunInstallerAndCollectArtifactsRequest("C:/Apps/setup.exe", TimeoutMilliseconds: 0)));
+        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndCollectArtifacts(new RunInstallerAndCollectArtifactsRequest("C:/Apps/setup.exe", TailLines: 0)));
+        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndCollectArtifacts(new RunInstallerAndCollectArtifactsRequest("C:/Apps/setup.exe", EventEntryCount: 0)));
+    }
+
+    [Fact]
+    public void RunInstallerAndCollectArtifacts_ReturnsArtifactsForStartedProcess()
+    {
+        var commandInfo = ResolveQuickExitCommand();
+        var logPath = Path.Combine(Path.GetTempPath(), $"run-artifact-log-{Guid.NewGuid():N}.log");
+        File.WriteAllLines(logPath, ["alpha", "beta", "gamma"]);
+
+        using var processService = CreateProcessService(
+            allowedExecutablePaths: [Path.GetDirectoryName(commandInfo.Command)!]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        try
+        {
+            var result = sut.RunInstallerAndCollectArtifacts(new RunInstallerAndCollectArtifactsRequest(
+                Command: commandInfo.Command,
+                Arguments: commandInfo.Arguments,
+                TimeoutMilliseconds: 5000,
+                LogPath: logPath,
+                TailLines: 2,
+                IncludeMsiEvents: false));
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var payload = Assert.IsType<RunInstallerAndCollectArtifactsResponse>(ok.Value);
+            Assert.True(payload.Pid > 0);
+            Assert.True(payload.Artifacts.Exited);
+            Assert.Equal(payload.Pid, payload.Artifacts.Process.Pid);
+            Assert.NotNull(payload.Artifacts.LogTail);
+            Assert.DoesNotContain("alpha", payload.Artifacts.LogTail!.Content);
+            Assert.Contains("beta", payload.Artifacts.LogTail.Content);
+            Assert.Contains("gamma", payload.Artifacts.LogTail.Content);
+        }
+        finally
+        {
+            File.Delete(logPath);
+        }
+    }
+
+    [Fact]
     public void GetProcessStatus_ReturnsNotFoundWhenPidNotTracked()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);

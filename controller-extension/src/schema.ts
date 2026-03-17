@@ -42,6 +42,17 @@ export interface CollectInstallArtifactsRequest {
   eventEntryCount?: number;
 }
 
+export interface RunInstallerAndCollectArtifactsRequest {
+  command: string;
+  arguments?: string;
+  workingDirectory?: string;
+  timeoutMilliseconds?: number;
+  logPath?: string;
+  tailLines?: number;
+  includeMsiEvents?: boolean;
+  eventEntryCount?: number;
+}
+
 export interface TerminateProcessRequest {
   pid: number;
 }
@@ -203,6 +214,12 @@ export interface CollectInstallArtifactsResponse {
   logTail?: TailFileResponse;
   msiEvents: InstallEventLogEntry[];
   warnings: string[];
+}
+
+export interface RunInstallerAndCollectArtifactsResponse {
+  pid: number;
+  startedAt: string;
+  artifacts: CollectInstallArtifactsResponse;
 }
 
 export interface ReadTextFileResponse {

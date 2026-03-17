@@ -76,6 +76,12 @@ class AgentClient {
         return this.post("/collect-install-artifacts", request);
     }
     /**
+     * Start an installer process and collect diagnostics when it exits or times out.
+     */
+    async runInstallerAndCollectArtifacts(request) {
+        return this.post("/run-installer-and-collect-artifacts", request);
+    }
+    /**
      * Terminate a tracked process.
      * @param request Process ID to terminate
      */

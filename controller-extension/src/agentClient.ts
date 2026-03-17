@@ -17,6 +17,8 @@ import {
   WaitForExitResponse,
   CollectInstallArtifactsRequest,
   CollectInstallArtifactsResponse,
+  RunInstallerAndCollectArtifactsRequest,
+  RunInstallerAndCollectArtifactsResponse,
   TerminateProcessRequest,
   StatusResponse,
   ReadTextFileRequest,
@@ -87,6 +89,18 @@ export class AgentClient {
     request: CollectInstallArtifactsRequest
   ): Promise<CollectInstallArtifactsResponse> {
     return this.post<CollectInstallArtifactsResponse>("/collect-install-artifacts", request);
+  }
+
+  /**
+   * Start an installer process and collect diagnostics when it exits or times out.
+   */
+  async runInstallerAndCollectArtifacts(
+    request: RunInstallerAndCollectArtifactsRequest
+  ): Promise<RunInstallerAndCollectArtifactsResponse> {
+    return this.post<RunInstallerAndCollectArtifactsResponse>(
+      "/run-installer-and-collect-artifacts",
+      request
+    );
   }
 
   /**

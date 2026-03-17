@@ -11,6 +11,17 @@ interface RunExecutableInput {
   workingDirectory?: string;
 }
 
+interface RunInstallerAndCollectArtifactsInput {
+  command: string;
+  arguments?: string;
+  workingDirectory?: string;
+  timeoutMilliseconds?: number;
+  logPath?: string;
+  tailLines?: number;
+  includeMsiEvents?: boolean;
+  eventEntryCount?: number;
+}
+
 interface PidInput {
   pid: number;
 }
@@ -102,6 +113,10 @@ export function activate(context: vscode.ExtensionContext): void {
       "adagioAgent.runExecutable",
       cmdRunExecutable
     ),
+    vscode.commands.registerCommand(
+      "adagioAgent.runInstallerAndCollectArtifacts",
+      cmdRunInstallerAndCollectArtifacts
+    ),
     vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree),
     vscode.commands.registerCommand(
       "adagioAgent.clickElement",
@@ -137,6 +152,10 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.lm.registerTool(
         "adagioAgent_runExecutable",
         new RunExecutableTool()
+      ),
+      vscode.lm.registerTool(
+        "adagioAgent_runInstallerAndCollectArtifacts",
+        new RunInstallerAndCollectArtifactsTool()
       ),
       vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()),
       vscode.lm.registerTool(
@@ -197,6 +216,39 @@ async function cmdRunExecutable(): Promise<void> {
       );
     }
   );
+}
+
+async function cmdRunInstallerAndCollectArtifacts(): Promise<void> {
+  const command = await vscode.window.showInputBox({
+    prompt: "Full path to installer on the target machine",
+    placeHolder: "C:\\Apps\\setup.exe",
+  });
+  if (!command) {
+    return;
+  }
+
+  const argumentsValue = await vscode.window.showInputBox({
+    prompt: "Optional installer arguments",
+    placeHolder: "/quiet /norestart",
+  });
+
+  const logPath = await vscode.window.showInputBox({
+    prompt: "Optional installer log path on the target machine",
+    placeHolder: "C:\\Apps\\installer.log",
+  });
+
+  const client = createAgentClient();
+  const result = await client.runInstallerAndCollectArtifacts({
+    command,
+    arguments: argumentsValue || undefined,
+    logPath: logPath || undefined,
+  });
+
+  const doc = await vscode.workspace.openTextDocument({
+    language: "json",
+    content: JSON.stringify(result, null, 2),
+  });
+  await vscode.window.showTextDocument(doc);
 }
 
 async function cmdGetUiTree(): Promise<void> {
@@ -749,6 +801,33 @@ class RunExecutableTool implements vscode.LanguageModelTool<RunExecutableInput> 
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
         `Executable started.\n- PID: ${result.pid}\n- Status: ${result.status}\n- Started at: ${result.startedAt}`
+      ),
+    ]);
+  }
+}
+
+class RunInstallerAndCollectArtifactsTool implements vscode.LanguageModelTool<RunInstallerAndCollectArtifactsInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<RunInstallerAndCollectArtifactsInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.runInstallerAndCollectArtifacts(options.input);
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        [
+          `Installer started with PID ${result.pid}.`,
+          result.artifacts.exited
+            ? `Process exited with status ${result.artifacts.process.status}.`
+            : `Process is still running after timeout.`,
+          result.artifacts.logTail
+            ? `Log tail captured from ${result.artifacts.logTail.path}.`
+            : "No log tail captured.",
+          `MSI events captured: ${result.artifacts.msiEvents.length}.`,
+          result.artifacts.warnings.length > 0
+            ? `Warnings: ${result.artifacts.warnings.join(" | ")}`
+            : "Warnings: none.",
+        ].join("\n")
       ),
     ]);
   }

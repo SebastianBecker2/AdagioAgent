@@ -76,6 +76,70 @@ public sealed class AutomationController : ControllerBase
         }
     }
 
+    // ── POST /run-installer-and-collect-artifacts ────────────────────────
+
+    /// <summary>
+    /// Start an installer process, wait for it, and collect diagnostic artifacts
+    /// such as log tail and recent MSI event-log entries.
+    /// </summary>
+    [HttpPost("/run-installer-and-collect-artifacts")]
+    [ProducesResponseType(typeof(RunInstallerAndCollectArtifactsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public IActionResult RunInstallerAndCollectArtifacts([FromBody] RunInstallerAndCollectArtifactsRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Command))
+        {
+            return BadRequest(new ErrorResponse("Command is required."));
+        }
+
+        if (request.TimeoutMilliseconds <= 0)
+        {
+            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer."));
+        }
+
+        if (request.TailLines <= 0)
+        {
+            return BadRequest(new ErrorResponse("tailLines must be a positive integer."));
+        }
+
+        if (request.EventEntryCount <= 0)
+        {
+            return BadRequest(new ErrorResponse("eventEntryCount must be a positive integer."));
+        }
+
+        try
+        {
+            var tracked = _processService.Start(
+                request.Command,
+                request.Arguments,
+                request.WorkingDirectory);
+
+            var artifacts = CollectArtifactsForTrackedProcess(
+                tracked,
+                request.TimeoutMilliseconds,
+                request.LogPath,
+                request.TailLines,
+                request.IncludeMsiEvents,
+                request.EventEntryCount);
+
+            return Ok(new RunInstallerAndCollectArtifactsResponse(
+                tracked.Process.Id,
+                tracked.StartedAt,
+                artifacts));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "RunInstallerAndCollectArtifacts rejected: {Message}", ex.Message);
+            return BadRequest(new ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to run installer and collect artifacts.");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to run installer and collect artifacts.", ex.Message));
+        }
+    }
+
     // ── GET /process-status ────────────────────────────────────────────────
 
     /// <summary>Get status for a tracked process.</summary>
@@ -177,48 +241,17 @@ public sealed class AutomationController : ControllerBase
 
         try
         {
-            var exited = tracked.Process.WaitForExit(request.TimeoutMilliseconds);
-            var process = ToProcessStatus(tracked);
-            var warnings = new List<string>();
-            TailFileResponse? logTail = null;
-            var msiEvents = new List<InstallEventLogEntry>();
-
-            if (!string.IsNullOrWhiteSpace(request.LogPath))
-            {
-                var fullPath = Path.GetFullPath(request.LogPath);
-                var options = HttpContext.RequestServices.GetRequiredService<IOptions<AgentOptions>>();
-                var allowed = PathPolicy.IsPathWithinAllowedDirectories(
-                    fullPath,
-                    options.Value.AllowedReadablePaths);
-
-                if (!allowed)
-                {
-                    return BadRequest(new ErrorResponse(
-                        $"Path '{request.LogPath}' is not in an allowed directory. " +
-                        $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}"));
-                }
-
-                if (System.IO.File.Exists(fullPath))
-                {
-                    logTail = ReadTailFile(fullPath, request.TailLines);
-                }
-                else
-                {
-                    warnings.Add($"Log file '{request.LogPath}' does not exist.");
-                }
-            }
-
-            if (request.IncludeMsiEvents)
-            {
-                var (entries, warning) = ReadInstallerEvents(tracked.StartedAt, request.EventEntryCount);
-                msiEvents = entries;
-                if (!string.IsNullOrWhiteSpace(warning))
-                {
-                    warnings.Add(warning);
-                }
-            }
-
-            return Ok(new CollectInstallArtifactsResponse(exited, process, logTail, msiEvents, warnings));
+            return Ok(CollectArtifactsForTrackedProcess(
+                tracked,
+                request.TimeoutMilliseconds,
+                request.LogPath,
+                request.TailLines,
+                request.IncludeMsiEvents,
+                request.EventEntryCount));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ErrorResponse(ex.Message));
         }
         catch (Exception ex)
         {
@@ -994,6 +1027,65 @@ public sealed class AutomationController : ControllerBase
             tracked.StartedAt,
             exitedAt,
             exitCode);
+    }
+
+    private CollectInstallArtifactsResponse CollectArtifactsForTrackedProcess(
+        TrackedProcess tracked,
+        int timeoutMilliseconds,
+        string? logPath,
+        int tailLines,
+        bool includeMsiEvents,
+        int eventEntryCount)
+    {
+        var exited = tracked.Process.WaitForExit(timeoutMilliseconds);
+        var process = ToProcessStatus(tracked);
+        var warnings = new List<string>();
+        TailFileResponse? logTail = null;
+        var msiEvents = new List<InstallEventLogEntry>();
+
+        if (!string.IsNullOrWhiteSpace(logPath))
+        {
+            var validatedPath = ValidateReadablePath(logPath);
+
+            if (System.IO.File.Exists(validatedPath))
+            {
+                logTail = ReadTailFile(validatedPath, tailLines);
+            }
+            else
+            {
+                warnings.Add($"Log file '{logPath}' does not exist.");
+            }
+        }
+
+        if (includeMsiEvents)
+        {
+            var (entries, warning) = ReadInstallerEvents(tracked.StartedAt, eventEntryCount);
+            msiEvents = entries;
+            if (!string.IsNullOrWhiteSpace(warning))
+            {
+                warnings.Add(warning);
+            }
+        }
+
+        return new CollectInstallArtifactsResponse(exited, process, logTail, msiEvents, warnings);
+    }
+
+    private string ValidateReadablePath(string requestedPath)
+    {
+        var fullPath = Path.GetFullPath(requestedPath);
+        var options = HttpContext.RequestServices.GetRequiredService<IOptions<AgentOptions>>();
+        var allowed = PathPolicy.IsPathWithinAllowedDirectories(
+            fullPath,
+            options.Value.AllowedReadablePaths);
+
+        if (!allowed)
+        {
+            throw new InvalidOperationException(
+                $"Path '{requestedPath}' is not in an allowed directory. " +
+                $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}");
+        }
+
+        return fullPath;
     }
 
     private static TailFileResponse ReadTailFile(string fullPath, int lines)

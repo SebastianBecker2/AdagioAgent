@@ -140,8 +140,9 @@ describe("extension activation and commands", () => {
 
     activate(context as never);
 
-    expect(registerCommandMock).toHaveBeenCalledTimes(21);
+    expect(registerCommandMock).toHaveBeenCalledTimes(22);
     expect(commandHandlers.has("adagioAgent.runExecutable")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.runInstallerAndCollectArtifacts")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getUiTree")).toBe(true);
     expect(commandHandlers.has("adagioAgent.clickElement")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getScreenshot")).toBe(true);
@@ -163,8 +164,9 @@ describe("extension activation and commands", () => {
     expect(commandHandlers.has("adagioAgent.setCheckbox")).toBe(true);
     expect(commandHandlers.has("adagioAgent.selectOption")).toBe(true);
 
-    expect(registerToolMock).toHaveBeenCalledTimes(21);
+    expect(registerToolMock).toHaveBeenCalledTimes(22);
     expect(toolHandlers.has("adagioAgent_runExecutable")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_runInstallerAndCollectArtifacts")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getUiTree")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getScreenshot")).toBe(true);
     expect(toolHandlers.has("adagioAgent_clickElement")).toBe(true);
