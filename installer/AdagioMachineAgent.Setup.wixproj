@@ -26,6 +26,10 @@
 -->
 <Project Sdk="WixToolset.Sdk/6.0.2">
 
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Heat" Version="6.0.2" PrivateAssets="all" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputName>AdagioMachineAgentSetup</OutputName>
     <Platform>x64</Platform>
@@ -69,6 +73,8 @@
     <HarvestDirectory Include="$(PublishDir)">
       <DirectoryRefId>INSTALLFOLDER</DirectoryRefId>
       <ComponentGroupName>ApplicationFiles</ComponentGroupName>
+      <SuppressCom>true</SuppressCom>
+      <SuppressRegistry>true</SuppressRegistry>
       <SuppressRootDirectory>true</SuppressRootDirectory>
       <Transforms>$(MSBuildThisFileDirectory)ExcludeMainExe.xslt</Transforms>
     </HarvestDirectory>

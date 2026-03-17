@@ -26,4 +26,11 @@
   <xsl:template
     match="wix:Component[wix:File[contains(@Source, 'AdagioMachineAgent.exe')]]" />
 
+  <!--
+    Also drop ComponentRef entries that point to the excluded executable
+    component; otherwise linking fails with unresolved component identifiers.
+  -->
+  <xsl:template
+    match="wix:ComponentRef[@Id = //wix:Component[wix:File[contains(@Source, 'AdagioMachineAgent.exe')]]/@Id]" />
+
 </xsl:stylesheet>
