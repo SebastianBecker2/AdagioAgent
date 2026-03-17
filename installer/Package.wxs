@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  WiX v4 installer for Adagio Machine Agent.
+  WiX v6 installer for Adagio Machine Agent.
 
   Installs the machine-agent as a Windows Service (AdagioMachineAgent) that
   starts automatically and listens on http://0.0.0.0:5000.

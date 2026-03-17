@@ -10,19 +10,20 @@
   Prerequisites
   ──────────────
   • .NET 8 SDK
-  • WiX v6 toolset (installed automatically via the WixToolset.Sdk NuGet SDK)
+  • WiX SDK v6.0.2 (installed automatically via NuGet packages)
+  • WixToolset.Heat package (harvests published files into .msi)
 
   Build
   ──────
   From this directory (or the repo root):
 
-      msbuild installer\AdagioMachineAgent.Setup.wixproj -r -p:Configuration=Release
+      dotnet build installer/AdagioMachineAgent.Setup.wixproj -p:Configuration=Release
 
-  The .msi is written to  installer\bin\Release\en-US\AdagioMachineAgentSetup.msi
+  The .msi is written to: installer/bin/x64/Release/AdagioMachineAgentSetup.msi
 
   To customise the publish output location, override the PublishDir property:
 
-      msbuild ... -p:PublishDir=C:\custom\publish\
+      dotnet build ... -p:PublishDir=C:\custom\publish\
 -->
 <Project Sdk="WixToolset.Sdk/6.0.2">
 

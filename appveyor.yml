@@ -31,9 +31,9 @@ build_script:
   - cd ..
 
   # 3. Build the WiX MSI installer (also publishes the machine-agent internally)
-  - msbuild installer\AdagioMachineAgent.Setup.wixproj -r -p:Configuration=Release -nologo -verbosity:minimal
+  - dotnet build installer/AdagioMachineAgent.Setup.wixproj -p:Configuration=Release
 
 # ── Artifacts ────────────────────────────────────────────────────────────────
 artifacts:
-  - path: installer\bin\Release\en-US\AdagioMachineAgentSetup.msi
+  - path: installer/bin/x64/Release/AdagioMachineAgentSetup.msi
     name: AdagioMachineAgentSetup
