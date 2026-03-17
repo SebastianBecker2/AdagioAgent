@@ -123,21 +123,27 @@ describe("extension activation and commands", () => {
 
     activate(context as never);
 
-    expect(registerCommandMock).toHaveBeenCalledTimes(6);
+    expect(registerCommandMock).toHaveBeenCalledTimes(9);
     expect(commandHandlers.has("adagioAgent.runExecutable")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getUiTree")).toBe(true);
     expect(commandHandlers.has("adagioAgent.clickElement")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getScreenshot")).toBe(true);
     expect(commandHandlers.has("adagioAgent.typeText")).toBe(true);
     expect(commandHandlers.has("adagioAgent.copyFile")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.getProcessStatus")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.waitForExit")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.terminateProcess")).toBe(true);
 
-    expect(registerToolMock).toHaveBeenCalledTimes(6);
+    expect(registerToolMock).toHaveBeenCalledTimes(9);
     expect(toolHandlers.has("adagioAgent_runExecutable")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getUiTree")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getScreenshot")).toBe(true);
     expect(toolHandlers.has("adagioAgent_clickElement")).toBe(true);
     expect(toolHandlers.has("adagioAgent_typeText")).toBe(true);
     expect(toolHandlers.has("adagioAgent_copyFile")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_getProcessStatus")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_waitForExit")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_terminateProcess")).toBe(true);
   });
 
   it("getUiTree command rejects invalid pid without calling API", async () => {

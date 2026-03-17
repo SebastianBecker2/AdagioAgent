@@ -26,6 +26,11 @@ interface TypeInput {
   text: string;
 }
 
+interface WaitForExitInput {
+  pid: number;
+  timeoutMilliseconds?: number;
+}
+
 // ─── Activation ──────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -46,7 +51,10 @@ export function activate(context: vscode.ExtensionContext): void {
       cmdGetScreenshot
     ),
     vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText),
-    vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile)
+    vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile),
+    vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus),
+    vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit),
+    vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess)
   );
 
   // ── Copilot language-model tools ─────────────────────────────────────────
@@ -67,7 +75,10 @@ export function activate(context: vscode.ExtensionContext): void {
         new ClickElementTool()
       ),
       vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()),
-      vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool())
+      vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()),
+      vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()),
+      vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()),
+      vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool())
     );
   }
 }
@@ -259,6 +270,82 @@ async function cmdCopyFile(): Promise<void> {
   }
 }
 
+async function cmdGetProcessStatus(): Promise<void> {
+  const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+  if (!pidStr) {
+    return;
+  }
+
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    vscode.window.showErrorMessage("Invalid PID.");
+    return;
+  }
+
+  const client = createAgentClient();
+  const status = await client.getProcessStatus(pid);
+  vscode.window.showInformationMessage(
+    `Process ${status.pid}: ${status.status}` +
+      (status.exitCode !== undefined ? ` (exit code ${status.exitCode})` : "")
+  );
+}
+
+async function cmdWaitForExit(): Promise<void> {
+  const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+  if (!pidStr) {
+    return;
+  }
+
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    vscode.window.showErrorMessage("Invalid PID.");
+    return;
+  }
+
+  const timeoutStr = await vscode.window.showInputBox({
+    prompt: "Timeout milliseconds",
+    value: "30000",
+  });
+  if (!timeoutStr) {
+    return;
+  }
+
+  const timeoutMilliseconds = Number(timeoutStr);
+  if (!Number.isInteger(timeoutMilliseconds) || timeoutMilliseconds <= 0) {
+    vscode.window.showErrorMessage("Invalid timeout.");
+    return;
+  }
+
+  const client = createAgentClient();
+  const result = await client.waitForExit({ pid, timeoutMilliseconds });
+  vscode.window.showInformationMessage(
+    result.exited
+      ? `Process ${pid} exited with status ${result.process.status}.`
+      : `Process ${pid} is still running after timeout.`
+  );
+}
+
+async function cmdTerminateProcess(): Promise<void> {
+  const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+  if (!pidStr) {
+    return;
+  }
+
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    vscode.window.showErrorMessage("Invalid PID.");
+    return;
+  }
+
+  const client = createAgentClient();
+  const result = await client.terminateProcess({ pid });
+  if (result.status === "ok") {
+    vscode.window.showInformationMessage(result.message ?? `Process ${pid} terminated.`);
+  } else {
+    vscode.window.showErrorMessage(result.message ?? `Failed to terminate process ${pid}.`);
+  }
+}
+
 // ─── Copilot tool implementations ────────────────────────────────────────────
 
 function uiTreeSummary(elements: UiElement[], depth = 0): string {
@@ -389,6 +476,65 @@ class CopyFileTool implements vscode.LanguageModelTool<CopyFileInput> {
       new vscode.LanguageModelTextPart(
         `File copied to ${result.destinationPath} (${result.bytesWritten} bytes)`
       ),
+    ]);
+  }
+}
+
+class GetProcessStatusTool implements vscode.LanguageModelTool<PidInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<PidInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const status = await client.getProcessStatus(options.input.pid);
+    const parts = [
+      `PID: ${status.pid}`,
+      `Status: ${status.status}`,
+      `Started: ${status.startedAt}`,
+    ];
+    if (status.exitedAt) {
+      parts.push(`Exited: ${status.exitedAt}`);
+    }
+    if (status.exitCode !== undefined) {
+      parts.push(`Exit code: ${status.exitCode}`);
+    }
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(parts.join("\n")),
+    ]);
+  }
+}
+
+class WaitForExitTool implements vscode.LanguageModelTool<WaitForExitInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<WaitForExitInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const timeoutMilliseconds = options.input.timeoutMilliseconds ?? 30000;
+    const result = await client.waitForExit({
+      pid: options.input.pid,
+      timeoutMilliseconds,
+    });
+
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        result.exited
+          ? `Process ${result.process.pid} exited with status ${result.process.status}.`
+          : `Process ${result.process.pid} is still running after ${timeoutMilliseconds}ms.`
+      ),
+    ]);
+  }
+}
+
+class TerminateProcessTool implements vscode.LanguageModelTool<PidInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<PidInput>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    const client = createAgentClient();
+    const result = await client.terminateProcess({ pid: options.input.pid });
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(result.message ?? `Process ${options.input.pid} terminated.`),
     ]);
   }
 }

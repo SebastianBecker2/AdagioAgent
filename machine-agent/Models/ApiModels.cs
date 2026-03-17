@@ -20,10 +20,24 @@ public sealed record CopyFileRequest(
     string FileContentBase64,
     bool OverwriteIfExists = false);
 
+/// <summary>Wait for a tracked process to exit.</summary>
+public sealed record WaitForExitRequest(int Pid, int TimeoutMilliseconds = 30000);
+
+/// <summary>Terminate a tracked process.</summary>
+public sealed record TerminateProcessRequest(int Pid);
+
 // ─── Responses ────────────────────────────────────────────────────────────────
 
 /// <summary>Result of starting a process.</summary>
 public sealed record RunResponse(int Pid, string Status, DateTimeOffset StartedAt);
+
+/// <summary>Current state of a tracked process.</summary>
+public sealed record ProcessStatusResponse(
+    int Pid,
+    string Status,
+    DateTimeOffset StartedAt,
+    DateTimeOffset? ExitedAt,
+    int? ExitCode);
 
 /// <summary>Bounding rectangle of a UI element.</summary>
 public sealed record Bounds(int X, int Y, int Width, int Height);
@@ -54,3 +68,6 @@ public sealed record ErrorResponse(string Error, string? Detail = null);
 
 /// <summary>Result of copying a file.</summary>
 public sealed record CopyFileResponse(string DestinationPath, int BytesWritten);
+
+/// <summary>Result of waiting for a process to exit.</summary>
+public sealed record WaitForExitResponse(bool Exited, ProcessStatusResponse Process);

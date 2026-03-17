@@ -12,6 +12,11 @@ import {
   AgentError,
   CopyFileRequest,
   CopyFileResponse,
+  ProcessStatusResponse,
+  WaitForExitRequest,
+  WaitForExitResponse,
+  TerminateProcessRequest,
+  StatusResponse,
 } from "./schema";
 
 /**
@@ -38,6 +43,30 @@ export class AgentClient {
    */
   async runExecutable(request: RunRequest): Promise<RunResponse> {
     return this.post<RunResponse>("/run", request);
+  }
+
+  /**
+   * Get status for a tracked process.
+   * @param pid Process ID returned by runExecutable
+   */
+  async getProcessStatus(pid: number): Promise<ProcessStatusResponse> {
+    return this.get<ProcessStatusResponse>(`/process-status?pid=${pid}`);
+  }
+
+  /**
+   * Wait for a tracked process to exit up to a timeout.
+   * @param request Process ID and timeout in milliseconds
+   */
+  async waitForExit(request: WaitForExitRequest): Promise<WaitForExitResponse> {
+    return this.post<WaitForExitResponse>("/wait-for-exit", request);
+  }
+
+  /**
+   * Terminate a tracked process.
+   * @param request Process ID to terminate
+   */
+  async terminateProcess(request: TerminateProcessRequest): Promise<StatusResponse> {
+    return this.post<StatusResponse>("/terminate", request);
   }
 
   // ─── UI Automation ───────────────────────────────────────────────────────

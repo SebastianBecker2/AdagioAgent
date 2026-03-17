@@ -55,6 +55,27 @@ class AgentClient {
     async runExecutable(request) {
         return this.post("/run", request);
     }
+    /**
+     * Get status for a tracked process.
+     * @param pid Process ID returned by runExecutable
+     */
+    async getProcessStatus(pid) {
+        return this.get(`/process-status?pid=${pid}`);
+    }
+    /**
+     * Wait for a tracked process to exit up to a timeout.
+     * @param request Process ID and timeout in milliseconds
+     */
+    async waitForExit(request) {
+        return this.post("/wait-for-exit", request);
+    }
+    /**
+     * Terminate a tracked process.
+     * @param request Process ID to terminate
+     */
+    async terminateProcess(request) {
+        return this.post("/terminate", request);
+    }
     // ─── UI Automation ───────────────────────────────────────────────────────
     /**
      * Retrieve the UI element tree for a running process.

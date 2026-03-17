@@ -75,6 +75,90 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void GetProcessStatus_ReturnsNotFoundWhenPidNotTracked()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var result = sut.GetProcessStatus(999999);
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result);
+        var payload = Assert.IsType<ErrorResponse>(notFound.Value);
+        Assert.Contains("not tracked", payload.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void GetProcessStatus_ReturnsRunningForTrackedProcess()
+    {
+        var commandInfo = ResolveLongRunningCommand();
+        using var processService = CreateProcessService(
+            allowedExecutablePaths: [Path.GetDirectoryName(commandInfo.Command)!]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var runResult = Assert.IsType<OkObjectResult>(
+            sut.Run(new RunRequest(commandInfo.Command, commandInfo.Arguments, null)));
+        var runPayload = Assert.IsType<RunResponse>(runResult.Value);
+
+        try
+        {
+            var statusResult = sut.GetProcessStatus(runPayload.Pid);
+            var ok = Assert.IsType<OkObjectResult>(statusResult);
+            var payload = Assert.IsType<ProcessStatusResponse>(ok.Value);
+            Assert.Equal(runPayload.Pid, payload.Pid);
+            Assert.Equal("running", payload.Status);
+            Assert.Null(payload.ExitCode);
+        }
+        finally
+        {
+            processService.Get(runPayload.Pid)?.Process.Kill(entireProcessTree: true);
+        }
+    }
+
+    [Fact]
+    public void WaitForExit_ReturnsExitedTrueForShortLivedProcess()
+    {
+        var commandInfo = ResolveQuickExitCommand();
+        using var processService = CreateProcessService(
+            allowedExecutablePaths: [Path.GetDirectoryName(commandInfo.Command)!]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var runResult = Assert.IsType<OkObjectResult>(
+            sut.Run(new RunRequest(commandInfo.Command, commandInfo.Arguments, null)));
+        var runPayload = Assert.IsType<RunResponse>(runResult.Value);
+
+        var waitResult = sut.WaitForExit(new WaitForExitRequest(runPayload.Pid, 5000));
+        var ok = Assert.IsType<OkObjectResult>(waitResult);
+        var payload = Assert.IsType<WaitForExitResponse>(ok.Value);
+
+        Assert.True(payload.Exited);
+        Assert.Equal("exited", payload.Process.Status);
+    }
+
+    [Fact]
+    public void Terminate_ReturnsOkForTrackedRunningProcess()
+    {
+        var commandInfo = ResolveLongRunningCommand();
+        using var processService = CreateProcessService(
+            allowedExecutablePaths: [Path.GetDirectoryName(commandInfo.Command)!]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var runResult = Assert.IsType<OkObjectResult>(
+            sut.Run(new RunRequest(commandInfo.Command, commandInfo.Arguments, null)));
+        var runPayload = Assert.IsType<RunResponse>(runResult.Value);
+
+        var terminateResult = sut.Terminate(new TerminateProcessRequest(runPayload.Pid));
+        var ok = Assert.IsType<OkObjectResult>(terminateResult);
+        var payload = Assert.IsType<StatusResponse>(ok.Value);
+
+        Assert.Equal("ok", payload.Status);
+        Assert.Contains("terminated", payload.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void GetUiTree_ReturnsBadRequestWhenPidInvalid()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
@@ -323,5 +407,16 @@ public sealed class AutomationControllerTests
         }
 
         return ("/bin/sleep", "20");
+    }
+
+    private static (string Command, string? Arguments) ResolveQuickExitCommand()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            var command = Path.Combine(Environment.SystemDirectory, "cmd.exe");
+            return (command, "/c exit 0");
+        }
+
+        return ("/bin/true", null);
     }
 }

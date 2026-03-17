@@ -28,12 +28,29 @@ export interface CopyFileRequest {
   overwriteIfExists?: boolean;
 }
 
+export interface WaitForExitRequest {
+  pid: number;
+  timeoutMilliseconds?: number;
+}
+
+export interface TerminateProcessRequest {
+  pid: number;
+}
+
 // ─── Responses ───────────────────────────────────────────────────────────────
 
 export interface RunResponse {
   pid: number;
   status: "running" | "exited" | "error";
   startedAt: string;
+}
+
+export interface ProcessStatusResponse {
+  pid: number;
+  status: "running" | "exited" | "error";
+  startedAt: string;
+  exitedAt?: string;
+  exitCode?: number;
 }
 
 export interface Bounds {
@@ -66,6 +83,11 @@ export interface ClickResponse {
   message?: string;
 }
 
+export interface StatusResponse {
+  status: "ok" | "error";
+  message?: string;
+}
+
 export interface TypeResponse {
   status: "ok" | "error";
   message?: string;
@@ -84,4 +106,9 @@ export interface AgentError {
 export interface CopyFileResponse {
   destinationPath: string;
   bytesWritten: number;
+}
+
+export interface WaitForExitResponse {
+  exited: boolean;
+  process: ProcessStatusResponse;
 }

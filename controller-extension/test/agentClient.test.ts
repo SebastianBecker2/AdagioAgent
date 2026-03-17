@@ -104,4 +104,67 @@ describe("AgentClient", () => {
     const fallback = createAgentClient() as unknown as { baseUrl: string };
     expect(fallback.baseUrl).toBe("http://localhost:5000");
   });
+
+  it("calls process lifecycle endpoints with expected paths and payloads", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            pid: 222,
+            status: "running",
+            startedAt: "2026-03-17T00:00:00Z",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            exited: true,
+            process: {
+              pid: 222,
+              status: "exited",
+              startedAt: "2026-03-17T00:00:00Z",
+              exitedAt: "2026-03-17T00:00:05Z",
+              exitCode: 0,
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ status: "ok", message: "Process 222 terminated." }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    const client = new AgentClient("http://localhost:5000");
+
+    await client.getProcessStatus(222);
+    await client.waitForExit({ pid: 222, timeoutMilliseconds: 1500 });
+    await client.terminateProcess({ pid: 222 });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:5000/process-status?pid=222"
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:5000/wait-for-exit",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ pid: 222, timeoutMilliseconds: 1500 }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "http://localhost:5000/terminate",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ pid: 222 }),
+      })
+    );
+  });
 });

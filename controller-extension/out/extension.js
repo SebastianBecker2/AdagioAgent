@@ -43,10 +43,10 @@ Object.defineProperty(exports, "AgentClient", { enumerable: true, get: function 
 // ─── Activation ──────────────────────────────────────────────────────────────
 function activate(context) {
     // ── VS Code commands (palette / keybindings) ─────────────────────────────
-    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText));
+    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText), vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile), vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus), vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit), vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess));
     // ── Copilot language-model tools ─────────────────────────────────────────
     if (typeof vscode.lm !== "undefined" && "registerTool" in vscode.lm) {
-        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()));
+        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()), vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()), vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()), vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()), vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()));
     }
 }
 function deactivate() {
@@ -199,6 +199,68 @@ async function cmdCopyFile() {
         vscode.window.showErrorMessage(`Failed to copy file: ${err}`);
     }
 }
+async function cmdGetProcessStatus() {
+    const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+    if (!pidStr) {
+        return;
+    }
+    const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const status = await client.getProcessStatus(pid);
+    vscode.window.showInformationMessage(`Process ${status.pid}: ${status.status}` +
+        (status.exitCode !== undefined ? ` (exit code ${status.exitCode})` : ""));
+}
+async function cmdWaitForExit() {
+    const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+    if (!pidStr) {
+        return;
+    }
+    const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
+    const timeoutStr = await vscode.window.showInputBox({
+        prompt: "Timeout milliseconds",
+        value: "30000",
+    });
+    if (!timeoutStr) {
+        return;
+    }
+    const timeoutMilliseconds = Number(timeoutStr);
+    if (!Number.isInteger(timeoutMilliseconds) || timeoutMilliseconds <= 0) {
+        vscode.window.showErrorMessage("Invalid timeout.");
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.waitForExit({ pid, timeoutMilliseconds });
+    vscode.window.showInformationMessage(result.exited
+        ? `Process ${pid} exited with status ${result.process.status}.`
+        : `Process ${pid} is still running after timeout.`);
+}
+async function cmdTerminateProcess() {
+    const pidStr = await vscode.window.showInputBox({ prompt: "Process ID" });
+    if (!pidStr) {
+        return;
+    }
+    const pid = Number(pidStr);
+    if (!Number.isInteger(pid) || pid <= 0) {
+        vscode.window.showErrorMessage("Invalid PID.");
+        return;
+    }
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.terminateProcess({ pid });
+    if (result.status === "ok") {
+        vscode.window.showInformationMessage(result.message ?? `Process ${pid} terminated.`);
+    }
+    else {
+        vscode.window.showErrorMessage(result.message ?? `Failed to terminate process ${pid}.`);
+    }
+}
 // ─── Copilot tool implementations ────────────────────────────────────────────
 function uiTreeSummary(elements, depth = 0) {
     return elements
@@ -285,6 +347,50 @@ class CopyFileTool {
         });
         return new vscode.LanguageModelToolResult([
             new vscode.LanguageModelTextPart(`File copied to ${result.destinationPath} (${result.bytesWritten} bytes)`),
+        ]);
+    }
+}
+class GetProcessStatusTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const status = await client.getProcessStatus(options.input.pid);
+        const parts = [
+            `PID: ${status.pid}`,
+            `Status: ${status.status}`,
+            `Started: ${status.startedAt}`,
+        ];
+        if (status.exitedAt) {
+            parts.push(`Exited: ${status.exitedAt}`);
+        }
+        if (status.exitCode !== undefined) {
+            parts.push(`Exit code: ${status.exitCode}`);
+        }
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(parts.join("\n")),
+        ]);
+    }
+}
+class WaitForExitTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const timeoutMilliseconds = options.input.timeoutMilliseconds ?? 30000;
+        const result = await client.waitForExit({
+            pid: options.input.pid,
+            timeoutMilliseconds,
+        });
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(result.exited
+                ? `Process ${result.process.pid} exited with status ${result.process.status}.`
+                : `Process ${result.process.pid} is still running after ${timeoutMilliseconds}ms.`),
+        ]);
+    }
+}
+class TerminateProcessTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const result = await client.terminateProcess({ pid: options.input.pid });
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(result.message ?? `Process ${options.input.pid} terminated.`),
         ]);
     }
 }

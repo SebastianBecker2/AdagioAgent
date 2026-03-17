@@ -37,6 +37,18 @@
       {
         "command": "adagioAgent.copyFile",
         "title": "Adagio Agent: Copy File to Target"
+      },
+      {
+        "command": "adagioAgent.getProcessStatus",
+        "title": "Adagio Agent: Get Process Status"
+      },
+      {
+        "command": "adagioAgent.waitForExit",
+        "title": "Adagio Agent: Wait For Process Exit"
+      },
+      {
+        "command": "adagioAgent.terminateProcess",
+        "title": "Adagio Agent: Terminate Process"
       }
     ],
     "configuration": {
@@ -191,6 +203,61 @@
           "required": [
             "localFilePath",
             "destinationPath"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_getProcessStatus",
+        "displayName": "Get Process Status",
+        "modelDescription": "Get current state, timestamps, and optional exit code for a tracked process.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pid": {
+              "type": "number",
+              "description": "Tracked process ID"
+            }
+          },
+          "required": [
+            "pid"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_waitForExit",
+        "displayName": "Wait For Process Exit",
+        "modelDescription": "Wait for a tracked process to exit up to the specified timeout.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pid": {
+              "type": "number",
+              "description": "Tracked process ID"
+            },
+            "timeoutMilliseconds": {
+              "type": "number",
+              "description": "Maximum wait time in milliseconds"
+            }
+          },
+          "required": [
+            "pid"
+          ]
+        }
+      },
+      {
+        "name": "adagioAgent_terminateProcess",
+        "displayName": "Terminate Process",
+        "modelDescription": "Terminate a tracked process on the target machine.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pid": {
+              "type": "number",
+              "description": "Tracked process ID"
+            }
+          },
+          "required": [
+            "pid"
           ]
         }
       }

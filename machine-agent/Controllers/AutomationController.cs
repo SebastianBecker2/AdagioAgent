@@ -76,6 +76,105 @@ public sealed class AutomationController : ControllerBase
         }
     }
 
+    // ── GET /process-status ────────────────────────────────────────────────
+
+    /// <summary>Get status for a tracked process.</summary>
+    [HttpGet("/process-status")]
+    [ProducesResponseType(typeof(ProcessStatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public IActionResult GetProcessStatus([FromQuery] int pid)
+    {
+        if (pid <= 0)
+        {
+            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+        }
+
+        var tracked = _processService.Get(pid);
+        if (tracked is null)
+        {
+            return NotFound(new ErrorResponse($"Process {pid} is not tracked."));
+        }
+
+        return Ok(ToProcessStatus(tracked));
+    }
+
+    // ── POST /wait-for-exit ────────────────────────────────────────────────
+
+    /// <summary>Wait for a tracked process to exit or timeout.</summary>
+    [HttpPost("/wait-for-exit")]
+    [ProducesResponseType(typeof(WaitForExitResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public IActionResult WaitForExit([FromBody] WaitForExitRequest request)
+    {
+        if (request.Pid <= 0)
+        {
+            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+        }
+
+        if (request.TimeoutMilliseconds <= 0)
+        {
+            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer."));
+        }
+
+        var tracked = _processService.Get(request.Pid);
+        if (tracked is null)
+        {
+            return NotFound(new ErrorResponse($"Process {request.Pid} is not tracked."));
+        }
+
+        try
+        {
+            var exited = tracked.Process.WaitForExit(request.TimeoutMilliseconds);
+            return Ok(new WaitForExitResponse(exited, ToProcessStatus(tracked)));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed while waiting for process {Pid} exit.", request.Pid);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed while waiting for process exit.", ex.Message));
+        }
+    }
+
+    // ── POST /terminate ─────────────────────────────────────────────────────
+
+    /// <summary>Terminate a tracked process.</summary>
+    [HttpPost("/terminate")]
+    [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public IActionResult Terminate([FromBody] TerminateProcessRequest request)
+    {
+        if (request.Pid <= 0)
+        {
+            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+        }
+
+        var tracked = _processService.Get(request.Pid);
+        if (tracked is null)
+        {
+            return NotFound(new ErrorResponse($"Process {request.Pid} is not tracked."));
+        }
+
+        try
+        {
+            if (!tracked.Process.HasExited)
+            {
+                tracked.Process.Kill(entireProcessTree: true);
+                tracked.Process.WaitForExit(5000);
+            }
+
+            return Ok(new StatusResponse("ok", $"Process {request.Pid} terminated."));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to terminate process {Pid}.", request.Pid);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to terminate process.", ex.Message));
+        }
+    }
+
     // ── GET /ui-tree ─────────────────────────────────────────────────────────
 
     /// <summary>Return the UI element tree for a running process.</summary>
@@ -304,5 +403,24 @@ public sealed class AutomationController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed to copy file.", ex.Message));
         }
+    }
+
+    private static ProcessStatusResponse ToProcessStatus(TrackedProcess tracked)
+    {
+        DateTimeOffset? exitedAt = null;
+        int? exitCode = null;
+
+        if (tracked.Process.HasExited)
+        {
+            exitedAt = new DateTimeOffset(tracked.Process.ExitTime.ToUniversalTime());
+            exitCode = tracked.Process.ExitCode;
+        }
+
+        return new ProcessStatusResponse(
+            tracked.Process.Id,
+            tracked.Status,
+            tracked.StartedAt,
+            exitedAt,
+            exitCode);
     }
 }
