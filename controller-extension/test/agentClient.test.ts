@@ -322,6 +322,102 @@ describe("AgentClient", () => {
     );
   });
 
+  it("calls generalized workflow endpoints with expected payloads", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            exited: true,
+            process: {
+              pid: 333,
+              status: "exited",
+              startedAt: "2026-03-17T00:00:00Z",
+              exitedAt: "2026-03-17T00:00:05Z",
+              exitCode: 0,
+            },
+            msiEvents: [],
+            warnings: [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            pid: 333,
+            startedAt: "2026-03-17T00:00:00Z",
+            artifacts: {
+              exited: true,
+              process: {
+                pid: 333,
+                status: "exited",
+                startedAt: "2026-03-17T00:00:00Z",
+                exitedAt: "2026-03-17T00:00:05Z",
+                exitCode: 0,
+              },
+              msiEvents: [],
+              warnings: [],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            pid: 333,
+            startedAt: "2026-03-17T00:00:00Z",
+            artifacts: {
+              exited: true,
+              process: {
+                pid: 333,
+                status: "exited",
+                startedAt: "2026-03-17T00:00:00Z",
+                exitedAt: "2026-03-17T00:00:05Z",
+                exitCode: 0,
+              },
+              msiEvents: [],
+              warnings: [],
+            },
+            assertions: [{ passed: true, message: "Process exited." }],
+            passed: true,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    const client = new AgentClient("http://localhost:5000");
+    await client.collectProcessArtifacts({ pid: 333, timeoutMilliseconds: 5000 });
+    await client.runAndCollectArtifacts({ command: "C:/Apps/app.exe", arguments: "--version" });
+    await client.runAndAssert({ command: "C:/Apps/app.exe", expectedExitCode: 0 });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:5000/collect-process-artifacts",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ pid: 333, timeoutMilliseconds: 5000 }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:5000/run-and-collect-artifacts",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ command: "C:/Apps/app.exe", arguments: "--version" }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "http://localhost:5000/run-and-assert",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ command: "C:/Apps/app.exe", expectedExitCode: 0 }),
+      })
+    );
+  });
+
   it("calls read-text-file and tail-file endpoints with expected payloads", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock

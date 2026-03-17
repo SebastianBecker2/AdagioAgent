@@ -83,6 +83,7 @@ public sealed class AutomationController : ControllerBase
     /// such as log tail and recent MSI event-log entries.
     /// </summary>
     [HttpPost("/run-installer-and-collect-artifacts")]
+    [HttpPost("/run-and-collect-artifacts")]
     [ProducesResponseType(typeof(RunInstallerAndCollectArtifactsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     public IActionResult RunInstallerAndCollectArtifacts([FromBody] RunInstallerAndCollectArtifactsRequest request)
@@ -147,6 +148,7 @@ public sealed class AutomationController : ControllerBase
     /// assertions such as exit status, expected output path, and expected log text.
     /// </summary>
     [HttpPost("/run-installer-and-assert")]
+    [HttpPost("/run-and-assert")]
     [ProducesResponseType(typeof(RunInstallerAndAssertResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     public IActionResult RunInstallerAndAssert([FromBody] RunInstallerAndAssertRequest request)
@@ -297,6 +299,7 @@ public sealed class AutomationController : ControllerBase
     /// and recent Windows MSI event-log entries.
     /// </summary>
     [HttpPost("/collect-install-artifacts")]
+    [HttpPost("/collect-process-artifacts")]
     [ProducesResponseType(typeof(CollectInstallArtifactsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

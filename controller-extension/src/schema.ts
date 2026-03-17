@@ -42,6 +42,8 @@ export interface CollectInstallArtifactsRequest {
   eventEntryCount?: number;
 }
 
+export type CollectProcessArtifactsRequest = CollectInstallArtifactsRequest;
+
 export interface RunInstallerAndCollectArtifactsRequest {
   command: string;
   arguments?: string;
@@ -52,6 +54,8 @@ export interface RunInstallerAndCollectArtifactsRequest {
   includeMsiEvents?: boolean;
   eventEntryCount?: number;
 }
+
+export type RunAndCollectArtifactsRequest = RunInstallerAndCollectArtifactsRequest;
 
 export interface RunInstallerAndAssertRequest {
   command: string;
@@ -68,6 +72,8 @@ export interface RunInstallerAndAssertRequest {
   logMustContainText?: string;
   logContainsIgnoreCase?: boolean;
 }
+
+export type RunAndAssertRequest = RunInstallerAndAssertRequest;
 
 export interface TerminateProcessRequest {
   pid: number;
@@ -249,11 +255,15 @@ export interface CollectInstallArtifactsResponse {
   warnings: string[];
 }
 
+export type CollectProcessArtifactsResponse = CollectInstallArtifactsResponse;
+
 export interface RunInstallerAndCollectArtifactsResponse {
   pid: number;
   startedAt: string;
   artifacts: CollectInstallArtifactsResponse;
 }
+
+export type RunAndCollectArtifactsResponse = RunInstallerAndCollectArtifactsResponse;
 
 export interface RunInstallerAndAssertResponse {
   pid: number;
@@ -262,6 +272,8 @@ export interface RunInstallerAndAssertResponse {
   assertions: AssertionResponse[];
   passed: boolean;
 }
+
+export type RunAndAssertResponse = RunInstallerAndAssertResponse;
 
 export interface ReadTextFileResponse {
   path: string;

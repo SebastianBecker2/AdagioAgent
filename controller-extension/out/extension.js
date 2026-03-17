@@ -43,10 +43,10 @@ Object.defineProperty(exports, "AgentClient", { enumerable: true, get: function 
 // ─── Activation ──────────────────────────────────────────────────────────────
 function activate(context) {
     // ── VS Code commands (palette / keybindings) ─────────────────────────────
-    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.runInstallerAndCollectArtifacts", cmdRunInstallerAndCollectArtifacts), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText), vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile), vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus), vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit), vscode.commands.registerCommand("adagioAgent.collectInstallArtifacts", cmdCollectInstallArtifacts), vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess), vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile), vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile), vscode.commands.registerCommand("adagioAgent.listDirectory", cmdListDirectory), vscode.commands.registerCommand("adagioAgent.fileExists", cmdFileExists), vscode.commands.registerCommand("adagioAgent.assertProcessExited", cmdAssertProcessExited), vscode.commands.registerCommand("adagioAgent.assertPathExists", cmdAssertPathExists), vscode.commands.registerCommand("adagioAgent.assertLogContains", cmdAssertLogContains), vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState), vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand), vscode.commands.registerCommand("adagioAgent.setFocus", cmdSetFocus), vscode.commands.registerCommand("adagioAgent.sendKeys", cmdSendKeys), vscode.commands.registerCommand("adagioAgent.pressHotkey", cmdPressHotkey), vscode.commands.registerCommand("adagioAgent.setCheckbox", cmdSetCheckbox), vscode.commands.registerCommand("adagioAgent.selectOption", cmdSelectOption));
+    context.subscriptions.push(vscode.commands.registerCommand("adagioAgent.runExecutable", cmdRunExecutable), vscode.commands.registerCommand("adagioAgent.runInstallerAndCollectArtifacts", cmdRunInstallerAndCollectArtifacts), vscode.commands.registerCommand("adagioAgent.runAndCollectArtifacts", cmdRunInstallerAndCollectArtifacts), vscode.commands.registerCommand("adagioAgent.runInstallerAndAssert", cmdRunInstallerAndAssert), vscode.commands.registerCommand("adagioAgent.runAndAssert", cmdRunInstallerAndAssert), vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree), vscode.commands.registerCommand("adagioAgent.clickElement", cmdClickElement), vscode.commands.registerCommand("adagioAgent.getScreenshot", cmdGetScreenshot), vscode.commands.registerCommand("adagioAgent.typeText", cmdTypeText), vscode.commands.registerCommand("adagioAgent.copyFile", cmdCopyFile), vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus), vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit), vscode.commands.registerCommand("adagioAgent.collectInstallArtifacts", cmdCollectInstallArtifacts), vscode.commands.registerCommand("adagioAgent.collectProcessArtifacts", cmdCollectInstallArtifacts), vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess), vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile), vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile), vscode.commands.registerCommand("adagioAgent.listDirectory", cmdListDirectory), vscode.commands.registerCommand("adagioAgent.fileExists", cmdFileExists), vscode.commands.registerCommand("adagioAgent.assertProcessExited", cmdAssertProcessExited), vscode.commands.registerCommand("adagioAgent.assertPathExists", cmdAssertPathExists), vscode.commands.registerCommand("adagioAgent.assertLogContains", cmdAssertLogContains), vscode.commands.registerCommand("adagioAgent.getElementState", cmdGetElementState), vscode.commands.registerCommand("adagioAgent.waitForElement", cmdWaitForElementCommand), vscode.commands.registerCommand("adagioAgent.setFocus", cmdSetFocus), vscode.commands.registerCommand("adagioAgent.sendKeys", cmdSendKeys), vscode.commands.registerCommand("adagioAgent.pressHotkey", cmdPressHotkey), vscode.commands.registerCommand("adagioAgent.setCheckbox", cmdSetCheckbox), vscode.commands.registerCommand("adagioAgent.selectOption", cmdSelectOption));
     // ── Copilot language-model tools ─────────────────────────────────────────
     if (typeof vscode.lm !== "undefined" && "registerTool" in vscode.lm) {
-        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_runInstallerAndCollectArtifacts", new RunInstallerAndCollectArtifactsTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()), vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()), vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()), vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()), vscode.lm.registerTool("adagioAgent_collectInstallArtifacts", new CollectInstallArtifactsTool()), vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()), vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()), vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()), vscode.lm.registerTool("adagioAgent_listDirectory", new ListDirectoryTool()), vscode.lm.registerTool("adagioAgent_fileExists", new FileExistsTool()), vscode.lm.registerTool("adagioAgent_assertProcessExited", new AssertProcessExitedTool()), vscode.lm.registerTool("adagioAgent_assertPathExists", new AssertPathExistsTool()), vscode.lm.registerTool("adagioAgent_assertLogContains", new AssertLogContainsTool()), vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()), vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()), vscode.lm.registerTool("adagioAgent_setFocus", new SetFocusTool()), vscode.lm.registerTool("adagioAgent_sendKeys", new SendKeysTool()), vscode.lm.registerTool("adagioAgent_pressHotkey", new PressHotkeyTool()), vscode.lm.registerTool("adagioAgent_setCheckbox", new SetCheckboxTool()), vscode.lm.registerTool("adagioAgent_selectOption", new SelectOptionTool()));
+        context.subscriptions.push(vscode.lm.registerTool("adagioAgent_runExecutable", new RunExecutableTool()), vscode.lm.registerTool("adagioAgent_runInstallerAndCollectArtifacts", new RunInstallerAndCollectArtifactsTool()), vscode.lm.registerTool("adagioAgent_runAndCollectArtifacts", new RunInstallerAndCollectArtifactsTool()), vscode.lm.registerTool("adagioAgent_runInstallerAndAssert", new RunInstallerAndAssertTool()), vscode.lm.registerTool("adagioAgent_runAndAssert", new RunInstallerAndAssertTool()), vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()), vscode.lm.registerTool("adagioAgent_getScreenshot", new GetScreenshotTool()), vscode.lm.registerTool("adagioAgent_clickElement", new ClickElementTool()), vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()), vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()), vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()), vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()), vscode.lm.registerTool("adagioAgent_collectInstallArtifacts", new CollectInstallArtifactsTool()), vscode.lm.registerTool("adagioAgent_collectProcessArtifacts", new CollectInstallArtifactsTool()), vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()), vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()), vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()), vscode.lm.registerTool("adagioAgent_listDirectory", new ListDirectoryTool()), vscode.lm.registerTool("adagioAgent_fileExists", new FileExistsTool()), vscode.lm.registerTool("adagioAgent_assertProcessExited", new AssertProcessExitedTool()), vscode.lm.registerTool("adagioAgent_assertPathExists", new AssertPathExistsTool()), vscode.lm.registerTool("adagioAgent_assertLogContains", new AssertLogContainsTool()), vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()), vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()), vscode.lm.registerTool("adagioAgent_setFocus", new SetFocusTool()), vscode.lm.registerTool("adagioAgent_sendKeys", new SendKeysTool()), vscode.lm.registerTool("adagioAgent_pressHotkey", new PressHotkeyTool()), vscode.lm.registerTool("adagioAgent_setCheckbox", new SetCheckboxTool()), vscode.lm.registerTool("adagioAgent_selectOption", new SelectOptionTool()));
     }
 }
 function deactivate() {
@@ -88,10 +88,51 @@ async function cmdRunInstallerAndCollectArtifacts() {
         placeHolder: "C:\\Apps\\installer.log",
     });
     const client = (0, agentClient_1.createAgentClient)();
-    const result = await client.runInstallerAndCollectArtifacts({
+    const result = await client.runAndCollectArtifacts({
         command,
         arguments: argumentsValue || undefined,
         logPath: logPath || undefined,
+    });
+    const doc = await vscode.workspace.openTextDocument({
+        language: "json",
+        content: JSON.stringify(result, null, 2),
+    });
+    await vscode.window.showTextDocument(doc);
+}
+async function cmdRunInstallerAndAssert() {
+    const command = await vscode.window.showInputBox({
+        prompt: "Full path to installer on the target machine",
+        placeHolder: "C:\\Apps\\setup.exe",
+    });
+    if (!command) {
+        return;
+    }
+    const argumentsValue = await vscode.window.showInputBox({
+        prompt: "Optional installer arguments",
+        placeHolder: "/quiet /norestart",
+    });
+    const logPath = await vscode.window.showInputBox({
+        prompt: "Optional installer log path on the target machine",
+        placeHolder: "C:\\Apps\\installer.log",
+    });
+    const expectedPath = await vscode.window.showInputBox({
+        prompt: "Optional expected file/directory path created by installer",
+        placeHolder: "C:\\Program Files\\MyApp",
+    });
+    const logMustContainText = await vscode.window.showInputBox({
+        prompt: "Optional expected log text",
+        placeHolder: "Installation completed successfully",
+    });
+    const client = (0, agentClient_1.createAgentClient)();
+    const result = await client.runAndAssert({
+        command,
+        arguments: argumentsValue || undefined,
+        logPath: logPath || undefined,
+        expectedExitCode: 0,
+        expectedPath: expectedPath || undefined,
+        expectedPathMustBeDirectory: true,
+        logMustContainText: logMustContainText || undefined,
+        logContainsIgnoreCase: true,
     });
     const doc = await vscode.workspace.openTextDocument({
         language: "json",
@@ -297,7 +338,7 @@ async function cmdCollectInstallArtifacts() {
         placeHolder: "C:\\Apps\\installer.log",
     });
     const client = (0, agentClient_1.createAgentClient)();
-    const result = await client.collectInstallArtifacts({
+    const result = await client.collectProcessArtifacts({
         pid,
         timeoutMilliseconds,
         logPath: logPath || undefined,
@@ -603,13 +644,34 @@ class RunExecutableTool {
 class RunInstallerAndCollectArtifactsTool {
     async invoke(options, _token) {
         const client = (0, agentClient_1.createAgentClient)();
-        const result = await client.runInstallerAndCollectArtifacts(options.input);
+        const result = await client.runAndCollectArtifacts(options.input);
         return new vscode.LanguageModelToolResult([
             new vscode.LanguageModelTextPart([
                 `Installer started with PID ${result.pid}.`,
                 result.artifacts.exited
                     ? `Process exited with status ${result.artifacts.process.status}.`
                     : `Process is still running after timeout.`,
+                result.artifacts.logTail
+                    ? `Log tail captured from ${result.artifacts.logTail.path}.`
+                    : "No log tail captured.",
+                `MSI events captured: ${result.artifacts.msiEvents.length}.`,
+                result.artifacts.warnings.length > 0
+                    ? `Warnings: ${result.artifacts.warnings.join(" | ")}`
+                    : "Warnings: none.",
+            ].join("\n")),
+        ]);
+    }
+}
+class RunInstallerAndAssertTool {
+    async invoke(options, _token) {
+        const client = (0, agentClient_1.createAgentClient)();
+        const result = await client.runAndAssert(options.input);
+        const assertionLines = result.assertions.map((assertion) => `${assertion.passed ? "PASS" : "FAIL"}: ${assertion.message}`);
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart([
+                `Installer started with PID ${result.pid}.`,
+                result.passed ? "Workflow assertions passed." : "Workflow assertions failed.",
+                ...assertionLines,
                 result.artifacts.logTail
                     ? `Log tail captured from ${result.artifacts.logTail.path}.`
                     : "No log tail captured.",
@@ -723,7 +785,7 @@ class WaitForExitTool {
 class CollectInstallArtifactsTool {
     async invoke(options, _token) {
         const client = (0, agentClient_1.createAgentClient)();
-        const result = await client.collectInstallArtifacts({
+        const result = await client.collectProcessArtifacts({
             pid: options.input.pid,
             timeoutMilliseconds: options.input.timeoutMilliseconds ?? 30000,
             logPath: options.input.logPath,

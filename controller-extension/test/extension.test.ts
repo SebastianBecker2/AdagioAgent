@@ -140,10 +140,12 @@ describe("extension activation and commands", () => {
 
     activate(context as never);
 
-    expect(registerCommandMock).toHaveBeenCalledTimes(26);
+    expect(registerCommandMock).toHaveBeenCalledTimes(29);
     expect(commandHandlers.has("adagioAgent.runExecutable")).toBe(true);
     expect(commandHandlers.has("adagioAgent.runInstallerAndCollectArtifacts")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.runAndCollectArtifacts")).toBe(true);
     expect(commandHandlers.has("adagioAgent.runInstallerAndAssert")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.runAndAssert")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getUiTree")).toBe(true);
     expect(commandHandlers.has("adagioAgent.clickElement")).toBe(true);
     expect(commandHandlers.has("adagioAgent.getScreenshot")).toBe(true);
@@ -152,6 +154,7 @@ describe("extension activation and commands", () => {
     expect(commandHandlers.has("adagioAgent.getProcessStatus")).toBe(true);
     expect(commandHandlers.has("adagioAgent.waitForExit")).toBe(true);
     expect(commandHandlers.has("adagioAgent.collectInstallArtifacts")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.collectProcessArtifacts")).toBe(true);
     expect(commandHandlers.has("adagioAgent.terminateProcess")).toBe(true);
     expect(commandHandlers.has("adagioAgent.readTextFile")).toBe(true);
     expect(commandHandlers.has("adagioAgent.tailFile")).toBe(true);
@@ -168,10 +171,12 @@ describe("extension activation and commands", () => {
     expect(commandHandlers.has("adagioAgent.setCheckbox")).toBe(true);
     expect(commandHandlers.has("adagioAgent.selectOption")).toBe(true);
 
-    expect(registerToolMock).toHaveBeenCalledTimes(26);
+    expect(registerToolMock).toHaveBeenCalledTimes(29);
     expect(toolHandlers.has("adagioAgent_runExecutable")).toBe(true);
     expect(toolHandlers.has("adagioAgent_runInstallerAndCollectArtifacts")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_runAndCollectArtifacts")).toBe(true);
     expect(toolHandlers.has("adagioAgent_runInstallerAndAssert")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_runAndAssert")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getUiTree")).toBe(true);
     expect(toolHandlers.has("adagioAgent_getScreenshot")).toBe(true);
     expect(toolHandlers.has("adagioAgent_clickElement")).toBe(true);
@@ -180,6 +185,7 @@ describe("extension activation and commands", () => {
     expect(toolHandlers.has("adagioAgent_getProcessStatus")).toBe(true);
     expect(toolHandlers.has("adagioAgent_waitForExit")).toBe(true);
     expect(toolHandlers.has("adagioAgent_collectInstallArtifacts")).toBe(true);
+    expect(toolHandlers.has("adagioAgent_collectProcessArtifacts")).toBe(true);
     expect(toolHandlers.has("adagioAgent_terminateProcess")).toBe(true);
     expect(toolHandlers.has("adagioAgent_readTextFile")).toBe(true);
     expect(toolHandlers.has("adagioAgent_tailFile")).toBe(true);

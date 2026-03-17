@@ -70,16 +70,40 @@ class AgentClient {
         return this.post("/wait-for-exit", request);
     }
     /**
-     * Wait for a process and collect installer diagnostics such as log tail and MSI events.
+     * Wait for a process and collect diagnostics such as log tail and optional event data.
      */
     async collectInstallArtifacts(request) {
         return this.post("/collect-install-artifacts", request);
+    }
+    /**
+     * Wait for a process and collect diagnostics such as log tail and optional event data.
+     */
+    async collectProcessArtifacts(request) {
+        return this.post("/collect-process-artifacts", request);
     }
     /**
      * Start an installer process and collect diagnostics when it exits or times out.
      */
     async runInstallerAndCollectArtifacts(request) {
         return this.post("/run-installer-and-collect-artifacts", request);
+    }
+    /**
+     * Start a process and collect diagnostics when it exits or times out.
+     */
+    async runAndCollectArtifacts(request) {
+        return this.post("/run-and-collect-artifacts", request);
+    }
+    /**
+     * Start an installer process, collect diagnostics, and evaluate workflow assertions.
+     */
+    async runInstallerAndAssert(request) {
+        return this.post("/run-installer-and-assert", request);
+    }
+    /**
+     * Start a process, collect diagnostics, and evaluate workflow assertions.
+     */
+    async runAndAssert(request) {
+        return this.post("/run-and-assert", request);
     }
     /**
      * Terminate a tracked process.

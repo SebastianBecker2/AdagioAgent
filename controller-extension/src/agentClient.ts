@@ -17,10 +17,16 @@ import {
   WaitForExitResponse,
   CollectInstallArtifactsRequest,
   CollectInstallArtifactsResponse,
+  CollectProcessArtifactsRequest,
+  CollectProcessArtifactsResponse,
   RunInstallerAndCollectArtifactsRequest,
   RunInstallerAndCollectArtifactsResponse,
+  RunAndCollectArtifactsRequest,
+  RunAndCollectArtifactsResponse,
   RunInstallerAndAssertRequest,
   RunInstallerAndAssertResponse,
+  RunAndAssertRequest,
+  RunAndAssertResponse,
   TerminateProcessRequest,
   StatusResponse,
   ReadTextFileRequest,
@@ -89,12 +95,21 @@ export class AgentClient {
   }
 
   /**
-   * Wait for a process and collect installer diagnostics such as log tail and MSI events.
+   * Wait for a process and collect diagnostics such as log tail and optional event data.
    */
   async collectInstallArtifacts(
     request: CollectInstallArtifactsRequest
   ): Promise<CollectInstallArtifactsResponse> {
     return this.post<CollectInstallArtifactsResponse>("/collect-install-artifacts", request);
+  }
+
+  /**
+   * Wait for a process and collect diagnostics such as log tail and optional event data.
+   */
+  async collectProcessArtifacts(
+    request: CollectProcessArtifactsRequest
+  ): Promise<CollectProcessArtifactsResponse> {
+    return this.post<CollectProcessArtifactsResponse>("/collect-process-artifacts", request);
   }
 
   /**
@@ -110,6 +125,18 @@ export class AgentClient {
   }
 
   /**
+   * Start a process and collect diagnostics when it exits or times out.
+   */
+  async runAndCollectArtifacts(
+    request: RunAndCollectArtifactsRequest
+  ): Promise<RunAndCollectArtifactsResponse> {
+    return this.post<RunAndCollectArtifactsResponse>(
+      "/run-and-collect-artifacts",
+      request
+    );
+  }
+
+  /**
    * Start an installer process, collect diagnostics, and evaluate workflow assertions.
    */
   async runInstallerAndAssert(
@@ -117,6 +144,18 @@ export class AgentClient {
   ): Promise<RunInstallerAndAssertResponse> {
     return this.post<RunInstallerAndAssertResponse>(
       "/run-installer-and-assert",
+      request
+    );
+  }
+
+  /**
+   * Start a process, collect diagnostics, and evaluate workflow assertions.
+   */
+  async runAndAssert(
+    request: RunAndAssertRequest
+  ): Promise<RunAndAssertResponse> {
+    return this.post<RunAndAssertResponse>(
+      "/run-and-assert",
       request
     );
   }

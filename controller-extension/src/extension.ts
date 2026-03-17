@@ -151,7 +151,15 @@ export function activate(context: vscode.ExtensionContext): void {
       cmdRunInstallerAndCollectArtifacts
     ),
     vscode.commands.registerCommand(
+      "adagioAgent.runAndCollectArtifacts",
+      cmdRunInstallerAndCollectArtifacts
+    ),
+    vscode.commands.registerCommand(
       "adagioAgent.runInstallerAndAssert",
+      cmdRunInstallerAndAssert
+    ),
+    vscode.commands.registerCommand(
+      "adagioAgent.runAndAssert",
       cmdRunInstallerAndAssert
     ),
     vscode.commands.registerCommand("adagioAgent.getUiTree", cmdGetUiTree),
@@ -168,6 +176,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("adagioAgent.getProcessStatus", cmdGetProcessStatus),
     vscode.commands.registerCommand("adagioAgent.waitForExit", cmdWaitForExit),
     vscode.commands.registerCommand("adagioAgent.collectInstallArtifacts", cmdCollectInstallArtifacts),
+    vscode.commands.registerCommand("adagioAgent.collectProcessArtifacts", cmdCollectInstallArtifacts),
     vscode.commands.registerCommand("adagioAgent.terminateProcess", cmdTerminateProcess),
     vscode.commands.registerCommand("adagioAgent.readTextFile", cmdReadTextFile),
     vscode.commands.registerCommand("adagioAgent.tailFile", cmdTailFile),
@@ -198,7 +207,15 @@ export function activate(context: vscode.ExtensionContext): void {
         new RunInstallerAndCollectArtifactsTool()
       ),
       vscode.lm.registerTool(
+        "adagioAgent_runAndCollectArtifacts",
+        new RunInstallerAndCollectArtifactsTool()
+      ),
+      vscode.lm.registerTool(
         "adagioAgent_runInstallerAndAssert",
+        new RunInstallerAndAssertTool()
+      ),
+      vscode.lm.registerTool(
+        "adagioAgent_runAndAssert",
         new RunInstallerAndAssertTool()
       ),
       vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()),
@@ -215,6 +232,7 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()),
       vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()),
       vscode.lm.registerTool("adagioAgent_collectInstallArtifacts", new CollectInstallArtifactsTool()),
+      vscode.lm.registerTool("adagioAgent_collectProcessArtifacts", new CollectInstallArtifactsTool()),
       vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()),
       vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()),
       vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()),
@@ -285,7 +303,7 @@ async function cmdRunInstallerAndCollectArtifacts(): Promise<void> {
   });
 
   const client = createAgentClient();
-  const result = await client.runInstallerAndCollectArtifacts({
+  const result = await client.runAndCollectArtifacts({
     command,
     arguments: argumentsValue || undefined,
     logPath: logPath || undefined,
@@ -328,7 +346,7 @@ async function cmdRunInstallerAndAssert(): Promise<void> {
   });
 
   const client = createAgentClient();
-  const result = await client.runInstallerAndAssert({
+  const result = await client.runAndAssert({
     command,
     arguments: argumentsValue || undefined,
     logPath: logPath || undefined,
@@ -589,7 +607,7 @@ async function cmdCollectInstallArtifacts(): Promise<void> {
   });
 
   const client = createAgentClient();
-  const result = await client.collectInstallArtifacts({
+  const result = await client.collectProcessArtifacts({
     pid,
     timeoutMilliseconds,
     logPath: logPath || undefined,
@@ -952,7 +970,7 @@ class RunInstallerAndCollectArtifactsTool implements vscode.LanguageModelTool<Ru
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
     const client = createAgentClient();
-    const result = await client.runInstallerAndCollectArtifacts(options.input);
+    const result = await client.runAndCollectArtifacts(options.input);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
         [
@@ -979,7 +997,7 @@ class RunInstallerAndAssertTool implements vscode.LanguageModelTool<RunInstaller
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
     const client = createAgentClient();
-    const result = await client.runInstallerAndAssert(options.input);
+    const result = await client.runAndAssert(options.input);
 
     const assertionLines = result.assertions.map((assertion) =>
       `${assertion.passed ? "PASS" : "FAIL"}: ${assertion.message}`
@@ -1156,7 +1174,7 @@ class CollectInstallArtifactsTool implements vscode.LanguageModelTool<CollectIns
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
     const client = createAgentClient();
-    const result = await client.collectInstallArtifacts({
+    const result = await client.collectProcessArtifacts({
       pid: options.input.pid,
       timeoutMilliseconds: options.input.timeoutMilliseconds ?? 30000,
       logPath: options.input.logPath,
