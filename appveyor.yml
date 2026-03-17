@@ -13,7 +13,7 @@ environment:
 # ── Node.js version ──────────────────────────────────────────────────────────
 # VS 2022 image ships with multiple Node versions; select a stable LTS release.
 install:
-  - ps: Install-Product node 20
+  - ps: Install-Product node 22
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 # Disable the default MSBuild step; we drive everything through build_script.
@@ -27,6 +27,7 @@ build_script:
   # 2. Install Node dependencies and compile the VS Code extension
   - cd controller-extension
   - npm ci
+  - npm i --no-save @rolldown/binding-win32-x64-msvc
   - npm run compile
   - cd ..
 
