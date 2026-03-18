@@ -40,6 +40,7 @@ Attach or link evidence artifacts:
 
 Fill concrete repository-relative paths for evidence used in this sign-off:
 
+- Evidence index path:
 - Support bundle evidence path:
 - Correlation trace evidence path:
 - Rollback rehearsal evidence path:

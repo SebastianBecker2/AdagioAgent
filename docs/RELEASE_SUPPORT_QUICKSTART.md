@@ -70,9 +70,20 @@ $latest = Get-ChildItem .\artifacts\support-bundles -Directory | Sort-Object Las
    path is either:
    - repo-relative under `docs/release-ops/evidence/`, or
    - an approved external URI format (`https://`, `s3://`, `gs://`, `az://`, `\\server\share`).
+3. Ensure sign-off record cross-links the index path and the evidence index
+   references the sign-off record path.
 
-3. On tagged release validation, run:
+4. On tagged release validation, run:
 
 ```powershell
 .\scripts\check-signoff-evidence-references.ps1
+.\scripts\check-signoff-evidence-index-reference.ps1
 ```
+
+### 6. Retention and archive handoff
+
+1. At the end of the retention window, confirm no active incident depends on
+   the evidence set.
+2. Archive expired raw evidence artifacts to approved immutable storage.
+3. Keep the sign-off record and evidence index in-repo and update evidence paths
+   to archive URIs with archive date notes.

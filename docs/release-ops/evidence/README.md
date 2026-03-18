@@ -25,3 +25,11 @@ Generate a release evidence index scaffold with:
 ```powershell
 .\scripts\generate-evidence-index.ps1 -Version <semver>
 ```
+
+### Retention and archive checklist
+
+1. Confirm the retention window has elapsed and no active support incident
+  requires in-repo raw evidence files.
+2. Archive raw evidence artifacts to approved immutable storage.
+3. Keep in-repo sign-off records and evidence index files, updating archived
+  artifact entries with archive URI and archival date.

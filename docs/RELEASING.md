@@ -150,6 +150,7 @@ references and validate them:
 
 ```powershell
 .\scripts\check-signoff-evidence-references.ps1
+.\scripts\check-signoff-evidence-index-reference.ps1
 ```
 
 ### 6 - Commit the version bump

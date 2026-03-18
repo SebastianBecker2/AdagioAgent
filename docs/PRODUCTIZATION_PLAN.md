@@ -398,7 +398,16 @@ The next implementation slice should focus on evidence repository conventions:
 
 The next implementation slice should focus on sign-off/evidence automation hardening:
 
-1. Add script check ensuring each tagged-release sign-off includes a matching evidence index reference.
-2. Add CI tagged-build step to validate evidence index presence for the release version.
-3. Add docs examples for cross-linking sign-off records and evidence index files.
-4. Add retention/archive checklist section for evidence pruning after retention window.
+1. [x] Add script check ensuring each tagged-release sign-off includes a matching evidence index reference.
+2. [x] Add CI tagged-build step to validate evidence index presence for the release version.
+3. [x] Add docs examples for cross-linking sign-off records and evidence index files.
+4. [x] Add retention/archive checklist section for evidence pruning after retention window.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on evidence integrity and drift detection:
+
+1. Add script check that evidence index files contain all required categories and non-placeholder paths for tagged releases.
+2. Add CI tagged-build step to run evidence index content validation.
+3. Add docs guidance for evidence index update cadence when support bundles are regenerated.
+4. Add quickstart troubleshooting notes for common evidence index/sign-off validation failures.

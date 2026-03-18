@@ -51,7 +51,8 @@ $header = @(
     ""
 ) -join "`n"
 
-$body = $template -replace '(?m)^- Release version:\s*$', "- Release version: $Version" -replace '(?m)^- Sign-off date \(UTC\):\s*$', "- Sign-off date (UTC): $DateUtc"
+$suggestedEvidenceIndex = "docs/release-ops/evidence/indexes/v$Version-$dateStamp-evidence.md"
+$body = $template -replace '(?m)^- Release version:\s*$', "- Release version: $Version" -replace '(?m)^- Sign-off date \(UTC\):\s*$', "- Sign-off date (UTC): $DateUtc" -replace '(?m)^- Evidence index path:\s*$', "- Evidence index path: $suggestedEvidenceIndex"
 Set-Content -LiteralPath $outputPath -Value ($header + $body) -Encoding UTF8
 
 $relativeOutput = Resolve-Path -LiteralPath $outputPath | ForEach-Object { $_.Path.Replace((Resolve-Path (Join-Path $PSScriptRoot '..')).Path + '\\', '') }
