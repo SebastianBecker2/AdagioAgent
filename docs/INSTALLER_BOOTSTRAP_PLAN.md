@@ -79,6 +79,20 @@ If raw JSON editing is added, include validation safeguards before applying chan
 4. Upgrade behavior:
 - Decide and document whether upgrades preserve existing appsettings values or re-bootstrap only on first install.
 
+## Installer Error Code Reference
+
+| Code | Source artifact | Meaning | First action |
+|---|---|---|---|
+| `AA1001` | `bootstrap-failure.json` | Permission/certificate-store access issue during bootstrap | Re-run installer as administrator and review local certificate policy restrictions |
+| `AA1002` | `bootstrap-failure.json` | `appsettings.json` not found during bootstrap | Verify installation folder content and rerun install |
+| `AA1003` | `bootstrap-failure.json` | Certificate creation failed in both LocalMachine and CurrentUser stores | Check certificate enrollment/service policy, then rerun |
+| `AA1099` | `bootstrap-failure.json` | Unclassified bootstrap failure | Inspect `bootstrap.log` and rerun |
+| `AA2001` | `bootstrap-preflight-failure.json` | Placeholder security values still present (for example `CHANGE_ME`) | Re-run installer to regenerate values or set real values manually |
+| `AA2002` | `bootstrap-preflight-failure.json` | Configured HTTPS certificate file is missing | Correct certificate path or regenerate certificate |
+| `AA2003` | `bootstrap-preflight-failure.json` | HTTPS certificate cannot be loaded (commonly wrong password) | Correct certificate password/file and rerun |
+| `AA2004` | `bootstrap-preflight-failure.json` | API key required but empty | Set non-empty `SecurityOptions.ApiKey` and rerun |
+| `AA2099` | `bootstrap-preflight-failure.json` | Unclassified preflight validation failure | Inspect `bootstrap-preflight.log` and rerun |
+
 ## Files In Scope (expected)
 
 - installer/Package.wxs
