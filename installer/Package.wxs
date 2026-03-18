@@ -49,7 +49,7 @@
                   Execute="deferred"
                   Impersonate="no"
                   Return="check"
-                  ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]bootstrap-agent.ps1&quot; -WriteToAppSettings -SuppressSecretOutput" />
+                  ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]bootstrap-agent.ps1&quot; -WriteToAppSettings -SuppressSecretOutput -LogPath &quot;C:\ProgramData\AdagioMachineAgent\bootstrap.log&quot;" />
 
     <InstallExecuteSequence>
       <Custom Action="RunBootstrapAgentScript"

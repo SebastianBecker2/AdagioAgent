@@ -4,11 +4,23 @@ param(
     [switch]$WriteToAppSettings,
     [string]$AppSettingsPath = "machine-agent\appsettings.json",
     [switch]$ForceRegenerate,
-    [switch]$SuppressSecretOutput
+    [switch]$SuppressSecretOutput,
+    [string]$LogPath = ""
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
+    $logDir = Split-Path -Parent $LogPath
+    if (-not [string]::IsNullOrWhiteSpace($logDir) -and -not (Test-Path -LiteralPath $logDir)) {
+        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+    }
+
+    Start-Transcript -LiteralPath $LogPath -Force | Out-Null
+}
+
+try {
 
 if ($WriteToAppSettings.IsPresent -and -not [System.IO.Path]::IsPathRooted($AppSettingsPath)) {
     $coLocatedAppSettings = Join-Path -Path (Split-Path -Parent $PSCommandPath) -ChildPath "appsettings.json"
@@ -47,7 +59,7 @@ $createCertificate = $ForceRegenerate.IsPresent -or -not (Test-Path -LiteralPath
 if ($createCertificate) {
     $newCertParams = @{
         DnsName           = @("localhost", "127.0.0.1")
-        CertStoreLocation = "Cert:\CurrentUser\My"
+        CertStoreLocation = "Cert:\LocalMachine\My"
         FriendlyName      = "AdagioMachineAgent Bootstrap"
         NotAfter          = (Get-Date).AddYears(2)
     }
@@ -55,7 +67,7 @@ if ($createCertificate) {
     $cert = New-SelfSignedCertificate @newCertParams
 
     $exportParams = @{
-        Cert     = "Cert:\CurrentUser\My\$($cert.Thumbprint)"
+        Cert     = "Cert:\LocalMachine\My\$($cert.Thumbprint)"
         FilePath = $CertificatePath
         Password = $pfxPassword
         Force    = $true
@@ -99,4 +111,10 @@ if (-not $SuppressSecretOutput.IsPresent) {
     Write-Host "Generated values (copy securely now):"
     Write-Host "SecurityOptions__ApiKey=$apiKey"
     Write-Host "SecurityOptions__HttpsCertificatePassword=$certificatePassword"
+}
+}
+finally {
+    if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
+        Stop-Transcript | Out-Null
+    }
 }
