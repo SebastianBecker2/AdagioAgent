@@ -161,6 +161,41 @@ To verify the index is current after a dry-run run:
 .\scripts\check-release-ops-diagnostics-index-freshness.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics
 ```
 
+### CI status report schema
+
+The CI status report (`release-ops-ci-status-report.json`) combines the
+diagnostics index trend and freshness gate outcomes into a single structured
+payload. Schema fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `generatedAtUtc` | string | UTC timestamp of report generation |
+| `diagnosticsRoot` | string | Absolute path of the diagnostics directory |
+| `overallStatus` | string | `pass`, `pass-with-note`, `hold`, `escalate`, or `no-data` |
+| `qualityGates.indexFresh.passed` | boolean | Whether the diagnostics index is current |
+| `qualityGates.indexFresh.message` | string | Human-readable freshness gate outcome |
+| `qualityGates.trendGate.passed` | boolean | Whether the trend gate cleared |
+| `qualityGates.trendGate.level` | string | `pass`, `pass-with-note`, `hold`, `escalate`, or `no-data` |
+| `qualityGates.trendGate.message` | string | Human-readable trend assessment |
+| `summary.totalEntries` | int | Total entries tracked in diagnostics index |
+| `summary.successCount` | int | Count of SUCCESS entries in index |
+| `summary.failureCount` | int | Count of FAILURE entries in index |
+| `summary.recentEntryCount` | int | Number of recent entries analyzed for trend |
+
+Overall status interpretation:
+
+- `pass`: All recent entries succeeded, zero issues — safe to proceed to pilot handoff.
+- `pass-with-note`: All recent entries succeeded with minor issues — proceed and record in sign-off.
+- `hold`: One or more failures or stale index — resolve before pilot handoff.
+- `escalate`: 3+ consecutive failures with the same issue category — assign release-ops owner, halt handoff.
+- `no-data`: No diagnostics entries available — run dry-run flow before handoff review.
+
+Generate the report locally:
+
+```powershell
+.\scripts\generate-release-ops-ci-status-report.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics
+```
+
 Expected output layout:
 
 ```text

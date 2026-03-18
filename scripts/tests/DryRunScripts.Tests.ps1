@@ -5,6 +5,7 @@ $validateDryRunScript = Join-Path $repoRoot 'scripts\validate-release-ops-dry-ru
 $pruneDiagnosticsScript = Join-Path $repoRoot 'scripts\prune-release-ops-dryrun-diagnostics.ps1'
 $updateDiagnosticsIndexScript = Join-Path $repoRoot 'scripts\update-release-ops-diagnostics-index.ps1'
 $checkFreshnessScript = Join-Path $repoRoot 'scripts\check-release-ops-diagnostics-index-freshness.ps1'
+$generateStatusReportScript = Join-Path $repoRoot 'scripts\generate-release-ops-ci-status-report.ps1'
 
 function Get-LatestDryRunPackage {
     param([string]$Root)
@@ -170,5 +171,48 @@ Describe 'Release-ops dry-run scripts' {
         New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
 
         { & $checkFreshnessScript -DiagnosticsRoot $diagnosticsRoot } | Should Not Throw
+    }
+
+    It 'generate-release-ops-ci-status-report emits pass status when all recent entries succeed with zero issues' {
+        $diagnosticsRoot = Join-Path $script:testRoot 'diagnostics'
+        New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
+
+        1..3 | ForEach-Object {
+            $f = Join-Path $diagnosticsRoot "dryrun-validation-summary-success-$_.json"
+            @{ generatedAtUtc = [DateTimeOffset]::UtcNow.AddMinutes(-$_).ToString('u'); success = $true; error = ''; issues = @() } |
+                ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $f -Encoding UTF8
+        }
+        & $updateDiagnosticsIndexScript -DiagnosticsRoot $diagnosticsRoot -MaxEntries 20
+
+        { & $generateStatusReportScript -DiagnosticsRoot $diagnosticsRoot -OutputDir $diagnosticsRoot } | Should Not Throw
+
+        $reportPath = Join-Path $diagnosticsRoot 'release-ops-ci-status-report.json'
+        (Test-Path -LiteralPath $reportPath -PathType Leaf) | Should Be $true
+
+        $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+        $report.overallStatus | Should Be 'pass'
+        $report.qualityGates.trendGate.passed | Should Be $true
+    }
+
+    It 'generate-release-ops-ci-status-report emits hold status when a failure is present in recent entries' {
+        $diagnosticsRoot = Join-Path $script:testRoot 'diagnostics'
+        New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
+
+        $successFile = Join-Path $diagnosticsRoot 'dryrun-validation-summary-success-1.json'
+        @{ generatedAtUtc = [DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('u'); success = $true; error = ''; issues = @() } |
+            ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $successFile -Encoding UTF8
+
+        $failFile = Join-Path $diagnosticsRoot 'dryrun-validation-summary-failure-2.json'
+        @{ generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u'); success = $false; error = 'fixture missing'; issues = @(@{ category = 'fixture'; message = 'missing' }) } |
+            ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $failFile -Encoding UTF8
+
+        & $updateDiagnosticsIndexScript -DiagnosticsRoot $diagnosticsRoot -MaxEntries 20
+
+        { & $generateStatusReportScript -DiagnosticsRoot $diagnosticsRoot -OutputDir $diagnosticsRoot } | Should Not Throw
+
+        $reportPath = Join-Path $diagnosticsRoot 'release-ops-ci-status-report.json'
+        $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+        $report.overallStatus | Should Be 'hold'
+        $report.qualityGates.trendGate.passed | Should Be $false
     }
 }

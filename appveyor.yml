@@ -129,6 +129,16 @@ build_script:
         .\scripts\check-release-ops-diagnostics-index-freshness.ps1 -DiagnosticsRoot $diagnosticsRoot
       }
 
+  # 0.106 On non-tag builds, generate and publish CI status report from diagnostics index
+  - ps: |
+      if ($env:APPVEYOR_REPO_TAG -eq 'true') {
+        Write-Host 'CI status report generation skipped on tagged build.'
+      }
+      else {
+        $diagnosticsRoot = '.\artifacts\release-ops-dryrun-diagnostics'
+        .\scripts\generate-release-ops-ci-status-report.ps1 -DiagnosticsRoot $diagnosticsRoot -OutputDir $diagnosticsRoot
+      }
+
   # 0.2 Generate and validate offline support bundle manifest shape
   - ps: |
       $bundleRoot = Join-Path $env:TEMP 'adagio-support-bundles-ci'
@@ -170,6 +180,10 @@ artifacts:
     name: DryRunValidationDiagnostics
   - path: artifacts/release-ops-dryrun-diagnostics/*.md
     name: DryRunValidationDiagnosticsMarkdown
+  - path: artifacts/release-ops-dryrun-diagnostics/release-ops-ci-status-report.json
+    name: ReleaseOpsCiStatusReport
+  - path: artifacts/release-ops-dryrun-diagnostics/release-ops-ci-status-report.md
+    name: ReleaseOpsCiStatusReportMarkdown
   - path: TestResults/**/*.trx
     name: DotNetTestResults
   - path: controller-extension/test-results/*.xml

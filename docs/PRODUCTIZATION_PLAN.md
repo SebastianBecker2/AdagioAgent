@@ -488,7 +488,16 @@ The next implementation slice should focus on diagnostics index quality gates:
 
 The next implementation slice should focus on release-ops CI status reporting:
 
-1. Add script to emit a structured release-ops CI status report combining dry-run trend data and quality gate outcomes.
-2. Add CI non-tag step to generate and publish the status report as a build artifact.
-3. Add docs section describing the report schema and how to interpret fields.
-4. Add quickstart step to review CI status report before tagging a release.
+1. [x] Add script to emit a structured release-ops CI status report combining dry-run trend data and quality gate outcomes.
+2. [x] Add CI non-tag step to generate and publish the status report as a build artifact.
+3. [x] Add docs section describing the report schema and how to interpret fields.
+4. [x] Add quickstart step to review CI status report before tagging a release.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on release-ops sign-off readiness summary:
+
+1. Add script to evaluate tagged-release readiness by combining quality gate outcomes with sign-off and evidence validator results.
+2. Add CI tagged-build step to run the readiness summary script and emit a structured verdict.
+3. Add docs section mapping readiness summary fields to existing validator scripts and evidence conventions.
+4. Add quickstart step describing how to interpret readiness summary before approving a release tag.

@@ -35,7 +35,17 @@ $latest = Get-ChildItem .\artifacts\support-bundles -Directory | Sort-Object Las
 .\scripts\generate-release-ops-dry-run.ps1 -OutputRoot .\artifacts\release-ops-dry-run -Force
 ```
 
-5. Review dry-run diagnostics index trends before pilot handoff approval:
+5. Generate and review the CI status report before tagging a release:
+
+```powershell
+.\scripts\generate-release-ops-ci-status-report.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics
+Get-Content .\artifacts\release-ops-dryrun-diagnostics\release-ops-ci-status-report.md
+```
+
+   A `pass` or `pass-with-note` overall status is required before tagging. `hold`
+   or `escalate` status requires resolution before proceeding.
+
+6. Review dry-run diagnostics index trends before pilot handoff approval:
 
 ```powershell
 .\scripts\update-release-ops-diagnostics-index.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics -MaxEntries 20
