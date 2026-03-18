@@ -11,6 +11,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+$bootstrapDiagnosticsRoot = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::CommonApplicationData)) "AdagioMachineAgent"
+$bootstrapFailurePath = Join-Path $bootstrapDiagnosticsRoot "bootstrap-failure.json"
+
 if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
     $logDir = Split-Path -Parent $LogPath
     if (-not [string]::IsNullOrWhiteSpace($logDir) -and -not (Test-Path -LiteralPath $logDir)) {
@@ -134,6 +137,35 @@ if (-not $SuppressSecretOutput.IsPresent) {
     Write-Host "SecurityOptions__ApiKey=$apiKey"
     Write-Host "SecurityOptions__HttpsCertificatePassword=$certificatePassword"
 }
+}
+catch {
+    try {
+        New-Item -ItemType Directory -Path $bootstrapDiagnosticsRoot -Force | Out-Null
+
+        $failure = @{
+            generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u')
+            error = $_.Exception.Message
+            exceptionType = $_.Exception.GetType().FullName
+            scriptPath = $PSCommandPath
+            appSettingsPath = $AppSettingsPath
+            certificatePath = $CertificatePath
+            logPath = $LogPath
+        }
+
+        $failure | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $bootstrapFailurePath -Encoding UTF8
+    }
+    catch {
+        # Ignore diagnostics-write errors and preserve original exception context.
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
+        Write-Error "Bootstrap provisioning failed. See '$LogPath' and '$bootstrapFailurePath'. Error: $($_.Exception.Message)"
+    }
+    else {
+        Write-Error "Bootstrap provisioning failed. See '$bootstrapFailurePath'. Error: $($_.Exception.Message)"
+    }
+
+    throw
 }
 finally {
     if (-not [string]::IsNullOrWhiteSpace($LogPath)) {

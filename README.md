@@ -350,6 +350,7 @@ When startup fails, inspect:
 
 - MSI verbose log (`msiexec /i ... /l*v install.log`)
 - `%ProgramData%\AdagioMachineAgent\bootstrap.log`
+- `%ProgramData%\AdagioMachineAgent\bootstrap-failure.json`
 - `%ProgramData%\AdagioMachineAgent\startup-failure.json`
 
 **Configuration after installation (manual updates):**
