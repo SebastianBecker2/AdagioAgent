@@ -24,7 +24,7 @@ try {
 
 if ($WriteToAppSettings.IsPresent -and -not [System.IO.Path]::IsPathRooted($AppSettingsPath)) {
     $coLocatedAppSettings = Join-Path -Path (Split-Path -Parent $PSCommandPath) -ChildPath "appsettings.json"
-    if (Test-Path -LiteralPath $coLocatedAppSettings -PathType Leaf -and -not (Test-Path -LiteralPath $AppSettingsPath -PathType Leaf)) {
+    if ((Test-Path -LiteralPath $coLocatedAppSettings -PathType Leaf) -and -not (Test-Path -LiteralPath $AppSettingsPath -PathType Leaf)) {
         $AppSettingsPath = $coLocatedAppSettings
     }
 }
