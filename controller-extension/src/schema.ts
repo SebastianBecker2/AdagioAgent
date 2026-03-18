@@ -236,6 +236,18 @@ export interface ReadinessResponse {
   issues: string[];
 }
 
+export interface DiagnosticsStatusResponse {
+  status: "ready" | "degraded";
+  version: string;
+  apiVersion: number;
+  platform: "windows" | "linux" | "unsupported";
+  uiAutomationAvailable: boolean;
+  issues: string[];
+  runningProcessCount: number;
+  trackedProcessCount: number;
+  timestampUtc: string;
+}
+
 export interface AgentError {
   error: string;
   detail?: string;

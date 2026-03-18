@@ -71,6 +71,25 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void DiagnosticsStatus_ReturnsCountsAndTimestamp()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var before = DateTimeOffset.UtcNow;
+        var result = sut.DiagnosticsStatus();
+        var after = DateTimeOffset.UtcNow;
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<DiagnosticsStatusResponse>(ok.Value);
+        Assert.Equal("ready", payload.Status);
+        Assert.Equal(0, payload.RunningProcessCount);
+        Assert.Equal(0, payload.TrackedProcessCount);
+        Assert.InRange(payload.TimestampUtc, before, after.AddSeconds(1));
+    }
+
+    [Fact]
     public void Run_ReturnsBadRequestWhenCommandMissing()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);

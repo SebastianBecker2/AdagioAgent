@@ -178,6 +178,18 @@ public sealed record ReadinessResponse(
     bool UiAutomationAvailable,
     List<string> Issues);
 
+/// <summary>Summarized startup/runtime diagnostics for support and onboarding.</summary>
+public sealed record DiagnosticsStatusResponse(
+    string Status,
+    string Version,
+    int ApiVersion,
+    string Platform,
+    bool UiAutomationAvailable,
+    List<string> Issues,
+    int RunningProcessCount,
+    int TrackedProcessCount,
+    DateTimeOffset TimestampUtc);
+
 /// <summary>Problem details returned on error (RFC 7807-style).</summary>
 public sealed record ErrorResponse(string Error, string? Detail = null);
 

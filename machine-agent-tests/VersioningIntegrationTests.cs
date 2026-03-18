@@ -138,6 +138,25 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
         Assert.Equal(versionedPayload.Error, legacyPayload.Error);
     }
 
+    [Fact]
+    public async Task DiagnosticsStatus_VersionedRoute_ReturnsSameResponseAsDirectRoute()
+    {
+        var direct = await _client.GetAsync("/diagnostics/status");
+        var versioned = await _client.GetAsync("/api/v1/diagnostics/status");
+
+        Assert.Equal(HttpStatusCode.OK, direct.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, versioned.StatusCode);
+
+        var directPayload = await ReadJson<DiagnosticsStatusResponse>(direct);
+        var versionedPayload = await ReadJson<DiagnosticsStatusResponse>(versioned);
+
+        Assert.Equal(directPayload.Status, versionedPayload.Status);
+        Assert.Equal(directPayload.Version, versionedPayload.Version);
+        Assert.Equal(directPayload.ApiVersion, versionedPayload.ApiVersion);
+        Assert.Equal(directPayload.Platform, versionedPayload.Platform);
+        Assert.Equal(directPayload.RunningProcessCount, versionedPayload.RunningProcessCount);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────
 
     private static async Task<T> ReadJson<T>(HttpResponseMessage response)

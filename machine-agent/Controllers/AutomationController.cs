@@ -80,13 +80,77 @@ public sealed class AutomationController : ControllerBase
                 DateTimeOffset.UtcNow));
         }
 
+        var uiAutomationIssues = GetUiAutomationReadinessIssues(platform);
+        issues.AddRange(uiAutomationIssues);
+        var uiAutomationAvailable = uiAutomationIssues.Count == 0;
+
         return Ok(new ReadinessResponse(
             Status: issues.Count == 0 ? "ready" : "degraded",
             Version: AgentVersion,
             ApiVersion: 1,
             Platform: platform,
-            UiAutomationAvailable: true,
+            UiAutomationAvailable: uiAutomationAvailable,
             Issues: issues));
+    }
+
+    [HttpGet("/diagnostics/status")]
+    [ProducesResponseType(typeof(DiagnosticsStatusResponse), StatusCodes.Status200OK)]
+    public IActionResult DiagnosticsStatus()
+    {
+        var readyResult = Ready();
+        var readyPayload = (readyResult as OkObjectResult)?.Value as ReadinessResponse;
+
+        if (readyPayload is null)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to compute diagnostics status."));
+        }
+
+        return Ok(new DiagnosticsStatusResponse(
+            Status: readyPayload.Status,
+            Version: readyPayload.Version,
+            ApiVersion: readyPayload.ApiVersion,
+            Platform: readyPayload.Platform,
+            UiAutomationAvailable: readyPayload.UiAutomationAvailable,
+            Issues: readyPayload.Issues,
+            RunningProcessCount: _processService.RunningProcessCount,
+            TrackedProcessCount: _processService.TrackedProcessCount,
+            TimestampUtc: DateTimeOffset.UtcNow));
+    }
+
+    private List<string> GetUiAutomationReadinessIssues(string platform)
+    {
+        var issues = new List<string>();
+
+        if (platform == "unsupported")
+        {
+            issues.Add("UI automation backend is not available on unsupported platform.");
+            return issues;
+        }
+
+        if (platform == "linux")
+        {
+            var display = Environment.GetEnvironmentVariable("DISPLAY");
+            var waylandDisplay = Environment.GetEnvironmentVariable("WAYLAND_DISPLAY");
+            var dbus = Environment.GetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS");
+
+            if (string.IsNullOrWhiteSpace(display) && string.IsNullOrWhiteSpace(waylandDisplay))
+            {
+                issues.Add("Linux UI automation requires DISPLAY or WAYLAND_DISPLAY to be set.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dbus))
+            {
+                issues.Add("Linux UI automation requires DBUS_SESSION_BUS_ADDRESS to be set.");
+            }
+        }
+
+        if (_uiService is null)
+        {
+            issues.Add("UI automation service is not initialized.");
+        }
+
+        return issues;
     }
 
     // ── POST /run ────────────────────────────────────────────────────────────

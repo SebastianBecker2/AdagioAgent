@@ -12,6 +12,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Implement API key provisioning and secure storage strategy for controlled environments.
 - [x] Add readiness checks for certificate validity window and API key quality.
 - [x] Add extension command to re-run startup diagnostics on demand.
+- [x] Add readiness checks for UI automation backend capability.
+- [x] Add diagnostics endpoint with summarized startup/runtime health data.
+- [x] Add extension status indicator for readiness state.
+- [x] Add structured logging output channel in the extension.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -181,7 +185,16 @@ operator-facing diagnostics:
 
 The next implementation slice should focus on diagnostics and readiness depth:
 
-1. Add readiness checks for UI automation backend capability (not only config).
-2. Add a diagnostics endpoint that returns summarized startup/runtime health data.
-3. Add extension-side status indicator for readiness state.
-4. Add structured logging output channel in the extension.
+1. [x] Add readiness checks for UI automation backend capability (not only config).
+2. [x] Add a diagnostics endpoint that returns summarized startup/runtime health data.
+3. [x] Add extension-side status indicator for readiness state.
+4. [x] Add structured logging output channel in the extension.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on API discoverability and supportability:
+
+1. Add OpenAPI/Swagger for `/api/v1` and core operational endpoints.
+2. Add diagnostics endpoint for support bundle/export metadata (without sensitive values).
+3. Add extension command/UI action to open the Adagio output channel and show current status.
+4. Add documentation for readiness/diagnostics troubleshooting workflow.

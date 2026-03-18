@@ -96,6 +96,10 @@ Installer-named tools remain available as compatibility aliases:
 - `adagioAgent_runInstallerAndAssert` (alias of run-and-assert workflow)
 - `adagioAgent_collectInstallArtifacts` (alias of collect-process-artifacts)
 
+Operational command:
+
+- `adagioAgent.runStartupDiagnostics` (rerun readiness diagnostics on demand)
+
 **Build:**
 
 ```bash
@@ -126,6 +130,8 @@ automation. Supports **Windows** (via **FlaUI/UIA3**) and **Linux with a GUI**
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/health` | Health check |
+| `GET` | `/ready` | Readiness check with actionable configuration/runtime issues |
+| `GET` | `/diagnostics/status` | Summarized startup/runtime diagnostics |
 | `POST` | `/run` | Start an executable process |
 | `POST` | `/run-and-collect-artifacts` | Start process, wait, collect diagnostics |
 | `POST` | `/run-and-assert` | Start process, collect diagnostics, evaluate assertions |

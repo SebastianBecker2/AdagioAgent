@@ -81,6 +81,12 @@ public sealed class ProcessService : IDisposable
     public TrackedProcess? Get(int pid) =>
         _processes.TryGetValue(pid, out var tp) ? tp : null;
 
+    /// <summary>Count of currently tracked process entries.</summary>
+    public int TrackedProcessCount => _processes.Count;
+
+    /// <summary>Count of tracked processes that are still running.</summary>
+    public int RunningProcessCount => _processes.Values.Count(tp => !tp.Process.HasExited);
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private void EnforceWhitelist(string command)

@@ -8,6 +8,9 @@ const {
   showWarningMessageMock,
   showInformationMessageMock,
   withProgressMock,
+  createOutputChannelMock,
+  createStatusBarItemMock,
+  statusBarItemMock,
   openTextDocumentMock,
   showTextDocumentMock,
   writeFileMock,
@@ -68,6 +71,15 @@ const {
     showWarningMessageMock: vi.fn(),
     showInformationMessageMock: vi.fn(),
     withProgressMock: vi.fn(async (_opts, task) => task()),
+    createOutputChannelMock: vi.fn(() => ({ appendLine: vi.fn(), dispose: vi.fn() })),
+    statusBarItemMock: {
+      text: "",
+      tooltip: "",
+      command: undefined,
+      show: vi.fn(),
+      dispose: vi.fn(),
+    },
+    createStatusBarItemMock: vi.fn(),
     openTextDocumentMock: vi.fn(),
     showTextDocumentMock: vi.fn(),
     writeFileMock: vi.fn(),
@@ -98,7 +110,13 @@ vi.mock("vscode", () => ({
     showWarningMessage: showWarningMessageMock,
     showInformationMessage: showInformationMessageMock,
     withProgress: withProgressMock,
+    createOutputChannel: createOutputChannelMock,
+    createStatusBarItem: createStatusBarItemMock,
     showTextDocument: showTextDocumentMock,
+  },
+  StatusBarAlignment: {
+    Left: 1,
+    Right: 2,
   },
   ProgressLocation: {
     Notification: 15,
@@ -136,6 +154,7 @@ describe("extension activation and commands", () => {
     showTextDocumentMock.mockResolvedValue(undefined);
     writeFileMock.mockResolvedValue(undefined);
     executeCommandMock.mockResolvedValue(undefined);
+    createStatusBarItemMock.mockReturnValue(statusBarItemMock as never);
   });
 
   it("runs startup connection check once and persists completion when ready", async () => {
@@ -256,6 +275,9 @@ describe("extension activation and commands", () => {
     expect(toolHandlers.has("adagioAgent_pressHotkey")).toBe(true);
     expect(toolHandlers.has("adagioAgent_setCheckbox")).toBe(true);
     expect(toolHandlers.has("adagioAgent_selectOption")).toBe(true);
+
+    expect(createOutputChannelMock).toHaveBeenCalledWith("Adagio Agent");
+    expect(createStatusBarItemMock).toHaveBeenCalled();
   });
 
   it("runStartupDiagnostics command executes readiness check and shows success", async () => {
@@ -268,6 +290,17 @@ describe("extension activation and commands", () => {
         uiAutomationAvailable: true,
         issues: [],
       }),
+      diagnosticsStatus: vi.fn().mockResolvedValue({
+        status: "ready",
+        version: "0.1.0",
+        apiVersion: 1,
+        platform: "windows",
+        uiAutomationAvailable: true,
+        issues: [],
+        runningProcessCount: 0,
+        trackedProcessCount: 0,
+        timestampUtc: "2026-03-18T00:00:00Z",
+      }),
     });
 
     const context = { subscriptions: [] as Array<{ dispose: () => void }> };
@@ -278,6 +311,9 @@ describe("extension activation and commands", () => {
 
     expect(showInformationMessageMock).toHaveBeenCalledWith(
       "Adagio Agent diagnostics passed (windows, API v1)."
+    );
+    expect(showInformationMessageMock).toHaveBeenCalledWith(
+      "Adagio Agent diagnostics: status=ready, running=0, tracked=0"
     );
   });
 

@@ -138,6 +138,42 @@ interface SelectOptionInput {
 }
 
 const startupConnectionCheckKey = "adagioAgent.startupConnectionCheckCompleted";
+let readinessStatusItem: vscode.StatusBarItem | undefined;
+let adagioOutput: vscode.OutputChannel | undefined;
+
+function logAdagio(level: "info" | "warn" | "error", message: string, details?: unknown): void {
+  if (!adagioOutput) {
+    return;
+  }
+
+  const payload = details === undefined ? "" : ` | ${JSON.stringify(details)}`;
+  adagioOutput.appendLine(`${new Date().toISOString()} [${level.toUpperCase()}] ${message}${payload}`);
+}
+
+function setReadinessStatus(state: "checking" | "ready" | "degraded" | "offline", tooltip: string): void {
+  if (!readinessStatusItem) {
+    return;
+  }
+
+  switch (state) {
+    case "checking":
+      readinessStatusItem.text = "$(sync~spin) Adagio: Checking";
+      break;
+    case "ready":
+      readinessStatusItem.text = "$(check) Adagio: Ready";
+      break;
+    case "degraded":
+      readinessStatusItem.text = "$(warning) Adagio: Degraded";
+      break;
+    default:
+      readinessStatusItem.text = "$(error) Adagio: Offline";
+      break;
+  }
+
+  readinessStatusItem.tooltip = tooltip;
+  readinessStatusItem.command = "adagioAgent.runStartupDiagnostics";
+  readinessStatusItem.show();
+}
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -155,6 +191,8 @@ async function runStartupConnectionCheck(
   context?: vscode.ExtensionContext,
   options?: { force?: boolean; showSuccess?: boolean }
 ): Promise<void> {
+  setReadinessStatus("checking", "Running Adagio Agent startup diagnostics...");
+
   const state = context?.globalState;
 
   if (state && !options?.force) {
@@ -171,6 +209,12 @@ async function runStartupConnectionCheck(
         await state.update(startupConnectionCheckKey, true);
       }
 
+      logAdagio("info", "Startup diagnostics passed", {
+        platform: readiness.platform,
+        apiVersion: readiness.apiVersion,
+      });
+      setReadinessStatus("ready", `Platform: ${readiness.platform}, API v${readiness.apiVersion}`);
+
       if (options?.showSuccess) {
         vscode.window.showInformationMessage(
           `Adagio Agent diagnostics passed (${readiness.platform}, API v${readiness.apiVersion}).`
@@ -183,10 +227,19 @@ async function runStartupConnectionCheck(
     const issueSummary = readiness.issues.length > 0
       ? readiness.issues.join("; ")
       : "The agent reported a degraded readiness state.";
+    logAdagio("warn", "Startup diagnostics returned degraded readiness", {
+      platform: readiness.platform,
+      issues: readiness.issues,
+    });
+    setReadinessStatus("degraded", issueSummary);
     vscode.window.showWarningMessage(
       `Adagio Agent startup check reports degraded readiness: ${issueSummary}`
     );
   } catch (error) {
+    logAdagio("error", "Startup diagnostics failed", {
+      error: errorMessage(error),
+    });
+    setReadinessStatus("offline", errorMessage(error));
     vscode.window.showWarningMessage(
       `Adagio Agent startup connection check failed: ${errorMessage(error)}`
     );
@@ -196,6 +249,12 @@ async function runStartupConnectionCheck(
 // ─── Activation ──────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext): void {
+  adagioOutput = vscode.window.createOutputChannel("Adagio Agent");
+  readinessStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  setReadinessStatus("checking", "Waiting for first Adagio Agent startup diagnostics run...");
+
+  context.subscriptions.push(adagioOutput, readinessStatusItem);
+
   // ── VS Code commands (palette / keybindings) ─────────────────────────────
 
   context.subscriptions.push(
@@ -345,6 +404,17 @@ async function cmdRunExecutable(): Promise<void> {
 
 async function cmdRunStartupDiagnostics(): Promise<void> {
   await runStartupConnectionCheck(undefined, { force: true, showSuccess: true });
+
+  const diagnostics = await createAgentClient().diagnosticsStatus();
+  const summary = `status=${diagnostics.status}, running=${diagnostics.runningProcessCount}, tracked=${diagnostics.trackedProcessCount}`;
+  logAdagio("info", "Diagnostics status fetched", {
+    status: diagnostics.status,
+    runningProcessCount: diagnostics.runningProcessCount,
+    trackedProcessCount: diagnostics.trackedProcessCount,
+    issues: diagnostics.issues,
+  });
+
+  vscode.window.showInformationMessage(`Adagio Agent diagnostics: ${summary}`);
 }
 
 async function cmdRunInstallerAndCollectArtifacts(): Promise<void> {

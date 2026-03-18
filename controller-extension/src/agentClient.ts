@@ -10,6 +10,7 @@ import {
   TypeResponse,
   HealthResponse,
   ReadinessResponse,
+  DiagnosticsStatusResponse,
   AgentError,
   CopyFileRequest,
   CopyFileResponse,
@@ -73,6 +74,10 @@ export class AgentClient {
 
   async ready(): Promise<ReadinessResponse> {
     return this.get<ReadinessResponse>("/ready");
+  }
+
+  async diagnosticsStatus(): Promise<DiagnosticsStatusResponse> {
+    return this.get<DiagnosticsStatusResponse>("/diagnostics/status");
   }
 
   // ─── Process ─────────────────────────────────────────────────────────────
