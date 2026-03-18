@@ -14,6 +14,13 @@ current support boundaries and deployment assumptions, and
 strategy decision. Troubleshooting workflows are documented in
 [docs/DIAGNOSTICS_TROUBLESHOOTING.md](docs/DIAGNOSTICS_TROUBLESHOOTING.md).
 
+Governance and support docs:
+
+- [CHANGELOG.md](CHANGELOG.md)
+- [SECURITY.md](SECURITY.md)
+- [SUPPORT.md](SUPPORT.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+
 Bootstrap helper script: `scripts/bootstrap-agent.ps1` (certificate + API key
 generation for controlled environments).
 

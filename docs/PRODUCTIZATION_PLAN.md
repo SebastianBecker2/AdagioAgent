@@ -20,6 +20,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add diagnostics export metadata endpoint for support bundle workflows.
 - [x] Add extension command to open diagnostics output and current readiness status.
 - [x] Add readiness/diagnostics troubleshooting workflow documentation.
+- [x] Add CHANGELOG with initial release and roadmap-relevant entries.
+- [x] Add SECURITY policy with reporting and vulnerability handling expectations.
+- [x] Add SUPPORT policy with boundaries, required diagnostics, and response model.
+- [x] Add CONTRIBUTING guide with branch, PR, and test expectations.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -207,7 +211,16 @@ The next implementation slice should focus on API discoverability and supportabi
 
 The next implementation slice should focus on release trust and governance basics:
 
-1. Add `CHANGELOG.md` with initial release and roadmap-relevant entries.
-2. Add `SECURITY.md` with reporting process and vulnerability handling expectations.
-3. Add `SUPPORT.md` with support boundaries, data to collect, and response expectations.
-4. Add `CONTRIBUTING.md` with branch/PR/test requirements aligned to current CI.
+1. [x] Add `CHANGELOG.md` with initial release and roadmap-relevant entries.
+2. [x] Add `SECURITY.md` with reporting process and vulnerability handling expectations.
+3. [x] Add `SUPPORT.md` with support boundaries, data to collect, and response expectations.
+4. [x] Add `CONTRIBUTING.md` with branch/PR/test requirements aligned to current CI.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on release automation trust checks:
+
+1. Add CI checks that fail if `CHANGELOG.md` is missing updates for versioned release commits.
+2. Add CI validation that release-governance docs (`SECURITY.md`, `SUPPORT.md`) are present.
+3. Add a release-preflight script to validate version consistency across backend, extension, and installer.
+4. Document the preflight script workflow in `docs/RELEASING.md`.
