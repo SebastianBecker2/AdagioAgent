@@ -119,6 +119,16 @@ build_script:
         }
       }
 
+  # 0.105 On non-tag builds, assert diagnostics index was refreshed after dry-run
+  - ps: |
+      if ($env:APPVEYOR_REPO_TAG -eq 'true') {
+        Write-Host 'Diagnostics index freshness check skipped on tagged build.'
+      }
+      else {
+        $diagnosticsRoot = '.\artifacts\release-ops-dryrun-diagnostics'
+        .\scripts\check-release-ops-diagnostics-index-freshness.ps1 -DiagnosticsRoot $diagnosticsRoot
+      }
+
   # 0.2 Generate and validate offline support bundle manifest shape
   - ps: |
       $bundleRoot = Join-Path $env:TEMP 'adagio-support-bundles-ci'

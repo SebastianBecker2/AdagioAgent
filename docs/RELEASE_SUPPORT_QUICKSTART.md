@@ -39,7 +39,18 @@ $latest = Get-ChildItem .\artifacts\support-bundles -Directory | Sort-Object Las
 
 ```powershell
 .\scripts\update-release-ops-diagnostics-index.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics -MaxEntries 20
+.\scripts\check-release-ops-diagnostics-index-freshness.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics
 ```
+
+   Diagnostics trend pass/hold decision table:
+
+   | Trend | Decision | Action |
+   |-------|----------|--------|
+   | Last 5 entries: all SUCCESS, 0 issues | Pass | Proceed to pilot handoff |
+   | Last 5 entries: all SUCCESS, ≤2 total issues | Pass with note | Proceed; record minor issues in sign-off |
+   | Any FAILURE in last 3 entries | Hold | Resolve failure, re-run, confirm green trend |
+   | 2+ FAILUREs in last 5 entries | Hold | Fix root cause, verify fix with dry-run |
+   | 3+ consecutive FAILUREs with same category | Escalate | Assign release-ops owner, halt handoff |
 
 ### 2. Observability and docs verification
 

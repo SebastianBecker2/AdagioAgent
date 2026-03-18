@@ -135,6 +135,32 @@ Trend guidance across consecutive builds:
 - Flaky pipeline signal: alternating success/failure with no code changes in
 	diagnostics scripts; investigate environment and cleanup timing.
 
+### Pilot handoff diagnostics thresholds
+
+Use the following criteria to decide whether diagnostics trends support proceeding
+to pilot handoff or require a hold:
+
+| Trend | Decision |
+|-------|----------|
+| Last 5 entries are all SUCCESS with 0 total issues | Pass — proceed to pilot handoff |
+| Last 5 entries are all SUCCESS with ≤2 total issues | Pass with note — proceed and record minor issues in sign-off |
+| Any FAILURE in the last 3 entries | Hold — resolve failure and confirm green trend before handoff |
+| 2 or more FAILUREs in the last 5 entries | Hold — investigate common failure category and fix root cause |
+| 3 or more consecutive FAILUREs with the same issue category | Escalate — assign release-ops owner and halt handoff |
+
+To review recent counts from the diagnostics index:
+
+```powershell
+$index = Get-Content .\artifacts\release-ops-dryrun-diagnostics\dryrun-diagnostics-index.json | ConvertFrom-Json
+$index | Select-Object totalEntries, successCount, failureCount
+```
+
+To verify the index is current after a dry-run run:
+
+```powershell
+.\scripts\check-release-ops-diagnostics-index-freshness.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics
+```
+
 Expected output layout:
 
 ```text

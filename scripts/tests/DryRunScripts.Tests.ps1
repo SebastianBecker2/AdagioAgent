@@ -4,6 +4,7 @@ $generateDryRunScript = Join-Path $repoRoot 'scripts\generate-release-ops-dry-ru
 $validateDryRunScript = Join-Path $repoRoot 'scripts\validate-release-ops-dry-run.ps1'
 $pruneDiagnosticsScript = Join-Path $repoRoot 'scripts\prune-release-ops-dryrun-diagnostics.ps1'
 $updateDiagnosticsIndexScript = Join-Path $repoRoot 'scripts\update-release-ops-diagnostics-index.ps1'
+$checkFreshnessScript = Join-Path $repoRoot 'scripts\check-release-ops-diagnostics-index-freshness.ps1'
 
 function Get-LatestDryRunPackage {
     param([string]$Root)
@@ -130,5 +131,44 @@ Describe 'Release-ops dry-run scripts' {
         $index.totalEntries | Should Be 2
         $index.successCount | Should Be 1
         $index.failureCount | Should Be 1
+    }
+
+    It 'check-release-ops-diagnostics-index-freshness passes when index is newer than summaries' {
+        $diagnosticsRoot = Join-Path $script:testRoot 'diagnostics'
+        New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
+
+        $summaryFile = Join-Path $diagnosticsRoot 'dryrun-validation-summary-success-fresh.json'
+        @{ generatedAtUtc = [DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('u'); success = $true; error = ''; issues = @() } |
+            ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $summaryFile -Encoding UTF8
+        (Get-Item -LiteralPath $summaryFile).LastWriteTimeUtc = [DateTime]::UtcNow.AddMinutes(-5)
+
+        $indexFile = Join-Path $diagnosticsRoot 'dryrun-diagnostics-index.json'
+        @{ generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u'); entries = @() } |
+            ConvertTo-Json | Set-Content -LiteralPath $indexFile -Encoding UTF8
+
+        { & $checkFreshnessScript -DiagnosticsRoot $diagnosticsRoot } | Should Not Throw
+    }
+
+    It 'check-release-ops-diagnostics-index-freshness fails when summaries are newer than index' {
+        $diagnosticsRoot = Join-Path $script:testRoot 'diagnostics'
+        New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
+
+        $indexFile = Join-Path $diagnosticsRoot 'dryrun-diagnostics-index.json'
+        @{ generatedAtUtc = [DateTimeOffset]::UtcNow.AddMinutes(-10).ToString('u'); entries = @() } |
+            ConvertTo-Json | Set-Content -LiteralPath $indexFile -Encoding UTF8
+        (Get-Item -LiteralPath $indexFile).LastWriteTimeUtc = [DateTime]::UtcNow.AddMinutes(-10)
+
+        $summaryFile = Join-Path $diagnosticsRoot 'dryrun-validation-summary-success-new.json'
+        @{ generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u'); success = $true; error = ''; issues = @() } |
+            ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $summaryFile -Encoding UTF8
+
+        { & $checkFreshnessScript -DiagnosticsRoot $diagnosticsRoot } | Should Throw
+    }
+
+    It 'check-release-ops-diagnostics-index-freshness skips when no summaries are present' {
+        $diagnosticsRoot = Join-Path $script:testRoot 'diagnostics'
+        New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
+
+        { & $checkFreshnessScript -DiagnosticsRoot $diagnosticsRoot } | Should Not Throw
     }
 }

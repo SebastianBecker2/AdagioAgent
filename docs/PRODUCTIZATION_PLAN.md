@@ -479,7 +479,16 @@ The next implementation slice should focus on diagnostics artifact visibility an
 
 The next implementation slice should focus on diagnostics index quality gates:
 
-1. Add script check that diagnostics index is refreshed when new dry-run summaries are created.
-2. Add CI non-tag assertion to fail if diagnostics index update step is skipped or stale.
-3. Add docs note defining acceptable diagnostics trend thresholds for pilot handoff decisions.
-4. Add quickstart decision table for pass/hold based on diagnostics trend outcomes.
+1. [x] Add script check that diagnostics index is refreshed when new dry-run summaries are created.
+2. [x] Add CI non-tag assertion to fail if diagnostics index update step is skipped or stale.
+3. [x] Add docs note defining acceptable diagnostics trend thresholds for pilot handoff decisions.
+4. [x] Add quickstart decision table for pass/hold based on diagnostics trend outcomes.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on release-ops CI status reporting:
+
+1. Add script to emit a structured release-ops CI status report combining dry-run trend data and quality gate outcomes.
+2. Add CI non-tag step to generate and publish the status report as a build artifact.
+3. Add docs section describing the report schema and how to interpret fields.
+4. Add quickstart step to review CI status report before tagging a release.
