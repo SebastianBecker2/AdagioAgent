@@ -43,11 +43,11 @@
     <PublishDir Condition="'$(PublishDir)'==''">$(MSBuildThisFileDirectory)publish\</PublishDir>
     <_MachineAgentCsproj>$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj</_MachineAgentCsproj>
     <!--
-      Forward PublishDir and AgentVersion to the WiX preprocessor so that
-      Package.wxs can reference them via $(var.PublishDir) and
-      $(var.AgentVersion).
+      Forward PublishDir to the WiX preprocessor so that Package.wxs can
+      reference it via $(var.PublishDir).  AgentVersion is forwarded separately
+      by the ResolveMachineAgentVersion target once the value is known.
     -->
-    <DefineConstants>$(DefineConstants);PublishDir=$(PublishDir);AgentVersion=$(AgentWixVersion)</DefineConstants>
+    <DefineConstants>$(DefineConstants);PublishDir=$(PublishDir)</DefineConstants>
   </PropertyGroup>
 
   <!--
