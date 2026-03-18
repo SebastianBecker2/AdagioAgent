@@ -59,6 +59,38 @@ sign-off record file (enforced in CI tagged builds).
 	- Fails when required entries are missing, placeholders are used, version
 		scoping is incorrect, or referenced files are absent.
 
+### Dry-run package walkthrough
+
+Use dry-run generation to verify release-ops package wiring before pilot
+handoff and before tagging a release.
+
+Generate a local dry-run package:
+
+```powershell
+.\scripts\generate-release-ops-dry-run.ps1 -OutputRoot .\artifacts\release-ops-dry-run -Force
+```
+
+Expected output layout:
+
+```text
+artifacts/release-ops-dry-run/
+	v<semver>-<yyyymmdd>-dryrun/
+		manifest.json
+		signoffs/
+			v<semver>-<yyyymmdd>.md
+		evidence/
+			indexes/
+				v<semver>-<yyyymmdd>-evidence.md
+			support-bundles/
+				v<semver>-dryrun-bundle.json
+			correlation-traces/
+				v<semver>-dryrun-trace.md
+			rollback/
+				v<semver>-dryrun-rollback.md
+			upgrade-validation/
+				v<semver>-dryrun-upgrade.md
+```
+
 ### Strict-mode troubleshooting tips
 
 - In `Set-StrictMode -Version Latest`, single-object pipeline results can break

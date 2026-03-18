@@ -47,6 +47,21 @@ build_script:
   # 0.09 Run validator script tests (Pester)
   - ps: Invoke-Pester -Script .\scripts\tests\ValidatorScripts.Tests.ps1 -EnableExit
 
+  # 0.10 On non-tag builds, smoke-test dry-run release-ops package generation
+  - ps: |
+      if ($env:APPVEYOR_REPO_TAG -eq 'true') {
+        Write-Host 'Dry-run release-ops smoke check skipped on tagged build.'
+      }
+      else {
+        $dryRunRoot = Join-Path $env:TEMP 'adagio-release-ops-dryrun-ci'
+        .\scripts\generate-release-ops-dry-run.ps1 -OutputRoot $dryRunRoot -Force
+        $latest = Get-ChildItem -LiteralPath $dryRunRoot -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if (-not $latest) { throw 'Dry-run package generation produced no output directory.' }
+        $manifest = Join-Path $latest.FullName 'manifest.json'
+        if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) { throw 'Dry-run package missing manifest.json.' }
+        Remove-Item -LiteralPath $dryRunRoot -Recurse -Force
+      }
+
   # 0.2 Generate and validate offline support bundle manifest shape
   - ps: |
       $bundleRoot = Join-Path $env:TEMP 'adagio-support-bundles-ci'

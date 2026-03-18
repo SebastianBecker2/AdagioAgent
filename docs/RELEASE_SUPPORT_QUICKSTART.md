@@ -28,6 +28,13 @@ $latest = Get-ChildItem .\artifacts\support-bundles -Directory | Sort-Object Las
 .\scripts\validate-support-bundle.ps1 -BundlePath $latest.FullName -ExpectOffline
 ```
 
+4. Before pilot handoff and before tagging a release, run dry-run release-ops
+   package generation to confirm sign-off/index/evidence wiring:
+
+```powershell
+.\scripts\generate-release-ops-dry-run.ps1 -OutputRoot .\artifacts\release-ops-dry-run -Force
+```
+
 ### 2. Observability and docs verification
 
 1. Verify README and support links:
