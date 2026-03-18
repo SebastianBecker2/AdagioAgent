@@ -32,14 +32,14 @@
 1. [x] Update controller-extension to call `/api/v1/...` by default.
 2. [x] Keep configuration-based override for transition windows.
 3. [x] Align and test contracts between C# models and TypeScript schema.
-4. [ ] Add tests for:
+3. [x] Add tests for:
 - `/api/v1` routes
 - legacy route compatibility
 - health compatibility metadata
 
 ## Phase 4: Release and Source of Truth
 
-1. Make machine-agent version explicit in project metadata.
+1. [x] Make machine-agent version explicit in project metadata.
 2. Keep installer version tied to release process rules.
 3. Add release checklist:
 - bump versions
@@ -49,14 +49,14 @@
 
 ## Phase 5: Deprecation and Cleanup
 
-1. Mark unversioned routes as deprecated in docs.
-2. Define removal timeline (for example next major).
-3. Remove deprecated aliases when moving to API v2.
+1. [x] Mark unversioned routes as deprecated in docs.
+2. [x] Define removal timeline (for example next major).
+3. [ ] Remove deprecated aliases when moving to API v2.
 
 ## Deliverables
 
-1. [ ] README section: Versioning and Compatibility
+1. [x] README section: Versioning and Compatibility
 2. [x] `/api/v1` route availability
 3. [x] Health contract with API version metadata
-4. [ ] Compatibility matrix in docs
-5. [ ] Tests for versioned routes and compatibility behavior
+4. [x] Compatibility matrix in docs
+5. [x] Tests for versioned routes and compatibility behavior

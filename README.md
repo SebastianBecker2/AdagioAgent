@@ -306,6 +306,69 @@ Restart-Service AdagioMachineAgent
 
 ---
 
+## Versioning and Compatibility
+
+### Version scheme
+
+Each artifact follows independent [Semantic Versioning](https://semver.org/):
+
+| Artifact | Current version | Notes |
+|---|---|---|
+| `controller-extension` | see `controller-extension/package.json` | VSIX / npm |
+| `machine-agent` | see `machine-agent/AdagioMachineAgent.csproj` (`<Version>`) | Service binary |
+| `installer` | follows machine-agent release | MSI |
+
+### REST API versioning
+
+All endpoints are available under the versioned prefix `/api/v1/...` as well
+as their legacy unversioned paths (e.g., `/run`).  The versioned prefix is the
+preferred form for all new integrations.
+
+```
+# Versioned (preferred):
+GET  https://127.0.0.1:5443/api/v1/health
+POST https://127.0.0.1:5443/api/v1/run
+
+# Legacy (compatibility aliases — deprecated, will be removed in API v2):
+GET  https://127.0.0.1:5443/health
+POST https://127.0.0.1:5443/run
+```
+
+The `GET /api/v1/health` (and `/health`) response includes the current API
+version and the minimum client version the agent supports:
+
+```json
+{
+  "status": "healthy",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "minSupportedClientVersion": "0.1.0"
+}
+```
+
+### Compatibility policy
+
+- The `controller-extension` targets **API major version 1**.
+- The `machine-agent` publishes its `apiVersion` in the health response so clients
+  can detect incompatibilities at runtime.
+- Breaking REST API changes require a new major path (`/api/v2/...`); until
+  then, the existing `/api/v1/...` surface is guaranteed stable.
+- The `apiVersion` in the health response changes only on breaking API changes.
+
+### Compatibility matrix
+
+| Extension version | Supported agent API versions | Notes |
+|---|---|---|
+| 0.1.x | `/api/v1` | Current release |
+
+### Deprecation timeline
+
+The unversioned legacy routes (`/health`, `/run`, etc.) are **deprecated** and
+will be removed when a `/api/v2` surface is introduced.  No removal date is set
+yet; they will remain available throughout the API v1 lifecycle.
+
+---
+
 ## CI test reports (AppVeyor)
 
 The AppVeyor pipeline runs both test suites on each build:

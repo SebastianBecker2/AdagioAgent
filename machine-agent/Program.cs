@@ -195,3 +195,7 @@ public sealed class SecurityOptions
     /// <summary>The expected API key value.</summary>
     public string ApiKey { get; set; } = string.Empty;
 }
+
+// Expose the implicit Program class so integration tests can reference it
+// through WebApplicationFactory<Program>.
+public partial class Program { }
