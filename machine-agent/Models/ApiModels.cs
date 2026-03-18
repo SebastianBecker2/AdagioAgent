@@ -169,6 +169,15 @@ public sealed record HealthResponse(
     string? MinSupportedClientVersion = null,
     string? MaxSupportedClientVersion = null);
 
+/// <summary>Readiness response used for install/bootstrap verification.</summary>
+public sealed record ReadinessResponse(
+    string Status,
+    string Version,
+    int ApiVersion,
+    string Platform,
+    bool UiAutomationAvailable,
+    List<string> Issues);
+
 /// <summary>Problem details returned on error (RFC 7807-style).</summary>
 public sealed record ErrorResponse(string Error, string? Detail = null);
 

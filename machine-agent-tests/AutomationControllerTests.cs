@@ -28,6 +28,24 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void Ready_ReturnsOkWithReadyStatus()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var result = sut.Ready();
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<ReadinessResponse>(ok.Value);
+        Assert.Equal("ready", payload.Status);
+        Assert.False(string.IsNullOrWhiteSpace(payload.Version));
+        Assert.Equal(1, payload.ApiVersion);
+        Assert.True(payload.UiAutomationAvailable);
+        Assert.Empty(payload.Issues);
+    }
+
+    [Fact]
     public void Run_ReturnsBadRequestWhenCommandMissing()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);

@@ -42,6 +42,19 @@ public sealed class AutomationController : ControllerBase
             MinSupportedClientVersion: "0.1.0"));
     }
 
+    [HttpGet("/ready")]
+    [ProducesResponseType(typeof(ReadinessResponse), StatusCodes.Status200OK)]
+    public IActionResult Ready()
+    {
+        return Ok(new ReadinessResponse(
+            Status: "ready",
+            Version: AgentVersion,
+            ApiVersion: 1,
+            Platform: OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsLinux() ? "linux" : "unsupported",
+            UiAutomationAvailable: true,
+            Issues: []));
+    }
+
     // ── POST /run ────────────────────────────────────────────────────────────
 
     /// <summary>Start an executable process and return its PID.</summary>

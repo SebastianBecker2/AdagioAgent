@@ -62,6 +62,24 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
         Assert.False(string.IsNullOrWhiteSpace(payload.MinSupportedClientVersion));
     }
 
+    [Fact]
+    public async Task Ready_VersionedRoute_ReturnsSameResponseAsDirectRoute()
+    {
+        var direct = await _client.GetAsync("/ready");
+        var versioned = await _client.GetAsync("/api/v1/ready");
+
+        Assert.Equal(HttpStatusCode.OK, direct.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, versioned.StatusCode);
+
+        var directPayload = await ReadJson<ReadinessResponse>(direct);
+        var versionedPayload = await ReadJson<ReadinessResponse>(versioned);
+
+        Assert.Equal(directPayload.Status, versionedPayload.Status);
+        Assert.Equal(directPayload.Version, versionedPayload.Version);
+        Assert.Equal(directPayload.ApiVersion, versionedPayload.ApiVersion);
+        Assert.Equal(directPayload.Platform, versionedPayload.Platform);
+    }
+
     // ── versioned routing for non-health endpoints ────────────────────────
 
     [Fact]

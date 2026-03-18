@@ -7,6 +7,10 @@ extension) to a UI-automation agent running inside a Windows or Linux VM.
 
 > Note: This project is AI-generated.
 
+Current product posture: Windows-first, admin-managed deployment for controlled
+environments. See [docs/OPERATING_MODEL.md](docs/OPERATING_MODEL.md) for the
+current support boundaries and deployment assumptions.
+
 ---
 
 ## Architecture
