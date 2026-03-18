@@ -5,6 +5,7 @@ $checkIndexReferenceScript = Join-Path $repoRoot 'scripts\check-signoff-evidence
 $checkIndexContentScript = Join-Path $repoRoot 'scripts\check-evidence-index-content.ps1'
 $tagReadinessSummaryScript = Join-Path $repoRoot 'scripts\generate-release-ops-tag-readiness-summary.ps1'
 $tagReadinessHistoryScript = Join-Path $repoRoot 'scripts\update-release-ops-tag-readiness-history.ps1'
+$promotionGateScript = Join-Path $repoRoot 'scripts\check-release-ops-promotion-gate.ps1'
 
 function New-TestFile {
     param(
@@ -73,6 +74,31 @@ function New-TagReadinessSummaryFixture {
             message = 'fixture'
         }
     } | ConvertTo-Json -Depth 6
+
+    New-TestFile -RelativePath $RelativePath -Content $content | Out-Null
+}
+
+function New-TagReadinessHistoryIndexFixture {
+    param(
+        [string]$RelativePath,
+        [array]$Entries
+    )
+
+    $content = @{
+        generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u')
+        readinessRoot = 'artifacts/release-ops-tag-readiness'
+        retentionDays = 180
+        maxEntries = 20
+        removedStaleEntries = 0
+        totalEntries = $Entries.Count
+        verdictCounts = @{
+            ready = @($Entries | Where-Object { $_.readinessVerdict -eq 'ready' }).Count
+            'ready-with-note' = @($Entries | Where-Object { $_.readinessVerdict -eq 'ready-with-note' }).Count
+            hold = @($Entries | Where-Object { $_.readinessVerdict -eq 'hold' }).Count
+            unknown = @($Entries | Where-Object { @('ready','ready-with-note','hold') -notcontains $_.readinessVerdict }).Count
+        }
+        entries = $Entries
+    } | ConvertTo-Json -Depth 8
 
     New-TestFile -RelativePath $RelativePath -Content $content | Out-Null
 }
@@ -297,5 +323,54 @@ Describe 'Release evidence validators' {
         { & $tagReadinessHistoryScript -ReadinessRoot $historyRoot -MaxEntries 20 -RetentionDays 180 } | Should Not Throw
 
         (Test-Path -LiteralPath $stalePath -PathType Leaf) | Should Be $false
+    }
+
+    It 'check-release-ops-promotion-gate passes when latest 3 verdicts are ready and no holds in latest 2' {
+        $gateRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\promotion-pass'
+        if (-not (Test-Path -LiteralPath $gateRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $gateRoot -Force | Out-Null
+            $script:createdFiles += $gateRoot
+        }
+
+        $entries = @(
+            [pscustomobject]@{ fileName = 'a.json'; generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u'); tagName = 'v1.0.3'; readinessVerdict = 'ready'; validatorFailed = 0; diagnosticsOverallStatus = 'pass' },
+            [pscustomobject]@{ fileName = 'b.json'; generatedAtUtc = [DateTimeOffset]::UtcNow.AddDays(-1).ToString('u'); tagName = 'v1.0.2'; readinessVerdict = 'ready'; validatorFailed = 0; diagnosticsOverallStatus = 'pass' },
+            [pscustomobject]@{ fileName = 'c.json'; generatedAtUtc = [DateTimeOffset]::UtcNow.AddDays(-2).ToString('u'); tagName = 'v1.0.1'; readinessVerdict = 'ready'; validatorFailed = 0; diagnosticsOverallStatus = 'pass' }
+        )
+
+        New-TagReadinessHistoryIndexFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/promotion-pass/release-ops-tag-readiness-history-index.json' -Entries $entries
+
+        { & $promotionGateScript -ReadinessRoot $gateRoot -FailOnBlock } | Should Not Throw
+
+        $reportPath = Join-Path $gateRoot 'release-ops-promotion-gate-report.json'
+        $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+        $report.gatePassed | Should Be $true
+        $report.promotionVerdict | Should Be 'pass'
+    }
+
+    It 'check-release-ops-promotion-gate requires director approval when recent verdicts include ready-with-note' {
+        $gateRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\promotion-director'
+        if (-not (Test-Path -LiteralPath $gateRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $gateRoot -Force | Out-Null
+            $script:createdFiles += $gateRoot
+        }
+
+        $entries = @(
+            [pscustomobject]@{ fileName = 'a.json'; generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u'); tagName = 'v1.0.3'; readinessVerdict = 'ready-with-note'; validatorFailed = 0; diagnosticsOverallStatus = 'pass-with-note' },
+            [pscustomobject]@{ fileName = 'b.json'; generatedAtUtc = [DateTimeOffset]::UtcNow.AddDays(-1).ToString('u'); tagName = 'v1.0.2'; readinessVerdict = 'ready'; validatorFailed = 0; diagnosticsOverallStatus = 'pass' },
+            [pscustomobject]@{ fileName = 'c.json'; generatedAtUtc = [DateTimeOffset]::UtcNow.AddDays(-2).ToString('u'); tagName = 'v1.0.1'; readinessVerdict = 'ready'; validatorFailed = 0; diagnosticsOverallStatus = 'pass' }
+        )
+
+        New-TagReadinessHistoryIndexFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/promotion-director/release-ops-tag-readiness-history-index.json' -Entries $entries
+
+        { & $promotionGateScript -ReadinessRoot $gateRoot -FailOnBlock } | Should Throw
+
+        { & $promotionGateScript -ReadinessRoot $gateRoot -AllowDirectorOverride -DirectorApprovalReference 'REL-OPS-DIR-123' -FailOnBlock } | Should Not Throw
+
+        $reportPath = Join-Path $gateRoot 'release-ops-promotion-gate-report.json'
+        $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+        $report.gatePassed | Should Be $true
+        $report.promotionVerdict | Should Be 'director-approval-required'
+        $report.directorOverride.used | Should Be $true
     }
 }

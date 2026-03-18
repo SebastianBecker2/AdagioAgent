@@ -69,7 +69,22 @@ Get-Content .\artifacts\release-ops-tag-readiness\release-ops-tag-readiness-hist
    - last 3 tagged summaries should be `ready`, and
    - no `hold` verdict in the last 2 tagged summaries.
 
-8. Review dry-run diagnostics index trends before pilot handoff approval:
+8. Enforce promotion gate and apply director-approval decision rules:
+
+```powershell
+.\scripts\check-release-ops-promotion-gate.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -FailOnBlock
+```
+
+   Director approval is explicitly required when gate verdict is
+   `director-approval-required` (typically because `ready-with-note` appears in
+   latest 3 summaries).
+
+   Decision notes:
+   - `pass`: continue promotion.
+   - `director-approval-required`: require release-ops director approval ID and rerun with `-AllowDirectorOverride -DirectorApprovalReference <id>`.
+   - `fail`: stop promotion; remediation required. Director override is not allowed for `fail`.
+
+9. Review dry-run diagnostics index trends before pilot handoff approval:
 
 ```powershell
 .\scripts\update-release-ops-diagnostics-index.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics -MaxEntries 20

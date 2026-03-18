@@ -173,6 +173,23 @@ Update and review readiness history index before final promotion:
 Preferred promotion trend: last 3 tagged summaries are `ready` with no `hold`
 verdict in the last 2 tags.
 
+Enforce promotion gate thresholds:
+
+```powershell
+.\scripts\check-release-ops-promotion-gate.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -FailOnBlock
+```
+
+Exceptional promotion process:
+
+- If verdict is `director-approval-required`, capture explicit release-ops director
+   approval reference and rerun with override:
+
+```powershell
+.\scripts\check-release-ops-promotion-gate.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -AllowDirectorOverride -DirectorApprovalReference <approval-id> -FailOnBlock
+```
+
+- If verdict is `fail`, release promotion is blocked until thresholds are met.
+
 ### 6 - Commit the version bump
 
 ```powershell

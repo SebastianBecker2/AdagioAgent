@@ -515,7 +515,16 @@ The next implementation slice should focus on readiness summary trend history:
 
 The next implementation slice should focus on release-ops promotion gate enforcement:
 
-1. Add script to evaluate readiness history index against promotion trend thresholds and emit a pass/fail verdict.
-2. Add CI tagged-build gate that fails when promotion trend thresholds are not met.
-3. Add docs section defining override/escalation process for exceptional promotions.
-4. Add quickstart decision notes for when to require explicit release-ops director approval.
+1. [x] Add script to evaluate readiness history index against promotion trend thresholds and emit a pass/fail verdict.
+2. [x] Add CI tagged-build gate that fails when promotion trend thresholds are not met.
+3. [x] Add docs section defining override/escalation process for exceptional promotions.
+4. [x] Add quickstart decision notes for when to require explicit release-ops director approval.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on promotion gate observability and auditability:
+
+1. Add script to summarize promotion gate outcomes across recent tagged builds (pass/director/fail counts).
+2. Add CI tagged-build artifact for promotion gate outcome trend summary.
+3. Add docs guidance on how to audit override frequency and escalation health over time.
+4. Add quickstart check to require promotion-gate trend review during post-release retrospective.

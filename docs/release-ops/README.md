@@ -252,6 +252,39 @@ Trend guidance across recent release tags:
 - Hold trend: any `hold` verdict in last 2 tags; block promotion until resolved.
 - Escalation trend: 2 or more `hold` verdicts in last 5 tags; open release-ops incident and require owner sign-off.
 
+### Promotion gate enforcement and override process
+
+Evaluate readiness history against promotion thresholds:
+
+```powershell
+.\scripts\check-release-ops-promotion-gate.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -FailOnBlock
+```
+
+Promotion gate report outputs:
+
+- `release-ops-promotion-gate-report.json`
+- `release-ops-promotion-gate-report.md`
+
+Promotion verdict semantics:
+
+- `pass`: thresholds met (latest 3 verdicts are `ready`, no `hold` in latest 2).
+- `director-approval-required`: latest 3 are acceptable but include `ready-with-note`; requires explicit release-ops director approval.
+- `fail`: thresholds not met.
+
+Exceptional promotion override flow (director approval required):
+
+1. Record rationale and risk acceptance in the tagged sign-off record.
+2. Obtain explicit release-ops director approval ID (ticket/change request).
+3. Re-run gate with override reference:
+
+```powershell
+.\scripts\check-release-ops-promotion-gate.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -AllowDirectorOverride -DirectorApprovalReference <approval-id> -FailOnBlock
+```
+
+Escalation requirement:
+
+- If the gate verdict is `fail`, or if `hold` appears in the latest 2 tagged summaries, release promotion is blocked and director override is not permitted.
+
 Expected output layout:
 
 ```text
