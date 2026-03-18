@@ -367,6 +367,8 @@ The unversioned legacy routes (`/health`, `/run`, etc.) are **deprecated** and
 will be removed when a `/api/v2` surface is introduced.  No removal date is set
 yet; they will remain available throughout the API v1 lifecycle.
 
+For the full step-by-step release procedure see [RELEASING.md](RELEASING.md).
+
 ---
 
 ## CI test reports (AppVeyor)

@@ -42,10 +42,20 @@
     -->
     <PublishDir Condition="'$(PublishDir)'==''">$(MSBuildThisFileDirectory)publish\</PublishDir>
     <!--
-      Forward PublishDir to the WiX preprocessor so that Package.wxs can
-      reference it via $(var.PublishDir) in File/@Source attributes.
+      Read <Version> from the machine-agent csproj at evaluation time so the
+      installer version always tracks the agent release.  WiX requires a
+      4-part version (major.minor.patch.build) so ".0" is appended to the
+      3-part SemVer.
     -->
-    <DefineConstants>$(DefineConstants);PublishDir=$(PublishDir)</DefineConstants>
+    <_MachineAgentCsproj>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj'))</_MachineAgentCsproj>
+    <AgentSemVer>$([System.Xml.Linq.XDocument]::Load('$(_MachineAgentCsproj)').Descendants('Version').First().Value)</AgentSemVer>
+    <AgentWixVersion>$(AgentSemVer).0</AgentWixVersion>
+    <!--
+      Forward PublishDir and AgentVersion to the WiX preprocessor so that
+      Package.wxs can reference them via $(var.PublishDir) and
+      $(var.AgentVersion).
+    -->
+    <DefineConstants>$(DefineConstants);PublishDir=$(PublishDir);AgentVersion=$(AgentWixVersion)</DefineConstants>
   </PropertyGroup>
 
   <!--

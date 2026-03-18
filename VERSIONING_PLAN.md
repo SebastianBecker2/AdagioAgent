@@ -40,8 +40,8 @@
 ## Phase 4: Release and Source of Truth
 
 1. [x] Make machine-agent version explicit in project metadata.
-2. Keep installer version tied to release process rules.
-3. Add release checklist:
+2. [x] Keep installer version tied to release process rules.
+3. [x] Add release checklist:
 - bump versions
 - run tests
 - update compatibility matrix
