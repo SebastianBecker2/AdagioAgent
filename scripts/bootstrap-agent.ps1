@@ -48,6 +48,26 @@ function New-RandomString {
     return [Convert]::ToBase64String($bytes).TrimEnd("=").Replace("+", "-").Replace("/", "_")
 }
 
+function Get-SuggestedAction {
+    param(
+        [string]$ErrorMessage
+    )
+
+    if ($ErrorMessage -match 'Access denied|0x80070005|0x80090010') {
+        return 'Re-run installer as administrator and ensure LocalMachine certificate store access is allowed.'
+    }
+
+    if ($ErrorMessage -match 'appsettings file not found') {
+        return 'Verify appsettings.json exists in the installation folder before bootstrap runs.'
+    }
+
+    if ($ErrorMessage -match 'Failed to create bootstrap certificate') {
+        return 'Ensure certificate services are available and check local security policy restrictions for certificate enrollment.'
+    }
+
+    return 'Inspect bootstrap.log for detailed command output, then retry installation.'
+}
+
 $certDirectory = Split-Path -Parent $CertificatePath
 if (-not (Test-Path -LiteralPath $certDirectory)) {
     New-Item -ItemType Directory -Path $certDirectory -Force | Out-Null
@@ -150,6 +170,7 @@ catch {
             appSettingsPath = $AppSettingsPath
             certificatePath = $CertificatePath
             logPath = $LogPath
+            suggestedAction = Get-SuggestedAction -ErrorMessage $_.Exception.Message
         }
 
         $failure | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $bootstrapFailurePath -Encoding UTF8

@@ -16,6 +16,30 @@ if (-not [System.IO.Path]::IsPathRooted($AppSettingsPath)) {
 $diagnosticsRoot = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::CommonApplicationData)) "AdagioMachineAgent"
 $failurePath = Join-Path $diagnosticsRoot "bootstrap-preflight-failure.json"
 
+function Get-SuggestedAction {
+    param(
+        [string]$ErrorMessage
+    )
+
+    if ($ErrorMessage -match 'CHANGE_ME') {
+        return 'Re-run installer to regenerate bootstrap values or update appsettings.json with real security values.'
+    }
+
+    if ($ErrorMessage -match 'certificate file not found') {
+        return 'Verify SecurityOptions.HttpsCertificatePath points to an existing .pfx file and rerun installation.'
+    }
+
+    if ($ErrorMessage -match 'Failed to load HTTPS certificate') {
+        return 'Verify SecurityOptions.HttpsCertificatePassword matches the .pfx file password and rerun installation.'
+    }
+
+    if ($ErrorMessage -match 'ApiKey is required') {
+        return 'Set a non-empty SecurityOptions.ApiKey value and rerun installation.'
+    }
+
+    return 'Inspect bootstrap-preflight.log for detailed validation output, then retry installation.'
+}
+
 if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
     $logDir = Split-Path -Parent $LogPath
     if (-not [string]::IsNullOrWhiteSpace($logDir) -and -not (Test-Path -LiteralPath $logDir)) {
@@ -85,6 +109,7 @@ catch {
             exceptionType = $_.Exception.GetType().FullName
             appSettingsPath = $AppSettingsPath
             logPath = $LogPath
+            suggestedAction = Get-SuggestedAction -ErrorMessage $_.Exception.Message
         }
 
         $failure | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $failurePath -Encoding UTF8

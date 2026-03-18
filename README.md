@@ -355,6 +355,9 @@ When startup fails, inspect:
 - `%ProgramData%\AdagioMachineAgent\bootstrap-preflight-failure.json`
 - `%ProgramData%\AdagioMachineAgent\startup-failure.json`
 
+Failure JSON files include a `suggestedAction` field with a first remediation
+step tailored to the detected error.
+
 **Configuration after installation (manual updates):**
 
 If you later change security settings in `%ProgramFiles%\AdagioMachineAgent\appsettings.json`, restart the service:
