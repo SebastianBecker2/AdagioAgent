@@ -45,7 +45,20 @@ Get-Content .\artifacts\release-ops-dryrun-diagnostics\release-ops-ci-status-rep
    A `pass` or `pass-with-note` overall status is required before tagging. `hold`
    or `escalate` status requires resolution before proceeding.
 
-6. Review dry-run diagnostics index trends before pilot handoff approval:
+6. Generate and review the tagged-release readiness summary before approving a
+   release tag:
+
+```powershell
+.\scripts\generate-release-ops-tag-readiness-summary.ps1 -TagName v<semver>
+Get-Content .\artifacts\release-ops-tag-readiness\release-ops-tag-readiness-summary.md
+```
+
+   Interpretation rule for tag approval:
+   - `ready`: approve tag release flow.
+   - `ready-with-note`: approve only with documented sign-off notes.
+   - `hold`: do not approve tag; resolve failed validator(s) or diagnostics gate.
+
+7. Review dry-run diagnostics index trends before pilot handoff approval:
 
 ```powershell
 .\scripts\update-release-ops-diagnostics-index.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics -MaxEntries 20

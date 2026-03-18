@@ -196,6 +196,42 @@ Generate the report locally:
 .\scripts\generate-release-ops-ci-status-report.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics
 ```
 
+### Tag readiness summary schema
+
+The tagged-build readiness summary (`release-ops-tag-readiness-summary.json`)
+combines required tagged-release validator outcomes with diagnostics quality-gate
+status into one release verdict.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `generatedAtUtc` | string | UTC timestamp of summary generation |
+| `tagName` | string | Tag under evaluation (`v<semver>`) |
+| `readinessVerdict` | string | `ready`, `ready-with-note`, or `hold` |
+| `readinessMessage` | string | Human-readable release readiness decision |
+| `validatorSummary.total` | int | Number of required validator scripts executed |
+| `validatorSummary.passed` | int | Number of validators that passed |
+| `validatorSummary.failed` | int | Number of validators that failed |
+| `validatorSummary.results[].name` | string | Validator identifier |
+| `validatorSummary.results[].passed` | boolean | Per-validator pass/fail |
+| `validatorSummary.results[].message` | string | Per-validator diagnostic message |
+| `diagnosticsQualityGate.available` | boolean | Whether CI diagnostics report was available |
+| `diagnosticsQualityGate.overallStatus` | string | CI diagnostics status (`pass`, `pass-with-note`, `hold`, `escalate`, `no-data`) |
+| `diagnosticsQualityGate.trendLevel` | string | Trend gate level from CI report |
+| `diagnosticsQualityGate.indexFreshPassed` | boolean | Diagnostics index freshness gate result |
+| `diagnosticsQualityGate.trendGatePassed` | boolean | Trend gate pass/fail |
+
+Validator mapping used by the readiness summary:
+
+- `signoffEvidenceReferences` -> `scripts/check-signoff-evidence-references.ps1`
+- `signoffEvidenceIndexReference` -> `scripts/check-signoff-evidence-index-reference.ps1`
+- `evidenceIndexContent` -> `scripts/check-evidence-index-content.ps1`
+
+Tagged-build usage:
+
+```powershell
+.\scripts\generate-release-ops-tag-readiness-summary.ps1 -TagName v<semver> -FailOnHold
+```
+
 Expected output layout:
 
 ```text

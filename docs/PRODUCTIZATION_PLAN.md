@@ -497,7 +497,16 @@ The next implementation slice should focus on release-ops CI status reporting:
 
 The next implementation slice should focus on release-ops sign-off readiness summary:
 
-1. Add script to evaluate tagged-release readiness by combining quality gate outcomes with sign-off and evidence validator results.
-2. Add CI tagged-build step to run the readiness summary script and emit a structured verdict.
-3. Add docs section mapping readiness summary fields to existing validator scripts and evidence conventions.
-4. Add quickstart step describing how to interpret readiness summary before approving a release tag.
+1. [x] Add script to evaluate tagged-release readiness by combining quality gate outcomes with sign-off and evidence validator results.
+2. [x] Add CI tagged-build step to run the readiness summary script and emit a structured verdict.
+3. [x] Add docs section mapping readiness summary fields to existing validator scripts and evidence conventions.
+4. [x] Add quickstart step describing how to interpret readiness summary before approving a release tag.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on readiness summary trend history:
+
+1. Add script to retain and index recent tagged-release readiness summaries for audit trend review.
+2. Add CI tagged-build step to update readiness history index and publish it as an artifact.
+3. Add docs guidance for interpreting readiness verdict trends over recent release tags.
+4. Add quickstart checklist item requiring readiness trend review before final release promotion.

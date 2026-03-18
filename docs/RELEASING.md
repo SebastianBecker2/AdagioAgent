@@ -154,6 +154,16 @@ references and validate them:
 .\scripts\check-evidence-index-content.ps1
 ```
 
+Generate a tagged-release readiness summary and verify verdict before final
+approval:
+
+```powershell
+.\scripts\generate-release-ops-tag-readiness-summary.ps1 -TagName vNEW
+```
+
+The release verdict should be `ready` or `ready-with-note`. A `hold` verdict
+blocks release approval until validator or diagnostics gate issues are resolved.
+
 ### 6 - Commit the version bump
 
 ```powershell

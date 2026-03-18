@@ -44,6 +44,16 @@ build_script:
   # 0.08 On tagged builds, validate evidence index content integrity
   - ps: .\scripts\check-evidence-index-content.ps1
 
+  # 0.085 On tagged builds, emit release-ops readiness summary verdict
+  - ps: |
+      if ($env:APPVEYOR_REPO_TAG -eq 'true') {
+        $readinessRoot = '.\artifacts\release-ops-tag-readiness'
+        .\scripts\generate-release-ops-tag-readiness-summary.ps1 -OutputDir $readinessRoot -FailOnHold
+      }
+      else {
+        Write-Host 'Release-ops tag readiness summary skipped on non-tag build.'
+      }
+
   # 0.09 Run validator script tests (Pester)
   - ps: Invoke-Pester -Script .\scripts\tests\ValidatorScripts.Tests.ps1 -EnableExit
 
@@ -184,6 +194,10 @@ artifacts:
     name: ReleaseOpsCiStatusReport
   - path: artifacts/release-ops-dryrun-diagnostics/release-ops-ci-status-report.md
     name: ReleaseOpsCiStatusReportMarkdown
+  - path: artifacts/release-ops-tag-readiness/release-ops-tag-readiness-summary.json
+    name: ReleaseOpsTagReadinessSummary
+  - path: artifacts/release-ops-tag-readiness/release-ops-tag-readiness-summary.md
+    name: ReleaseOpsTagReadinessSummaryMarkdown
   - path: TestResults/**/*.trx
     name: DotNetTestResults
   - path: controller-extension/test-results/*.xml
