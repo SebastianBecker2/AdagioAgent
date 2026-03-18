@@ -8,6 +8,7 @@ $tagReadinessHistoryScript = Join-Path $repoRoot 'scripts\update-release-ops-tag
 $promotionGateScript = Join-Path $repoRoot 'scripts\check-release-ops-promotion-gate.ps1'
 $promotionGateTrendScript = Join-Path $repoRoot 'scripts\update-release-ops-promotion-gate-trend.ps1'
 $closureManifestScript = Join-Path $repoRoot 'scripts\generate-release-ops-closure-package-manifest.ps1'
+$closureManifestCheckScript = Join-Path $repoRoot 'scripts\check-release-ops-closure-package-manifest.ps1'
 
 function New-TestFile {
     param(
@@ -480,5 +481,44 @@ Describe 'Release evidence validators' {
         New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-b/release-ops-promotion-gate-trend-index.json' -Content '{}' | Out-Null
 
         { & $closureManifestScript -ReadinessRoot $closureRoot -OutputDir $closureRoot -TagName "v$script:testVersion" } | Should Throw
+    }
+
+    It 'check-release-ops-closure-package-manifest passes for complete generated closure manifest' {
+        New-EvidenceFixture -Version $script:testVersion -DateStamp $script:testDateStamp -IncludeIndex -IncludeIndexEntries | Out-Null
+
+        $closureRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\closure-c'
+        if (-not (Test-Path -LiteralPath $closureRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $closureRoot -Force | Out-Null
+            $script:createdFiles += $closureRoot
+        }
+
+        New-TagReadinessSummaryFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-c/release-ops-tag-readiness-summary.json' -TagName "v$script:testVersion" -Verdict 'ready' -DiagnosticsOverallStatus 'pass' -ValidatorFailed 0
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-c/release-ops-tag-readiness-history-index.json' -Content '{}' | Out-Null
+        New-PromotionGateReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-c/release-ops-promotion-gate-report.json' -Verdict 'pass' -GatePassed $true -OverrideUsed $false
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-c/release-ops-promotion-gate-trend-index.json' -Content '{}' | Out-Null
+
+        { & $closureManifestScript -ReadinessRoot $closureRoot -OutputDir $closureRoot -TagName "v$script:testVersion" } | Should Not Throw
+        { & $closureManifestCheckScript -ReadinessRoot $closureRoot -TagName "v$script:testVersion" } | Should Not Throw
+    }
+
+    It 'check-release-ops-closure-package-manifest fails when required linked artifact is missing on disk' {
+        New-EvidenceFixture -Version $script:testVersion -DateStamp $script:testDateStamp -IncludeIndex -IncludeIndexEntries | Out-Null
+
+        $closureRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\closure-d'
+        if (-not (Test-Path -LiteralPath $closureRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $closureRoot -Force | Out-Null
+            $script:createdFiles += $closureRoot
+        }
+
+        New-TagReadinessSummaryFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-d/release-ops-tag-readiness-summary.json' -TagName "v$script:testVersion" -Verdict 'ready' -DiagnosticsOverallStatus 'pass' -ValidatorFailed 0
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-d/release-ops-tag-readiness-history-index.json' -Content '{}' | Out-Null
+        New-PromotionGateReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-d/release-ops-promotion-gate-report.json' -Verdict 'pass' -GatePassed $true -OverrideUsed $false
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-d/release-ops-promotion-gate-trend-index.json' -Content '{}' | Out-Null
+
+        { & $closureManifestScript -ReadinessRoot $closureRoot -OutputDir $closureRoot -TagName "v$script:testVersion" } | Should Not Throw
+
+        Remove-Item -LiteralPath (Join-Path $closureRoot 'release-ops-promotion-gate-report.json') -Force
+
+        { & $closureManifestCheckScript -ReadinessRoot $closureRoot -TagName "v$script:testVersion" } | Should Throw
     }
 }

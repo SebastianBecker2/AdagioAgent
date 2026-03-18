@@ -542,7 +542,16 @@ The next implementation slice should focus on release-ops closure package consol
 
 The next implementation slice should focus on closure manifest policy enforcement:
 
-1. Add script to validate closure package manifest completeness and required artifact existence for tagged releases.
-2. Add CI tagged-build gate that fails when closure package manifest validation fails.
-3. Add docs guidance for closure manifest remediation when artifacts are missing or stale.
-4. Add quickstart troubleshooting notes for closure manifest validation failures during release handoff.
+1. [x] Add script to validate closure package manifest completeness and required artifact existence for tagged releases.
+2. [x] Add CI tagged-build gate that fails when closure package manifest validation fails.
+3. [x] Add docs guidance for closure manifest remediation when artifacts are missing or stale.
+4. [x] Add quickstart troubleshooting notes for closure manifest validation failures during release handoff.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on closure package drift detection:
+
+1. Add script to compare closure manifest linked artifacts against current readiness/promotion outputs and detect drift.
+2. Add CI tagged-build check to fail when closure manifest drift is detected after manifest generation.
+3. Add docs section explaining drift scenarios and safe regeneration workflow.
+4. Add quickstart note for when to rerun closure manifest generation late in release tagging flow.

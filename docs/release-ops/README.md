@@ -339,6 +339,28 @@ Retention expectations:
 - Keep sign-off and evidence index in-repo for at least one full release cycle.
 - Keep promotion/readiness trend summaries through the next release retrospective window.
 
+### Closure manifest validation and remediation
+
+Validate closure manifest completeness for tagged releases:
+
+```powershell
+.\scripts\check-release-ops-closure-package-manifest.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness
+```
+
+Common closure manifest validation failures and fixes:
+
+- Missing manifest file:
+	regenerate with `generate-release-ops-closure-package-manifest.ps1` in tagged build context.
+- Missing required linked artifacts:
+	regenerate missing readiness/promotion outputs, then regenerate closure manifest.
+- Stale `exists` flags:
+	rerun closure manifest generation after final artifact set is complete.
+- Tag/version mismatch:
+	ensure `-TagName` matches the current release tag and rerun generator.
+
+If validation fails in CI tagged builds, release handoff is blocked until the
+closure manifest validates cleanly.
+
 Expected output layout:
 
 ```text

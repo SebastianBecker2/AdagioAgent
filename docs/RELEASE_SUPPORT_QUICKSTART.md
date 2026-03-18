@@ -236,3 +236,17 @@ Manual cleanup guidance for local diagnostics growth:
 
 2. If disk pressure persists, archive needed summaries externally and clear the
    local diagnostics folder.
+
+### 9. Troubleshooting closure manifest validation
+
+Common failures and fixes:
+
+- Closure manifest file missing in tagged build:
+   run `generate-release-ops-closure-package-manifest.ps1` using the tagged
+   build readiness root and rerun validation.
+- Required linked artifact missing (readiness/promotion/sign-off/evidence):
+   regenerate missing artifact(s), then regenerate closure manifest.
+- Closure manifest validation shows stale `exists` flags:
+   rerun closure manifest generation after all artifact-producing steps finish.
+- Tag mismatch in manifest:
+   regenerate closure manifest with correct `-TagName v<semver>`.
