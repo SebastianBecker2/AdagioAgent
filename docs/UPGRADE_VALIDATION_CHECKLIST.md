@@ -39,3 +39,10 @@ Example: `0.1.0 -> 0.2.0`
 1. Collect a post-upgrade support bundle snapshot.
 2. Record pass/fail for each checklist item.
 3. Log any degradations and required remediation work.
+
+### 6. End-to-end correlation check
+
+1. Trigger a controlled backend error (for example, missing API key request).
+2. Capture backend `X-Correlation-ID` and payload `correlationId`.
+3. Verify extension message/output includes the same correlation ID.
+4. Record this evidence in the upgrade validation report.

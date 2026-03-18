@@ -187,6 +187,26 @@ Legacy installer-named route aliases are still supported for backward compatibil
 OpenAPI/Swagger is available at `/swagger` with a canonical server base URL of
 `/api/v1` for client generation and contract review.
 
+**API error contract (concise):**
+
+Error responses use a consistent JSON shape:
+
+| Field | Type | Description |
+|---|---|---|
+| `error` | string | High-level failure message |
+| `detail` | string? | Optional diagnostic detail |
+| `correlationId` | string? | Correlation token that maps user-visible errors to backend request logs |
+
+Example:
+
+```json
+{
+  "error": "Missing required header 'X-API-Key'.",
+  "detail": null,
+  "correlationId": "0HNK4PIRJOR0P"
+}
+```
+
 **Build:**
 
 ```bash

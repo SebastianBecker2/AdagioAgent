@@ -64,6 +64,14 @@ Set-Location ..
 
 All tests must pass before proceeding.
 
+Release smoke check requirement (manual):
+
+- Trigger one intentional API error (for example, call `/api/v1/health` without
+   API key when API key auth is enabled) and verify:
+   - response contains `X-Correlation-ID`
+   - error payload includes `correlationId`
+   - extension warning/error text surfaces the same correlation ID
+
 ### 4.5 - Run release preflight checks
 
 Run the release preflight script from repository root:

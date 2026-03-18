@@ -28,6 +28,14 @@ This runbook defines how to operate a controlled pilot for AdagioAgent with repe
 3. Query readiness/diagnostics endpoints.
 4. Capture a support bundle for anomalies.
 
+### Correlation-ID operating rule
+
+- Treat `Correlation ID` as the primary join key between extension-facing
+   failures and backend logs.
+- When a user reports an issue, request the correlation ID first, then locate
+   matching request-completion and exception log entries.
+- Add correlation IDs to pilot incident timelines and remediation notes.
+
 ### Incident response flow
 
 1. Detect
@@ -37,6 +45,7 @@ This runbook defines how to operate a controlled pilot for AdagioAgent with repe
    - Preserve current state and collect support bundle.
 3. Diagnose
    - Analyze readiness issues, diagnostics status, export metadata, and event logs.
+   - Correlate extension-visible errors to backend logs using correlation IDs.
 4. Mitigate
    - Apply temporary remediation or rollback using rollback checklist.
 5. Recover

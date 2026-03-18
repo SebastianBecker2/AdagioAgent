@@ -22,12 +22,22 @@ See `docs/OPERATING_MODEL.md` for support boundaries and deployment assumptions.
 
 5. Confirm machine-agent and extension versions.
 
+## Correlation ID guidance
+
+- Capture `Correlation ID` values from extension error/warning messages.
+- Include those IDs in support tickets and incident notes.
+- Use the ID to match the user-visible failure with backend request logs and
+   support-bundle artifacts.
+- If multiple errors are observed, list each correlation ID with timestamp and
+   command/tool context.
+
 ## Information To Include
 
 - Host OS and version.
 - Agent version and extension version.
 - Exact command/tool used when issue occurred.
 - Error messages and timestamps.
+- Correlation IDs (if present).
 - Sanitized diagnostics output and readiness payload.
 - Support bundle folder path and manifest.
 - Whether issue is deterministic or intermittent.

@@ -40,6 +40,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add extension-side correlation ID parsing/typing in API error handling.
 - [x] Add extension tests for correlation-aware error messaging.
 - [x] Update troubleshooting docs with correlation-ID-first support workflow.
+- [x] Add concise API error contract section to README with field examples.
+- [x] Add operator correlation-ID guidance in support and pilot runbook docs.
+- [x] Add release smoke-check requirement for correlation-ID verification.
+- [x] Add end-to-end upgrade checklist entry for backend-to-extension correlation propagation.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -272,7 +276,16 @@ The next implementation slice should focus on extension-side observability align
 
 The next implementation slice should focus on contract and observability documentation depth:
 
-1. Add a concise API error contract section to README (fields and examples).
-2. Add operator guidance for correlation-ID usage in SUPPORT.md and PILOT_RUNBOOK.md.
-3. Add a release checklist item requiring correlation-ID verification in smoke tests.
-4. Add one end-to-end test checklist entry covering correlation from backend to extension message.
+1. [x] Add a concise API error contract section to README (fields and examples).
+2. [x] Add operator guidance for correlation-ID usage in SUPPORT.md and PILOT_RUNBOOK.md.
+3. [x] Add a release checklist item requiring correlation-ID verification in smoke tests.
+4. [x] Add one end-to-end test checklist entry covering correlation from backend to extension message.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on supportability packaging automation:
+
+1. Add an option in support-bundle script to include extension output export path metadata.
+2. Add support-bundle manifest schema notes (required vs optional artifacts).
+3. Add runbook step for periodic support-bundle drill during pilot.
+4. Add CI lint/check ensuring docs referenced by README and SUPPORT links exist.
