@@ -8,8 +8,7 @@
   Upgrade behaviour: major upgrades replace earlier versions automatically.
   Uninstall: stops the service, removes it, and removes all installed files.
 -->
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-  xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
   <Package Name="Adagio Machine Agent"
            Manufacturer="AdagioAgent"
@@ -55,7 +54,7 @@
     <InstallExecuteSequence>
       <Custom Action="RunBootstrapAgentScript"
               After="InstallFiles"
-              Condition="NOT Installed" />
+              Condition="NOT Installed AND NOT WIX_UPGRADE_DETECTED" />
     </InstallExecuteSequence>
 
     <!--

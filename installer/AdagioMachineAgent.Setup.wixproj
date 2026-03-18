@@ -30,7 +30,6 @@
   <ItemGroup>
     <PackageReference Include="WixToolset.Heat" Version="6.0.2" PrivateAssets="all" />
     <PackageReference Include="WixToolset.Firewall.wixext" Version="6.0.2" />
-    <PackageReference Include="WixToolset.Util.wixext" Version="6.0.2" />
   </ItemGroup>
 
   <PropertyGroup>
