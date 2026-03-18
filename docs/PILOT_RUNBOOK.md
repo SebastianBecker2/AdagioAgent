@@ -68,8 +68,12 @@ incident:
 - Timestamped support bundle output.
 - Before/after readiness payloads.
 - Relevant extension diagnostics output excerpts.
+- Correlation IDs mapped to backend request/exception log entries.
 - Installer/service operation logs.
 - Decision log (mitigation vs rollback).
+
+Retain correlation timeline artifacts for at least one full release cycle after
+incident closure.
 
 ### Exit criteria
 

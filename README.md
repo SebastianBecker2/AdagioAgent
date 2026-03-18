@@ -28,6 +28,10 @@ Pilot-readiness docs:
 - [docs/UPGRADE_VALIDATION_CHECKLIST.md](docs/UPGRADE_VALIDATION_CHECKLIST.md)
 - [docs/SUPPORT_BUNDLE_SCHEMA.md](docs/SUPPORT_BUNDLE_SCHEMA.md)
 
+Observability docs:
+
+- [docs/OBSERVABILITY_FIELDS.md](docs/OBSERVABILITY_FIELDS.md)
+
 Bootstrap helper script: `scripts/bootstrap-agent.ps1` (certificate + API key
 generation for controlled environments).
 

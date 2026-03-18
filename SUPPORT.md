@@ -41,6 +41,14 @@ Manifest schema and artifact categories are documented in
 - If multiple errors are observed, list each correlation ID with timestamp and
    command/tool context.
 
+Retention and timeline guidance:
+
+- Preserve correlation IDs and timestamps in incident notes for at least one
+   full release cycle after incident closure.
+- Build incident timelines using: user symptom time, correlation ID,
+   backend request log, backend error log, remediation action time.
+- Keep timeline entries ordered in UTC to avoid cross-machine timezone drift.
+
 ## Information To Include
 
 - Host OS and version.
@@ -67,3 +75,15 @@ Support is best-effort during active productization.
 
 - Critical blockers: prioritized.
 - Non-blocking defects and enhancement requests: handled by roadmap priority.
+
+## Severity Matrix And Triage SLA Targets
+
+| Severity | Definition | Initial Triage Target | Mitigation Target |
+|---|---|---|---|
+| Sev-1 | Service unavailable, broad pilot impact, no workaround | 1 business hour | Same business day |
+| Sev-2 | Major degradation, limited workaround, pilot work blocked | 4 business hours | 2 business days |
+| Sev-3 | Functional defect with workaround, non-critical flow impact | 1 business day | Planned in next iteration |
+| Sev-4 | Documentation, UX polish, minor enhancements | 2 business days | Backlog-prioritized |
+
+These are target service levels during active productization, not hard
+guarantees.

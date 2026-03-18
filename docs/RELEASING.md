@@ -105,6 +105,18 @@ the release candidate and that manifest/required artifacts are emitted.
 Add a dedicated section in `CHANGELOG.md` for `NEW` including date and notable
 changes.
 
+### 5.5 - Verify observability docs freshness
+
+Before tagging, verify these documents reflect current field names and support
+workflows:
+
+- `docs/OBSERVABILITY_FIELDS.md`
+- `SUPPORT.md` (severity matrix + SLA targets)
+- `docs/PILOT_RUNBOOK.md` (correlation timeline/evidence guidance)
+
+If backend log fields or error-contract fields changed, update docs in the same
+release commit.
+
 ### 6 - Commit the version bump
 
 ```powershell

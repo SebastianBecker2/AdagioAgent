@@ -52,6 +52,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add online/offline support-bundle output examples in docs.
 - [x] Add release checklist step for support-bundle execution validation.
 - [x] Add CI offline support-bundle generation and manifest verification step.
+- [x] Add structured logging field reference documentation.
+- [x] Add correlation-ID retention and incident timeline guidance.
+- [x] Add support severity matrix and triage SLA targets.
+- [x] Add release checklist verification for observability docs freshness.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -311,7 +315,16 @@ The next implementation slice should focus on support bundle validation hardenin
 
 The next implementation slice should focus on production observability policy:
 
-1. Add structured logging field reference doc (core fields and semantics).
-2. Add correlation-ID retention and incident timeline guidance.
-3. Add support severity matrix and triage SLA targets in SUPPORT.md.
-4. Add release checklist verification for observability docs freshness.
+1. [x] Add structured logging field reference doc (core fields and semantics).
+2. [x] Add correlation-ID retention and incident timeline guidance.
+3. [x] Add support severity matrix and triage SLA targets in SUPPORT.md.
+4. [x] Add release checklist verification for observability docs freshness.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on support workflow consistency checks:
+
+1. Add a script to validate observability docs mention core fields (`CorrelationId`, `DurationMs`, error contract fields).
+2. Add CI step to run observability-doc consistency check.
+3. Add troubleshooting doc cross-links to observability field reference and support severity matrix.
+4. Add release preflight check for required observability docs presence.
