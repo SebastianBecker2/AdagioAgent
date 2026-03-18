@@ -135,6 +135,13 @@ You can scaffold a dated sign-off record from the template:
 Store generated records under `docs/release-ops/signoffs/` and reference the
 selected record path in `CHANGELOG.md` for tagged releases.
 
+For tagged releases, ensure sign-off records include concrete evidence file
+references and validate them:
+
+```powershell
+.\scripts\check-signoff-evidence-references.ps1
+```
+
 ### 6 - Commit the version bump
 
 ```powershell

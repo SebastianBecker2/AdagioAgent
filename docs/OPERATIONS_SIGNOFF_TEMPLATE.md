@@ -36,6 +36,17 @@ Attach or link evidence artifacts:
 - [ ] Upgrade validation checklist output.
 - [ ] Incident owner role assignments for Sev-1/Sev-2 windows.
 
+### Evidence file references
+
+Fill concrete repository-relative paths for evidence used in this sign-off:
+
+- Support bundle evidence path:
+- Correlation trace evidence path:
+- Rollback rehearsal evidence path:
+- Upgrade validation evidence path:
+
+If evidence is external, provide immutable storage location and access notes.
+
 ### Risks and mitigations
 
 - Known risks:

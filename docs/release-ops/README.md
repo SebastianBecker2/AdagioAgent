@@ -17,3 +17,13 @@ releases.
 
 For tagged releases, `CHANGELOG.md` should include a reference to the matching
 sign-off record file (enforced in CI tagged builds).
+
+### Evidence retention and location convention
+
+- Keep sign-off records and referenced evidence paths for at least one full
+	release cycle after release closure.
+- Store repository-tracked evidence under `docs/release-ops/evidence/` when
+	possible.
+- Use repository-relative paths in sign-off records for all evidence references.
+- If evidence must remain external, include immutable location and access notes
+	in the sign-off record.

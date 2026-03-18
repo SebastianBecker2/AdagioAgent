@@ -72,6 +72,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add README/SUPPORT guidance for sign-off record storage location.
 - [x] Add CI tagged-build check for matching sign-off record reference.
 - [x] Add release checklist command snippet for sign-off record generation.
+- [x] Add sign-off template section for concrete evidence file references.
+- [x] Add helper script to validate sign-off evidence references.
+- [x] Add optional tagged-build CI check for sign-off evidence references.
+- [x] Add docs guidance for evidence retention period and location conventions.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -376,7 +380,16 @@ The next implementation slice should focus on operational template automation:
 
 The next implementation slice should focus on release-signoff evidence traceability:
 
-1. Add sign-off template section for linking concrete artifact paths (bundle, logs, checklist outputs).
-2. Add helper script to verify a sign-off record references required evidence files.
-3. Add CI optional check to validate evidence references for tagged-release sign-off records.
-4. Add docs guidance for evidence retention period and repository location conventions.
+1. [x] Add sign-off template section for linking concrete artifact paths (bundle, logs, checklist outputs).
+2. [x] Add helper script to verify a sign-off record references required evidence files.
+3. [x] Add CI optional check to validate evidence references for tagged-release sign-off records.
+4. [x] Add docs guidance for evidence retention period and repository location conventions.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on evidence repository conventions:
+
+1. Add `docs/release-ops/evidence/` structure guidance with category folders.
+2. Add script to scaffold evidence index files per release sign-off record.
+3. Add CI check ensuring sign-off records reference either repo-relative evidence paths or approved external URI formats.
+4. Add release quickstart section for evidence packaging handoff.
