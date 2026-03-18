@@ -30,6 +30,8 @@
     <Feature Id="Complete" Level="1">
       <!-- Main executable + service registration (defined below). -->
       <ComponentGroupRef Id="AgentService" />
+      <!-- User-editable configuration file (preserved on upgrade). -->
+      <ComponentGroupRef Id="AgentConfig" />
       <!-- Bootstrap provisioning assets (copied to INSTALLFOLDER). -->
       <ComponentGroupRef Id="BootstrapAssets" />
       <!-- All other published files (harvested automatically). -->
@@ -96,6 +98,14 @@
     <ComponentGroup Id="BootstrapAssets" Directory="INSTALLFOLDER">
       <Component>
         <File Id="BootstrapAgentScript" Source="$(sys.SOURCEFILEDIR)..\scripts\bootstrap-agent.ps1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="AgentConfig" Directory="INSTALLFOLDER">
+      <Component NeverOverwrite="yes">
+        <File Id="AgentAppSettings"
+              Source="$(var.PublishDir)appsettings.json"
+              KeyPath="yes" />
       </Component>
     </ComponentGroup>
 

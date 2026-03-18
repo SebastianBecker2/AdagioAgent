@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Suppress AdagioMachineAgent.exe from the harvested ApplicationFiles group.
-  The executable is defined explicitly in Package.wxs (together with
-  ServiceInstall / ServiceControl), so it must not appear a second time in
-  the harvested group.
+  Suppress selected files from the harvested ApplicationFiles group.
+  - AdagioMachineAgent.exe is defined explicitly in Package.wxs together with
+    ServiceInstall / ServiceControl.
+  - appsettings.json is defined explicitly in Package.wxs with
+    NeverOverwrite="yes" so user edits are preserved across upgrades.
 -->
 <xsl:stylesheet version="1.0"
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
@@ -18,19 +19,18 @@
     </xsl:copy>
   </xsl:template>
 
-  <!--
-    Drop the Component whose File source ends with "AdagioMachineAgent.exe".
-    Using contains() covers absolute and relative source paths on all Windows
-    path separators.
-  -->
+  <!-- Drop Components whose file source is managed explicitly in Package.wxs. -->
   <xsl:template
-    match="wix:Component[wix:File[contains(@Source, 'AdagioMachineAgent.exe')]]" />
+    match="wix:Component[
+      wix:File[contains(@Source, 'AdagioMachineAgent.exe')]
+      or wix:File[contains(@Source, 'appsettings.json')]
+    ]" />
 
-  <!--
-    Also drop ComponentRef entries that point to the excluded executable
-    component; otherwise linking fails with unresolved component identifiers.
-  -->
+  <!-- Also drop ComponentRef entries that point to excluded components. -->
   <xsl:template
-    match="wix:ComponentRef[@Id = //wix:Component[wix:File[contains(@Source, 'AdagioMachineAgent.exe')]]/@Id]" />
+    match="wix:ComponentRef[@Id = //wix:Component[
+      wix:File[contains(@Source, 'AdagioMachineAgent.exe')]
+      or wix:File[contains(@Source, 'appsettings.json')]
+    ]/@Id]" />
 
 </xsl:stylesheet>

@@ -321,7 +321,7 @@ installer/bin/x64/Release/AdagioMachineAgentSetup.msi
 | Service account | `NT AUTHORITY\LocalService` |
 | Listens on | `https://127.0.0.1:5443` |
 | Uninstall | Stops & removes the service, deletes all installed files |
-| Upgrade | Major-upgrade (replaces earlier versions in-place) |
+| Upgrade | Major-upgrade (replaces binaries in-place; preserves existing `appsettings.json`) |
 
 **Install / Uninstall:**
 
