@@ -113,6 +113,46 @@ public sealed class ProcessServiceTests
         Assert.Contains("not in an allowed executable path", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void TerminateAllRunningProcesses_KillsRunningTrackedProcess()
+    {
+        var commandInfo = ResolveLongRunningCommand();
+        using var sut = CreateService(new global::AgentOptions
+        {
+            AllowedExecutablePaths = [Path.GetDirectoryName(commandInfo.Command)!],
+            MaxConcurrentProcesses = 2,
+            ProcessTimeoutSeconds = 60,
+        });
+
+        var tracked = sut.Start(commandInfo.Command, commandInfo.Arguments, null);
+
+        var terminated = sut.TerminateAllRunningProcesses("test");
+
+        tracked.Process.WaitForExit(3000);
+        Assert.True(terminated >= 1);
+        Assert.True(tracked.Process.HasExited);
+    }
+
+    [Fact]
+    public void PruneExitedProcesses_RemovesExitedEntries()
+    {
+        var commandInfo = ResolveQuickExitCommand();
+        using var sut = CreateService(new global::AgentOptions
+        {
+            AllowedExecutablePaths = [Path.GetDirectoryName(commandInfo.Command)!],
+            MaxConcurrentProcesses = 2,
+            ProcessTimeoutSeconds = 60,
+        });
+
+        var tracked = sut.Start(commandInfo.Command, commandInfo.Arguments, null);
+        tracked.Process.WaitForExit(3000);
+
+        var removed = sut.PruneExitedProcesses();
+
+        Assert.True(removed >= 1);
+        Assert.Null(sut.Get(tracked.Process.Id));
+    }
+
     private static ProcessService CreateService(global::AgentOptions options)
     {
         return new ProcessService(

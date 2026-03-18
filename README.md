@@ -242,6 +242,10 @@ The `DISPLAY` and `DBUS_SESSION_BUS_ADDRESS` environment variables must be set
   and the configured certificate path/password are invalid.
 - **API key authentication** - every request must include the configured
   `X-API-Key` value (`SecurityOptions.RequireApiKey = true` by default).
+- **Correlation IDs** - every response includes `X-Correlation-ID`; provide this
+  value in support tickets to connect request/diagnostic logs.
+- **Standardized validation/unhandled errors** - API validation and global
+  exception paths return a consistent JSON error contract.
 - **Command whitelist** — only paths under `AgentOptions.AllowedExecutablePaths`
   are allowed; all others are rejected with HTTP 400.
 - **Process timeout** — processes are forcibly killed after

@@ -196,6 +196,63 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
         Assert.True(hasVersionedServer);
     }
 
+    [Fact]
+    public async Task CorrelationId_Header_IsEchoedInResponse()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/health");
+        request.Headers.Add("X-Correlation-ID", "test-correlation-123");
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.TryGetValues("X-Correlation-ID", out var values));
+        Assert.Contains("test-correlation-123", values);
+    }
+
+    [Fact]
+    public async Task ValidationFailure_ReturnsStandardizedErrorResponseWithCorrelationId()
+    {
+        var response = await _client.GetAsync("/process-status?pid=not-a-number");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.True(response.Headers.TryGetValues("X-Correlation-ID", out var headerValues));
+        var correlationHeader = headerValues.Single();
+
+        var payload = await ReadJson<ErrorResponse>(response);
+        Assert.Equal("Request validation failed.", payload.Error);
+        Assert.False(string.IsNullOrWhiteSpace(payload.CorrelationId));
+        Assert.Equal(correlationHeader, payload.CorrelationId);
+    }
+
+    [Fact]
+    public async Task MissingApiKey_ReturnsStandardizedUnauthorizedErrorWithCorrelationId()
+    {
+        using var factory = new AgentFactory().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["SecurityOptions:RequireApiKey"] = "true",
+                    ["SecurityOptions:ApiKey"] = "integration-test-key",
+                    ["SecurityOptions:RequireHttps"] = "false",
+                });
+            });
+        });
+
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/health");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.True(response.Headers.TryGetValues("X-Correlation-ID", out var headerValues));
+        var correlationHeader = headerValues.Single();
+
+        var payload = await ReadJson<ErrorResponse>(response);
+        Assert.Contains("Missing required header", payload.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(correlationHeader, payload.CorrelationId);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────
 
     private static async Task<T> ReadJson<T>(HttpResponseMessage response)

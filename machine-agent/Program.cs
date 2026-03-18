@@ -1,8 +1,11 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
+using System.Diagnostics;
+using AdagioMachineAgent.Models;
 using AdagioMachineAgent.Services;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,7 +18,28 @@ builder.Host.UseWindowsService(options =>
 #endif
 
 // ── Services ─────────────────────────────────────────────────────────────────
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var correlationId = ResolveCorrelationId(context.HttpContext);
+            var details = context.ModelState
+                .Where(pair => pair.Value?.Errors.Count > 0)
+                .SelectMany(pair => pair.Value!.Errors.Select(error =>
+                    string.IsNullOrWhiteSpace(error.ErrorMessage)
+                        ? $"{pair.Key}: invalid value"
+                        : $"{pair.Key}: {error.ErrorMessage}"))
+                .ToList();
+
+            var detailText = details.Count == 0 ? null : string.Join("; ", details);
+            return new BadRequestObjectResult(new ErrorResponse(
+                Error: "Request validation failed.",
+                Detail: detailText,
+                CorrelationId: correlationId));
+        };
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -54,6 +78,19 @@ SecurityPolicy.ValidateSecurityOptions(securityOptions);
 
 var app = builder.Build();
 
+app.Lifetime.ApplicationStopping.Register(() =>
+{
+    using var scope = app.Services.CreateScope();
+    var processService = scope.ServiceProvider.GetRequiredService<ProcessService>();
+    var terminated = processService.TerminateAllRunningProcesses("ApplicationStopping");
+    var pruned = processService.PruneExitedProcesses();
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Lifecycle");
+    logger.LogInformation(
+        "Application stopping cleanup completed. Terminated={Terminated} Pruned={Pruned}",
+        terminated,
+        pruned);
+});
+
 app.UseSwagger(options =>
 {
     options.PreSerializeFilters.Add((swagger, request) =>
@@ -80,6 +117,75 @@ app.UseSwaggerUI(options =>
 });
 
 // ── Middleware ────────────────────────────────────────────────────────────────
+app.Use(async (context, next) =>
+{
+    const string correlationHeader = "X-Correlation-ID";
+    var correlationId = context.Request.Headers.TryGetValue(correlationHeader, out var supplied)
+        && !string.IsNullOrWhiteSpace(supplied.ToString())
+        ? supplied.ToString()
+        : context.TraceIdentifier;
+
+    context.Items[correlationHeader] = correlationId;
+    context.Response.Headers[correlationHeader] = correlationId;
+
+    await next();
+});
+
+app.Use(async (context, next) =>
+{
+    var logger = context.RequestServices
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger("RequestLogging");
+    var stopwatch = Stopwatch.StartNew();
+    var correlationId = ResolveCorrelationId(context);
+
+    try
+    {
+        await next();
+    }
+    finally
+    {
+        stopwatch.Stop();
+        logger.LogInformation(
+            "Request completed Method={Method} Path={Path} StatusCode={StatusCode} DurationMs={DurationMs} CorrelationId={CorrelationId}",
+            context.Request.Method,
+            context.Request.Path.Value,
+            context.Response.StatusCode,
+            stopwatch.ElapsedMilliseconds,
+            correlationId);
+    }
+});
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        var logger = context.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("GlobalException");
+        var correlationId = ResolveCorrelationId(context);
+
+        logger.LogError(ex,
+            "Unhandled exception for request {Method} {Path}. CorrelationId={CorrelationId}",
+            context.Request.Method,
+            context.Request.Path.Value,
+            correlationId);
+
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new ErrorResponse(
+            Error: "An unexpected error occurred.",
+            Detail: app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing")
+                ? ex.Message
+                : null,
+            CorrelationId: correlationId));
+    }
+});
+
 app.Use(async (context, next) =>
 {
     // Support versioned API paths while keeping legacy routes available.
@@ -123,30 +229,27 @@ app.Use(async (context, next) =>
     if (string.IsNullOrWhiteSpace(securityOptions.ApiKey))
     {
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        await context.Response.WriteAsJsonAsync(new
-        {
-            error = "Server API key is not configured.",
-        });
+        await context.Response.WriteAsJsonAsync(new ErrorResponse(
+            Error: "Server API key is not configured.",
+            CorrelationId: ResolveCorrelationId(context)));
         return;
     }
 
     if (!context.Request.Headers.TryGetValue(securityOptions.ApiKeyHeaderName, out var suppliedKey))
     {
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-        await context.Response.WriteAsJsonAsync(new
-        {
-            error = $"Missing required header '{securityOptions.ApiKeyHeaderName}'.",
-        });
+        await context.Response.WriteAsJsonAsync(new ErrorResponse(
+            Error: $"Missing required header '{securityOptions.ApiKeyHeaderName}'.",
+            CorrelationId: ResolveCorrelationId(context)));
         return;
     }
 
     if (!SecurityPolicy.IsApiKeyMatch(suppliedKey.ToString(), securityOptions.ApiKey))
     {
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-        await context.Response.WriteAsJsonAsync(new
-        {
-            error = "Invalid API key.",
-        });
+        await context.Response.WriteAsJsonAsync(new ErrorResponse(
+            Error: "Invalid API key.",
+            CorrelationId: ResolveCorrelationId(context)));
         return;
     }
 
@@ -181,6 +284,17 @@ static void ConfigureTransportSecurity(WebApplicationBuilder builder, SecurityOp
             httpsOptions.ServerCertificate = certificate;
         });
     });
+}
+
+static string ResolveCorrelationId(HttpContext context)
+{
+    const string correlationHeader = "X-Correlation-ID";
+    if (context.Items.TryGetValue(correlationHeader, out var value) && value is string id && !string.IsNullOrWhiteSpace(id))
+    {
+        return id;
+    }
+
+    return context.TraceIdentifier;
 }
 
 // ─── Configuration model ──────────────────────────────────────────────────────

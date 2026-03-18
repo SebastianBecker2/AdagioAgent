@@ -87,6 +87,68 @@ public sealed class ProcessService : IDisposable
     /// <summary>Count of tracked processes that are still running.</summary>
     public int RunningProcessCount => _processes.Values.Count(tp => !tp.Process.HasExited);
 
+    /// <summary>
+    /// Best-effort termination of all still-running tracked processes.
+    /// Returns the number of processes that were asked to terminate.
+    /// </summary>
+    public int TerminateAllRunningProcesses(string reason)
+    {
+        var terminated = 0;
+        foreach (var tp in _processes.Values)
+        {
+            try
+            {
+                if (tp.Process.HasExited)
+                {
+                    continue;
+                }
+
+                tp.Process.Kill(entireProcessTree: true);
+                terminated++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to terminate tracked process {Pid} during lifecycle cleanup. Reason: {Reason}",
+                    tp.Process.Id,
+                    reason);
+            }
+        }
+
+        _logger.LogInformation(
+            "Lifecycle cleanup requested. Reason: {Reason}. TerminatedProcesses={Terminated} RunningAfter={RunningAfter}",
+            reason,
+            terminated,
+            RunningProcessCount);
+
+        return terminated;
+    }
+
+    /// <summary>
+    /// Remove exited processes from the tracked dictionary and return how many
+    /// entries were removed.
+    /// </summary>
+    public int PruneExitedProcesses()
+    {
+        var removed = 0;
+        foreach (var pair in _processes)
+        {
+            try
+            {
+                if (pair.Value.Process.HasExited && _processes.TryRemove(pair.Key, out _))
+                {
+                    removed++;
+                }
+            }
+            catch
+            {
+                // Ignore stale process-access races and continue pruning.
+            }
+        }
+
+        return removed;
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private void EnforceWhitelist(string command)
@@ -115,6 +177,8 @@ public sealed class ProcessService : IDisposable
 
     public void Dispose()
     {
+        TerminateAllRunningProcesses("ProcessService disposal");
+
         foreach (var tp in _processes.Values)
         {
             tp.Process.Dispose();

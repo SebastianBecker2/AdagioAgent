@@ -209,7 +209,7 @@ public sealed record SupportBundleMetadataResponse(
     List<string> RecommendedArtifacts);
 
 /// <summary>Problem details returned on error (RFC 7807-style).</summary>
-public sealed record ErrorResponse(string Error, string? Detail = null);
+public sealed record ErrorResponse(string Error, string? Detail = null, string? CorrelationId = null);
 
 /// <summary>Result of copying a file.</summary>
 public sealed record CopyFileResponse(string DestinationPath, int BytesWritten);
