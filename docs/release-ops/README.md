@@ -107,6 +107,13 @@ Dry-run script parameters and common usage patterns:
 Use category counts to route fixes quickly: structure/fixture for generation
 issues, manifest/index/signoff for content or cross-link problems.
 
+### Dry-run diagnostics summary retention
+
+- Recommended retention for dry-run validation summary JSON files is 14 days.
+- CI prunes stale summary files before writing new diagnostics.
+- For local development, run manual pruning when diagnostic summaries are no
+	longer needed for incident triage.
+
 Expected output layout:
 
 ```text

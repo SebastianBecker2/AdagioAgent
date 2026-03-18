@@ -59,6 +59,7 @@ build_script:
         $dryRunRoot = Join-Path $env:TEMP 'adagio-release-ops-dryrun-ci'
         $diagnosticsRoot = '.\artifacts\release-ops-dryrun-diagnostics'
         New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
+        .\scripts\prune-release-ops-dryrun-diagnostics.ps1 -DiagnosticsRoot $diagnosticsRoot -RetentionDays 14
         $summaryPath = Join-Path $diagnosticsRoot 'dryrun-validation-summary.json'
 
         try {

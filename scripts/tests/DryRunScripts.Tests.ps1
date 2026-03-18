@@ -2,6 +2,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 
 $generateDryRunScript = Join-Path $repoRoot 'scripts\generate-release-ops-dry-run.ps1'
 $validateDryRunScript = Join-Path $repoRoot 'scripts\validate-release-ops-dry-run.ps1'
+$pruneDiagnosticsScript = Join-Path $repoRoot 'scripts\prune-release-ops-dryrun-diagnostics.ps1'
 
 function Get-LatestDryRunPackage {
     param([string]$Root)
@@ -70,5 +71,23 @@ Describe 'Release-ops dry-run scripts' {
         $summary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
         $summary.success | Should Be $false
         ($summary.issues | Where-Object { $_.category -eq 'fixture' } | Measure-Object).Count | Should BeGreaterThan 0
+    }
+
+    It 'prune-release-ops-dryrun-diagnostics removes stale summaries and keeps recent files' {
+        $diagnosticsRoot = Join-Path $script:testRoot 'diagnostics'
+        New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
+
+        $staleFile = Join-Path $diagnosticsRoot 'stale.json'
+        $recentFile = Join-Path $diagnosticsRoot 'recent.json'
+        Set-Content -LiteralPath $staleFile -Value '{}' -Encoding UTF8
+        Set-Content -LiteralPath $recentFile -Value '{}' -Encoding UTF8
+
+        (Get-Item -LiteralPath $staleFile).LastWriteTimeUtc = [DateTime]::UtcNow.AddDays(-20)
+        (Get-Item -LiteralPath $recentFile).LastWriteTimeUtc = [DateTime]::UtcNow.AddDays(-1)
+
+        { & $pruneDiagnosticsScript -DiagnosticsRoot $diagnosticsRoot -RetentionDays 14 } | Should Not Throw
+
+        (Test-Path -LiteralPath $staleFile -PathType Leaf) | Should Be $false
+        (Test-Path -LiteralPath $recentFile -PathType Leaf) | Should Be $true
     }
 }

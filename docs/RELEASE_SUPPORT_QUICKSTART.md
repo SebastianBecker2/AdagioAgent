@@ -137,3 +137,14 @@ Escalation path for repeated failures before pilot handoff:
 2. Attach the latest dry-run summary JSON diagnostics to the release ops thread.
 3. Assign follow-up owner from release ops and rerun pre-release verification
    after fixes.
+
+Manual cleanup guidance for local diagnostics growth:
+
+1. Prune old summary files with a retention window (example: 14 days):
+
+```powershell
+.\scripts\prune-release-ops-dryrun-diagnostics.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics -RetentionDays 14
+```
+
+2. If disk pressure persists, archive needed summaries externally and clear the
+   local diagnostics folder.

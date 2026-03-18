@@ -461,7 +461,16 @@ The next implementation slice should focus on dry-run failure diagnostics qualit
 
 The next implementation slice should focus on release-ops diagnostics retention hygiene:
 
-1. Add script to prune stale dry-run diagnostics summaries older than a configurable retention window.
-2. Add CI non-tag step to prune stale dry-run diagnostics before writing new summaries.
-3. Add docs note defining recommended retention duration for dry-run diagnostics summaries.
-4. Add quickstart guidance for manual cleanup when local diagnostics directories grow unexpectedly.
+1. [x] Add script to prune stale dry-run diagnostics summaries older than a configurable retention window.
+2. [x] Add CI non-tag step to prune stale dry-run diagnostics before writing new summaries.
+3. [x] Add docs note defining recommended retention duration for dry-run diagnostics summaries.
+4. [x] Add quickstart guidance for manual cleanup when local diagnostics directories grow unexpectedly.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on diagnostics artifact visibility and indexing:
+
+1. Add CI step to preserve latest successful dry-run summary with build metadata for auditability.
+2. Add script to append/update a local diagnostics index file summarizing recent dry-run outcomes.
+3. Add docs guidance for interpreting diagnostics index trends over consecutive builds.
+4. Add quickstart checklist item to review diagnostics index before pilot handoff approval.
