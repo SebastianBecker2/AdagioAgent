@@ -12,6 +12,10 @@
     <Version>0.1.0</Version>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
   <!--
     Define build-time platform constants so #if WINDOWS / #if LINUX guards in
     source files select the correct UI-automation backend.

@@ -135,6 +135,10 @@
       {
         "command": "adagioAgent.runStartupDiagnostics",
         "title": "Adagio Agent: Run Startup Diagnostics"
+      },
+      {
+        "command": "adagioAgent.openDiagnosticsOutput",
+        "title": "Adagio Agent: Open Diagnostics Output"
       }
     ],
     "configuration": {

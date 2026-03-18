@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using AdagioMachineAgent.Services;
+using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +16,16 @@ builder.Host.UseWindowsService(options =>
 
 // ── Services ─────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Adagio Machine Agent API",
+        Version = "v1",
+        Description = "Canonical contract is rooted at /api/v1. Legacy unversioned aliases remain for compatibility.",
+    });
+});
 builder.Services.AddSingleton<ProcessService>();
 
 // Register the correct UI-automation backend for the host platform.
@@ -43,6 +54,31 @@ SecurityPolicy.ValidateSecurityOptions(securityOptions);
 
 var app = builder.Build();
 
+app.UseSwagger(options =>
+{
+    options.PreSerializeFilters.Add((swagger, request) =>
+    {
+        swagger.Servers =
+        [
+            new OpenApiServer
+            {
+                Url = "/api/v1",
+                Description = "Canonical versioned API base path",
+            },
+            new OpenApiServer
+            {
+                Url = "/",
+                Description = "Legacy compatibility route aliases",
+            },
+        ];
+    });
+});
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Adagio Machine Agent API v1");
+    options.RoutePrefix = "swagger";
+});
+
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.Use(async (context, next) =>
 {
@@ -68,6 +104,12 @@ app.UseRouting();
 
 app.Use(async (context, next) =>
 {
+    if (context.Request.Path.StartsWithSegments("/swagger"))
+    {
+        await next();
+        return;
+    }
+
     var securityOptions = context.RequestServices
         .GetRequiredService<IOptions<SecurityOptions>>()
         .Value;

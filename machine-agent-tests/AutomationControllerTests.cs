@@ -90,6 +90,28 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void DiagnosticsExportMetadata_ReturnsNonSensitiveSummary()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var before = DateTimeOffset.UtcNow;
+        var result = sut.DiagnosticsExportMetadata();
+        var after = DateTimeOffset.UtcNow;
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<SupportBundleMetadataResponse>(ok.Value);
+        Assert.Equal(1, payload.ApiVersion);
+        Assert.Equal("ready", payload.ReadinessStatus);
+        Assert.Equal(0, payload.IssueCount);
+        Assert.Equal("X-API-Key", payload.ApiKeyHeaderName);
+        Assert.True(payload.AllowedExecutablePathCount > 0);
+        Assert.NotEmpty(payload.RecommendedArtifacts);
+        Assert.InRange(payload.GeneratedAtUtc, before, after.AddSeconds(1));
+    }
+
+    [Fact]
     public void Run_ReturnsBadRequestWhenCommandMissing()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);

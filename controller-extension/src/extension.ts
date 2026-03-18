@@ -140,6 +140,7 @@ interface SelectOptionInput {
 const startupConnectionCheckKey = "adagioAgent.startupConnectionCheckCompleted";
 let readinessStatusItem: vscode.StatusBarItem | undefined;
 let adagioOutput: vscode.OutputChannel | undefined;
+let currentReadinessSummary = "status=checking";
 
 function logAdagio(level: "info" | "warn" | "error", message: string, details?: unknown): void {
   if (!adagioOutput) {
@@ -170,8 +171,9 @@ function setReadinessStatus(state: "checking" | "ready" | "degraded" | "offline"
       break;
   }
 
+  currentReadinessSummary = `status=${state}`;
   readinessStatusItem.tooltip = tooltip;
-  readinessStatusItem.command = "adagioAgent.runStartupDiagnostics";
+  readinessStatusItem.command = "adagioAgent.openDiagnosticsOutput";
   readinessStatusItem.show();
 }
 
@@ -308,7 +310,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("adagioAgent.pressHotkey", wrapCommand(cmdPressHotkey)),
     vscode.commands.registerCommand("adagioAgent.setCheckbox", wrapCommand(cmdSetCheckbox)),
     vscode.commands.registerCommand("adagioAgent.selectOption", wrapCommand(cmdSelectOption)),
-    vscode.commands.registerCommand("adagioAgent.runStartupDiagnostics", wrapCommand(cmdRunStartupDiagnostics))
+    vscode.commands.registerCommand("adagioAgent.runStartupDiagnostics", wrapCommand(cmdRunStartupDiagnostics)),
+    vscode.commands.registerCommand("adagioAgent.openDiagnosticsOutput", wrapCommand(cmdOpenDiagnosticsOutput))
   );
 
   // ── Copilot language-model tools ─────────────────────────────────────────
@@ -407,6 +410,7 @@ async function cmdRunStartupDiagnostics(): Promise<void> {
 
   const diagnostics = await createAgentClient().diagnosticsStatus();
   const summary = `status=${diagnostics.status}, running=${diagnostics.runningProcessCount}, tracked=${diagnostics.trackedProcessCount}`;
+  currentReadinessSummary = summary;
   logAdagio("info", "Diagnostics status fetched", {
     status: diagnostics.status,
     runningProcessCount: diagnostics.runningProcessCount,
@@ -415,6 +419,11 @@ async function cmdRunStartupDiagnostics(): Promise<void> {
   });
 
   vscode.window.showInformationMessage(`Adagio Agent diagnostics: ${summary}`);
+}
+
+async function cmdOpenDiagnosticsOutput(): Promise<void> {
+  adagioOutput?.show(true);
+  vscode.window.showInformationMessage(`Adagio Agent current ${currentReadinessSummary}`);
 }
 
 async function cmdRunInstallerAndCollectArtifacts(): Promise<void> {

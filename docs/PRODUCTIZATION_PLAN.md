@@ -16,6 +16,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add diagnostics endpoint with summarized startup/runtime health data.
 - [x] Add extension status indicator for readiness state.
 - [x] Add structured logging output channel in the extension.
+- [x] Add OpenAPI/Swagger discoverability for canonical `/api/v1` contract.
+- [x] Add diagnostics export metadata endpoint for support bundle workflows.
+- [x] Add extension command to open diagnostics output and current readiness status.
+- [x] Add readiness/diagnostics troubleshooting workflow documentation.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -194,7 +198,16 @@ The next implementation slice should focus on diagnostics and readiness depth:
 
 The next implementation slice should focus on API discoverability and supportability:
 
-1. Add OpenAPI/Swagger for `/api/v1` and core operational endpoints.
-2. Add diagnostics endpoint for support bundle/export metadata (without sensitive values).
-3. Add extension command/UI action to open the Adagio output channel and show current status.
-4. Add documentation for readiness/diagnostics troubleshooting workflow.
+1. [x] Add OpenAPI/Swagger for `/api/v1` and core operational endpoints.
+2. [x] Add diagnostics endpoint for support bundle/export metadata (without sensitive values).
+3. [x] Add extension command/UI action to open the Adagio output channel and show current status.
+4. [x] Add documentation for readiness/diagnostics troubleshooting workflow.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on release trust and governance basics:
+
+1. Add `CHANGELOG.md` with initial release and roadmap-relevant entries.
+2. Add `SECURITY.md` with reporting process and vulnerability handling expectations.
+3. Add `SUPPORT.md` with support boundaries, data to collect, and response expectations.
+4. Add `CONTRIBUTING.md` with branch/PR/test requirements aligned to current CI.

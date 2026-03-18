@@ -157,6 +157,45 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
         Assert.Equal(directPayload.RunningProcessCount, versionedPayload.RunningProcessCount);
     }
 
+    [Fact]
+    public async Task DiagnosticsExportMetadata_VersionedRoute_ReturnsSameResponseAsDirectRoute()
+    {
+        var direct = await _client.GetAsync("/diagnostics/export-metadata");
+        var versioned = await _client.GetAsync("/api/v1/diagnostics/export-metadata");
+
+        Assert.Equal(HttpStatusCode.OK, direct.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, versioned.StatusCode);
+
+        var directPayload = await ReadJson<SupportBundleMetadataResponse>(direct);
+        var versionedPayload = await ReadJson<SupportBundleMetadataResponse>(versioned);
+
+        Assert.Equal(directPayload.Version, versionedPayload.Version);
+        Assert.Equal(directPayload.ApiVersion, versionedPayload.ApiVersion);
+        Assert.Equal(directPayload.Platform, versionedPayload.Platform);
+        Assert.Equal(directPayload.ReadinessStatus, versionedPayload.ReadinessStatus);
+        Assert.Equal(directPayload.ApiKeyHeaderName, versionedPayload.ApiKeyHeaderName);
+    }
+
+    [Fact]
+    public async Task SwaggerJson_IsAvailableAndDeclaresVersionedServer()
+    {
+        var response = await _client.GetAsync("/swagger/v1/swagger.json");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(json);
+        Assert.True(document.RootElement.TryGetProperty("openapi", out _));
+        Assert.True(document.RootElement.TryGetProperty("servers", out var servers));
+
+        var hasVersionedServer = servers
+            .EnumerateArray()
+            .Any(server =>
+                server.TryGetProperty("url", out var url) &&
+                string.Equals(url.GetString(), "/api/v1", StringComparison.Ordinal));
+
+        Assert.True(hasVersionedServer);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────
 
     private static async Task<T> ReadJson<T>(HttpResponseMessage response)

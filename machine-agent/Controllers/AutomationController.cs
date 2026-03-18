@@ -118,6 +118,56 @@ public sealed class AutomationController : ControllerBase
             TimestampUtc: DateTimeOffset.UtcNow));
     }
 
+    [HttpGet("/diagnostics/export-metadata")]
+    [ProducesResponseType(typeof(SupportBundleMetadataResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+    public IActionResult DiagnosticsExportMetadata()
+    {
+        var diagnosticsResult = DiagnosticsStatus();
+        var diagnosticsPayload = (diagnosticsResult as OkObjectResult)?.Value as DiagnosticsStatusResponse;
+
+        if (diagnosticsPayload is null)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Failed to compute diagnostics export metadata."));
+        }
+
+        var services = HttpContext?.RequestServices;
+        var securityOptions = services?.GetService(typeof(IOptions<global::SecurityOptions>)) as IOptions<global::SecurityOptions>;
+        var agentOptions = services?.GetService(typeof(IOptions<global::AgentOptions>)) as IOptions<global::AgentOptions>;
+
+        if (securityOptions is null || agentOptions is null)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ErrorResponse("Required options were not available for diagnostics export metadata."));
+        }
+
+        var metadata = new SupportBundleMetadataResponse(
+            Version: diagnosticsPayload.Version,
+            ApiVersion: diagnosticsPayload.ApiVersion,
+            Platform: diagnosticsPayload.Platform,
+            ReadinessStatus: diagnosticsPayload.Status,
+            IssueCount: diagnosticsPayload.Issues.Count,
+            RunningProcessCount: diagnosticsPayload.RunningProcessCount,
+            TrackedProcessCount: diagnosticsPayload.TrackedProcessCount,
+            HttpsRequired: securityOptions.Value.RequireHttps,
+            ApiKeyRequired: securityOptions.Value.RequireApiKey,
+            ApiKeyHeaderName: securityOptions.Value.ApiKeyHeaderName,
+            AllowedExecutablePathCount: agentOptions.Value.AllowedExecutablePaths.Count,
+            AllowedReadablePathCount: agentOptions.Value.AllowedReadablePaths.Count,
+            AllowedWritablePathCount: agentOptions.Value.AllowedWritablePaths.Count,
+            GeneratedAtUtc: DateTimeOffset.UtcNow,
+            RecommendedArtifacts:
+            [
+                "Service startup logs",
+                "Readiness payload from /ready",
+                "Diagnostics payload from /diagnostics/status",
+                "Installer logs and event excerpts",
+            ]);
+
+        return Ok(metadata);
+    }
+
     private List<string> GetUiAutomationReadinessIssues(string platform)
     {
         var issues = new List<string>();

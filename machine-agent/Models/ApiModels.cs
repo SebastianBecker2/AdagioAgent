@@ -190,6 +190,24 @@ public sealed record DiagnosticsStatusResponse(
     int TrackedProcessCount,
     DateTimeOffset TimestampUtc);
 
+/// <summary>Non-sensitive metadata for troubleshooting exports/support bundles.</summary>
+public sealed record SupportBundleMetadataResponse(
+    string Version,
+    int ApiVersion,
+    string Platform,
+    string ReadinessStatus,
+    int IssueCount,
+    int RunningProcessCount,
+    int TrackedProcessCount,
+    bool HttpsRequired,
+    bool ApiKeyRequired,
+    string ApiKeyHeaderName,
+    int AllowedExecutablePathCount,
+    int AllowedReadablePathCount,
+    int AllowedWritablePathCount,
+    DateTimeOffset GeneratedAtUtc,
+    List<string> RecommendedArtifacts);
+
 /// <summary>Problem details returned on error (RFC 7807-style).</summary>
 public sealed record ErrorResponse(string Error, string? Detail = null);
 

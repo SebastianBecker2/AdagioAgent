@@ -11,7 +11,8 @@ Current product posture: Windows-first, admin-managed deployment for controlled
 environments. See [docs/OPERATING_MODEL.md](docs/OPERATING_MODEL.md) for the
 current support boundaries and deployment assumptions, and
 [docs/BOOTSTRAP_STRATEGY.md](docs/BOOTSTRAP_STRATEGY.md) for the provisioning
-strategy decision.
+strategy decision. Troubleshooting workflows are documented in
+[docs/DIAGNOSTICS_TROUBLESHOOTING.md](docs/DIAGNOSTICS_TROUBLESHOOTING.md).
 
 Bootstrap helper script: `scripts/bootstrap-agent.ps1` (certificate + API key
 generation for controlled environments).
@@ -99,6 +100,7 @@ Installer-named tools remain available as compatibility aliases:
 Operational command:
 
 - `adagioAgent.runStartupDiagnostics` (rerun readiness diagnostics on demand)
+- `adagioAgent.openDiagnosticsOutput` (open extension diagnostics output and current readiness summary)
 
 **Build:**
 
@@ -132,6 +134,7 @@ automation. Supports **Windows** (via **FlaUI/UIA3**) and **Linux with a GUI**
 | `GET` | `/health` | Health check |
 | `GET` | `/ready` | Readiness check with actionable configuration/runtime issues |
 | `GET` | `/diagnostics/status` | Summarized startup/runtime diagnostics |
+| `GET` | `/diagnostics/export-metadata` | Non-sensitive support/export metadata snapshot |
 | `POST` | `/run` | Start an executable process |
 | `POST` | `/run-and-collect-artifacts` | Start process, wait, collect diagnostics |
 | `POST` | `/run-and-assert` | Start process, collect diagnostics, evaluate assertions |
@@ -164,6 +167,9 @@ Legacy installer-named route aliases are still supported for backward compatibil
 - `/run-installer-and-collect-artifacts`
 - `/run-installer-and-assert`
 - `/collect-install-artifacts`
+
+OpenAPI/Swagger is available at `/swagger` with a canonical server base URL of
+`/api/v1` for client generation and contract review.
 
 **Build:**
 
