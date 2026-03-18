@@ -21,6 +21,13 @@ If diagnostics are degraded or offline, continue with the steps below.
 - The output channel contains timestamped structured lines with startup and
   diagnostics context.
 
+Correlation-first workflow:
+
+- If a command or readiness check fails, capture the `Correlation ID` shown in
+  the extension message (when provided by the backend).
+- Use that ID to correlate the user-visible failure with backend request logs.
+- Include the correlation ID in support tickets and support bundles.
+
 ### 3. Validate health and readiness endpoints
 
 Run on the machine where the extension can reach the agent:
@@ -59,6 +66,7 @@ Use this to verify expected endpoint names and payload models for `/api/v1`.
 Collect and attach:
 
 - Extension output channel export.
+- Correlation IDs from user-visible errors/warnings.
 - `/ready` response JSON.
 - `/diagnostics/status` response JSON.
 - `/diagnostics/export-metadata` response JSON.

@@ -10,7 +10,7 @@ vi.mock("vscode", () => ({
   },
 }));
 
-import { AgentClient, createAgentClient } from "../src/agentClient";
+import { AgentClient, AgentClientError, createAgentClient, getCorrelationIdFromError } from "../src/agentClient";
 
 describe("AgentClient", () => {
   beforeEach(() => {
@@ -240,6 +240,48 @@ describe("AgentClient", () => {
     await expect(client.health()).rejects.toThrow(
       "VM agent responded with 400: invalid input"
     );
+  });
+
+  it("includes correlation ID from error payload when present", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ error: "bad", detail: "invalid input", correlationId: "corr-123" }), {
+        status: 400,
+        statusText: "Bad Request",
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const client = new AgentClient("http://localhost:5000");
+
+    await expect(client.health()).rejects.toThrow(
+      "VM agent responded with 400: invalid input (Correlation ID: corr-123)"
+    );
+  });
+
+  it("falls back to X-Correlation-ID response header when body omits correlation ID", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ error: "bad", detail: "invalid input" }), {
+        status: 400,
+        statusText: "Bad Request",
+        headers: { "Content-Type": "application/json", "X-Correlation-ID": "corr-header-7" },
+      })
+    );
+
+    const client = new AgentClient("http://localhost:5000");
+
+    await expect(client.health()).rejects.toThrow(
+      "VM agent responded with 400: invalid input (Correlation ID: corr-header-7)"
+    );
+  });
+
+  it("exposes correlation ID from AgentClientError helper", () => {
+    const err = new AgentClientError(500, "broken", "corr-500");
+
+    expect(getCorrelationIdFromError(err)).toBe("corr-500");
+    expect(getCorrelationIdFromError(new Error("oops (Correlation ID: corr-msg-1)"))).toBe("corr-msg-1");
+    expect(getCorrelationIdFromError(new Error("no correlation"))).toBeUndefined();
   });
 
   it("falls back to response text when JSON parsing fails", async () => {

@@ -54,6 +54,34 @@ import {
   SelectOptionRequest,
 } from "./schema";
 
+export class AgentClientError extends Error {
+  readonly status: number;
+  readonly detail?: string;
+  readonly correlationId?: string;
+
+  constructor(status: number, detail?: string, correlationId?: string) {
+    const suffix = correlationId ? ` (Correlation ID: ${correlationId})` : "";
+    super(`VM agent responded with ${status}: ${detail ?? "Unexpected error"}${suffix}`);
+    this.name = "AgentClientError";
+    this.status = status;
+    this.detail = detail;
+    this.correlationId = correlationId;
+  }
+}
+
+export function getCorrelationIdFromError(error: unknown): string | undefined {
+  if (error instanceof AgentClientError) {
+    return error.correlationId;
+  }
+
+  if (error instanceof Error) {
+    const match = error.message.match(/Correlation ID:\s*([^\)\s]+)/i);
+    return match?.[1];
+  }
+
+  return undefined;
+}
+
 /**
  * HTTP client that wraps all calls to the Windows VM agent REST API.
  */
@@ -365,15 +393,23 @@ export class AgentClient {
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
       let detail: string | undefined;
+      let correlationId: string | undefined;
       try {
         const err = (await response.clone().json()) as AgentError;
         detail = err.detail ?? err.error;
+        correlationId = err.correlationId;
       } catch {
         detail = await response.text();
       }
-      throw new Error(
-        `VM agent responded with ${response.status}: ${detail ?? response.statusText}`
-      );
+
+      if (!correlationId) {
+        correlationId = response.headers.get("X-Correlation-ID") ?? undefined;
+      }
+
+      throw new AgentClientError(
+        response.status,
+        detail ?? response.statusText,
+        correlationId);
     }
     return response.json() as Promise<T>;
   }

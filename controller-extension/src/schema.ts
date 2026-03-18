@@ -251,6 +251,7 @@ export interface DiagnosticsStatusResponse {
 export interface AgentError {
   error: string;
   detail?: string;
+  correlationId?: string;
 }
 
 export interface CopyFileResponse {

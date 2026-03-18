@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as os from "os";
-import { AgentClient, createAgentClient } from "./agentClient";
+import { AgentClient, createAgentClient, getCorrelationIdFromError } from "./agentClient";
 import { wrapCommand } from "./commandSafety";
 import { RunRequest, UiElement } from "./schema";
 
@@ -238,12 +238,20 @@ async function runStartupConnectionCheck(
       `Adagio Agent startup check reports degraded readiness: ${issueSummary}`
     );
   } catch (error) {
+    const correlationId = getCorrelationIdFromError(error);
+    const baseMessage = errorMessage(error);
+    const hasCorrelationInMessage = /correlation\s+id\s*:/i.test(baseMessage);
+    const correlationSuffix = correlationId && !hasCorrelationInMessage
+      ? ` (correlation ID: ${correlationId})`
+      : "";
+
     logAdagio("error", "Startup diagnostics failed", {
-      error: errorMessage(error),
+      error: baseMessage,
+      correlationId,
     });
-    setReadinessStatus("offline", errorMessage(error));
+    setReadinessStatus("offline", `${baseMessage}${correlationSuffix}`);
     vscode.window.showWarningMessage(
-      `Adagio Agent startup connection check failed: ${errorMessage(error)}`
+      `Adagio Agent startup connection check failed: ${baseMessage}${correlationSuffix}`
     );
   }
 }

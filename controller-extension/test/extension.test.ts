@@ -141,6 +141,14 @@ vi.mock("vscode", () => ({
 vi.mock("../src/agentClient", () => ({
   createAgentClient: createAgentClientMock,
   AgentClient: class AgentClient {},
+  getCorrelationIdFromError: (error: unknown) => {
+    if (error instanceof Error) {
+      const match = error.message.match(/Correlation ID:\s*([^\)\s]+)/i);
+      return match?.[1];
+    }
+
+    return undefined;
+  },
 }));
 
 import { activate } from "../src/extension";
@@ -205,6 +213,27 @@ describe("extension activation and commands", () => {
 
     expect(showWarningMessageMock).toHaveBeenCalledWith(
       "Adagio Agent startup connection check failed: connection refused"
+    );
+  });
+
+  it("includes correlation ID in startup warning when backend reports one", async () => {
+    createAgentClientMock.mockImplementation(() => {
+      throw new Error("VM agent responded with 401: Missing required header 'X-API-Key'. (Correlation ID: corr-401)");
+    });
+
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      globalState: {
+        get: vi.fn().mockReturnValue(false),
+        update: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+
+    activate(context as never);
+    await Promise.resolve();
+
+    expect(showWarningMessageMock).toHaveBeenCalledWith(
+      "Adagio Agent startup connection check failed: VM agent responded with 401: Missing required header 'X-API-Key'. (Correlation ID: corr-401)"
     );
   });
 

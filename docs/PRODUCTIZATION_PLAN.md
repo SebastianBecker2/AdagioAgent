@@ -36,6 +36,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Standardize API error envelopes for validation failures and unhandled exceptions.
 - [x] Add graceful shutdown cleanup diagnostics in process lifecycle paths.
 - [x] Add backend regression tests for correlation, standardized errors, and lifecycle cleanup.
+- [x] Surface backend correlation IDs in extension error and diagnostics output paths.
+- [x] Add extension-side correlation ID parsing/typing in API error handling.
+- [x] Add extension tests for correlation-aware error messaging.
+- [x] Update troubleshooting docs with correlation-ID-first support workflow.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -259,7 +263,16 @@ The next implementation slice should focus on backend observability and lifecycl
 
 The next implementation slice should focus on extension-side observability alignment:
 
-1. Surface correlation IDs in extension error and diagnostics output when backend returns them.
-2. Add extension-side parsing/typing for correlation ID in error payloads.
-3. Add extension test coverage for correlation-aware error messaging and diagnostics logs.
-4. Update troubleshooting docs with a correlation-ID-first support workflow.
+1. [x] Surface correlation IDs in extension error and diagnostics output when backend returns them.
+2. [x] Add extension-side parsing/typing for correlation ID in error payloads.
+3. [x] Add extension test coverage for correlation-aware error messaging and diagnostics logs.
+4. [x] Update troubleshooting docs with a correlation-ID-first support workflow.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on contract and observability documentation depth:
+
+1. Add a concise API error contract section to README (fields and examples).
+2. Add operator guidance for correlation-ID usage in SUPPORT.md and PILOT_RUNBOOK.md.
+3. Add a release checklist item requiring correlation-ID verification in smoke tests.
+4. Add one end-to-end test checklist entry covering correlation from backend to extension message.
