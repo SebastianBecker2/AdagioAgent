@@ -2,6 +2,7 @@ param(
     [string]$ApiBaseUrl = 'https://127.0.0.1:5443/api/v1',
     [string]$ApiKey = $env:ADAGIO_AGENT_API_KEY,
     [string]$OutputRoot = (Join-Path $PSScriptRoot '..\artifacts\support-bundles'),
+    [string]$ExtensionOutputPath,
     [int]$EventLogEntries = 200,
     [switch]$Offline
 )
@@ -80,6 +81,22 @@ $manifest = [ordered]@{
     BundleDirectory = (Resolve-Path $bundleDir).Path
     ApiBaseUrl = $ApiBaseUrl
     OfflineMode = [bool]$Offline
+    ArtifactSchema = [ordered]@{
+        RequiredArtifacts = @(
+            'manifest.json',
+            'machine-info.json',
+            'service-status.json',
+            'application-events.json'
+        )
+        OptionalArtifacts = @(
+            'health.json',
+            'ready.json',
+            'diagnostics-status.json',
+            'diagnostics-export-metadata.json',
+            'offline-note.txt',
+            'extension-output-metadata.json'
+        )
+    }
     IncludedFiles = @()
     Notes = @()
 }
@@ -137,6 +154,28 @@ if (-not $Offline) {
     $offlineNotePath = Join-Path $bundleDir 'offline-note.txt'
     Add-TextFile -path $offlineNotePath -content 'Offline mode enabled. API endpoint snapshots were skipped.'
     $manifest.IncludedFiles += 'offline-note.txt'
+}
+
+if (-not [string]::IsNullOrWhiteSpace($ExtensionOutputPath)) {
+    $extensionOutputMetadataPath = Join-Path $bundleDir 'extension-output-metadata.json'
+    try {
+        $resolvedOutputPath = Resolve-Path -LiteralPath $ExtensionOutputPath -ErrorAction Stop
+        Save-Json -Path $extensionOutputMetadataPath -Value ([ordered]@{
+            ProvidedPath = $ExtensionOutputPath
+            ResolvedPath = $resolvedOutputPath.Path
+            Exists = $true
+            LastWriteTimeUtc = (Get-Item -LiteralPath $resolvedOutputPath.Path).LastWriteTimeUtc
+        })
+    } catch {
+        Save-Json -Path $extensionOutputMetadataPath -Value ([ordered]@{
+            ProvidedPath = $ExtensionOutputPath
+            Exists = $false
+            Error = $_.Exception.Message
+        })
+        $manifest.Notes += 'Extension output path metadata was requested but the path could not be resolved.'
+    }
+
+    $manifest.IncludedFiles += 'extension-output-metadata.json'
 }
 
 $eventLogPath = Join-Path $bundleDir 'application-events.json'

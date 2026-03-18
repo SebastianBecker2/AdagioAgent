@@ -20,6 +20,9 @@ install:
 build: off
 
 build_script:
+  # 0.1 Ensure README/SUPPORT markdown links resolve to existing workspace files
+  - ps: .\scripts\check-doc-links.ps1
+
   # 0. Preflight release trust checks (versions, governance docs, tag/changelog rules)
   - ps: .\scripts\release-preflight.ps1 -Ci
 

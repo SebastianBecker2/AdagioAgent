@@ -20,6 +20,16 @@ See `docs/OPERATING_MODEL.md` for support boundaries and deployment assumptions.
 .\scripts\collect-support-bundle.ps1 -ApiKey '<api-key>'
 ```
 
+If you exported extension diagnostics separately, include path metadata in the
+bundle:
+
+```powershell
+.\scripts\collect-support-bundle.ps1 -ApiKey '<api-key>' -ExtensionOutputPath 'C:\path\to\adagio-output.log'
+```
+
+Manifest schema and artifact categories are documented in
+`docs/SUPPORT_BUNDLE_SCHEMA.md`.
+
 5. Confirm machine-agent and extension versions.
 
 ## Correlation ID guidance

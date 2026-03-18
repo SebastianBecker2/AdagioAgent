@@ -44,6 +44,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add operator correlation-ID guidance in support and pilot runbook docs.
 - [x] Add release smoke-check requirement for correlation-ID verification.
 - [x] Add end-to-end upgrade checklist entry for backend-to-extension correlation propagation.
+- [x] Add support-bundle option for extension output export path metadata.
+- [x] Add support-bundle manifest schema notes for required vs optional artifacts.
+- [x] Add periodic support-bundle drill step in pilot runbook.
+- [x] Add CI doc-link lint/check for README and SUPPORT references.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -285,7 +289,16 @@ The next implementation slice should focus on contract and observability documen
 
 The next implementation slice should focus on supportability packaging automation:
 
-1. Add an option in support-bundle script to include extension output export path metadata.
-2. Add support-bundle manifest schema notes (required vs optional artifacts).
-3. Add runbook step for periodic support-bundle drill during pilot.
-4. Add CI lint/check ensuring docs referenced by README and SUPPORT links exist.
+1. [x] Add an option in support-bundle script to include extension output export path metadata.
+2. [x] Add support-bundle manifest schema notes (required vs optional artifacts).
+3. [x] Add runbook step for periodic support-bundle drill during pilot.
+4. [x] Add CI lint/check ensuring docs referenced by README and SUPPORT links exist.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on support bundle validation hardening:
+
+1. Add tests for support-bundle script metadata output and manifest shape validation.
+2. Add documentation examples for online and offline bundle collection outputs.
+3. Add release checklist step to verify support-bundle script execution against release artifacts.
+4. Add CI job step to run support-bundle script in offline mode and verify manifest creation.

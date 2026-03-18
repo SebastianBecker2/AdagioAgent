@@ -28,6 +28,16 @@ This runbook defines how to operate a controlled pilot for AdagioAgent with repe
 3. Query readiness/diagnostics endpoints.
 4. Capture a support bundle for anomalies.
 
+### Periodic support-bundle drill
+
+At least once per pilot week, run a support-bundle drill even without an
+incident:
+
+1. Generate a bundle with `scripts/collect-support-bundle.ps1`.
+2. Confirm `manifest.json` required artifacts are present.
+3. Validate optional artifacts are present as expected for online/offline mode.
+4. Record drill timestamp and operator in pilot notes.
+
 ### Correlation-ID operating rule
 
 - Treat `Correlation ID` as the primary join key between extension-facing
