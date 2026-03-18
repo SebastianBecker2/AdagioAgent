@@ -53,10 +53,20 @@
                   Return="check"
                   ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]bootstrap-agent.ps1&quot; -WriteToAppSettings -SuppressSecretOutput -LogPath &quot;C:\ProgramData\AdagioMachineAgent\bootstrap.log&quot;" />
 
+        <CustomAction Id="RunBootstrapPreflight"
+          Directory="INSTALLFOLDER"
+          Execute="deferred"
+          Impersonate="no"
+          Return="check"
+                      ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]check-bootstrap-preflight.ps1&quot; -LogPath &quot;C:\ProgramData\AdagioMachineAgent\bootstrap-preflight.log&quot;" />
+
     <InstallExecuteSequence>
       <Custom Action="RunBootstrapAgentScript"
               After="InstallFiles"
               Condition="NOT Installed AND NOT WIX_UPGRADE_DETECTED" />
+          <Custom Action="RunBootstrapPreflight"
+            After="RunBootstrapAgentScript"
+            Condition="NOT Installed AND NOT WIX_UPGRADE_DETECTED" />
     </InstallExecuteSequence>
 
     <!--
@@ -98,6 +108,9 @@
     <ComponentGroup Id="BootstrapAssets" Directory="INSTALLFOLDER">
       <Component>
         <File Id="BootstrapAgentScript" Source="$(sys.SOURCEFILEDIR)..\scripts\bootstrap-agent.ps1" KeyPath="yes" />
+      </Component>
+      <Component>
+        <File Id="BootstrapPreflightScript" Source="$(sys.SOURCEFILEDIR)..\scripts\check-bootstrap-preflight.ps1" />
       </Component>
     </ComponentGroup>
 
