@@ -43,3 +43,37 @@ When `-ExtensionOutputPath` is provided, the script writes
 
 This allows support workflows to trace where extension diagnostic exports were
 captured without embedding sensitive content in the bundle.
+
+### Collection examples
+
+Online collection (includes endpoint snapshots when API is reachable):
+
+```powershell
+.\scripts\collect-support-bundle.ps1 -ApiKey '<api-key>'
+```
+
+Typical `IncludedFiles` additions in online mode:
+
+- `health.json`
+- `ready.json`
+- `diagnostics-status.json`
+- `diagnostics-export-metadata.json`
+
+Offline collection (skips endpoint calls, adds offline note):
+
+```powershell
+.\scripts\collect-support-bundle.ps1 -Offline -ExtensionOutputPath 'C:\path\to\adagio-output.log'
+```
+
+Typical `IncludedFiles` additions in offline mode:
+
+- `offline-note.txt`
+- `extension-output-metadata.json` (when `-ExtensionOutputPath` is provided)
+
+### Bundle validation example
+
+Validate a generated bundle manifest shape and required artifacts:
+
+```powershell
+.\scripts\validate-support-bundle.ps1 -BundlePath '<bundle-directory>' -ExpectOffline
+```

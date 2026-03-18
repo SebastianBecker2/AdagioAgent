@@ -48,6 +48,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add support-bundle manifest schema notes for required vs optional artifacts.
 - [x] Add periodic support-bundle drill step in pilot runbook.
 - [x] Add CI doc-link lint/check for README and SUPPORT references.
+- [x] Add support-bundle metadata/manifest validation script tests.
+- [x] Add online/offline support-bundle output examples in docs.
+- [x] Add release checklist step for support-bundle execution validation.
+- [x] Add CI offline support-bundle generation and manifest verification step.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -298,7 +302,16 @@ The next implementation slice should focus on supportability packaging automatio
 
 The next implementation slice should focus on support bundle validation hardening:
 
-1. Add tests for support-bundle script metadata output and manifest shape validation.
-2. Add documentation examples for online and offline bundle collection outputs.
-3. Add release checklist step to verify support-bundle script execution against release artifacts.
-4. Add CI job step to run support-bundle script in offline mode and verify manifest creation.
+1. [x] Add tests for support-bundle script metadata output and manifest shape validation.
+2. [x] Add documentation examples for online and offline bundle collection outputs.
+3. [x] Add release checklist step to verify support-bundle script execution against release artifacts.
+4. [x] Add CI job step to run support-bundle script in offline mode and verify manifest creation.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on production observability policy:
+
+1. Add structured logging field reference doc (core fields and semantics).
+2. Add correlation-ID retention and incident timeline guidance.
+3. Add support severity matrix and triage SLA targets in SUPPORT.md.
+4. Add release checklist verification for observability docs freshness.

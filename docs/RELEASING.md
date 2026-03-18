@@ -87,6 +87,19 @@ The script validates:
 - required governance docs presence (`CHANGELOG.md`, `SECURITY.md`, `SUPPORT.md`)
 - tag and changelog consistency when running on a tagged release build
 
+### 4.6 - Verify support-bundle execution against release artifacts
+
+Run a support-bundle dry verification using the release build context:
+
+```powershell
+.\scripts\collect-support-bundle.ps1 -Offline
+$latest = Get-ChildItem .\artifacts\support-bundles -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+.\scripts\validate-support-bundle.ps1 -BundlePath $latest.FullName -ExpectOffline
+```
+
+This verifies that the supportability packaging workflow remains functional for
+the release candidate and that manifest/required artifacts are emitted.
+
 ### 5 - Update changelog for the release
 
 Add a dedicated section in `CHANGELOG.md` for `NEW` including date and notable
