@@ -564,3 +564,12 @@ The next implementation slice should focus on closure package integrity attestat
 2. [x] Add CI tagged-build step and artifact publication for closure package integrity report outputs.
 3. [x] Add docs section describing integrity report fields and remediation workflow for mismatches.
 4. [x] Add quickstart note requiring integrity verdict review before final release handoff.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on closure integrity trend history:
+
+1. [x] Add script to archive and index recent closure package integrity reports for tagged-release audit review.
+2. [x] Add CI tagged-build step and artifacts for closure integrity history index outputs.
+3. [x] Add docs guidance for interpreting integrity trend signals and hash churn patterns.
+4. [x] Add quickstart step for integrity trend review before final release promotion sign-off.

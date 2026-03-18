@@ -419,6 +419,26 @@ Handoff expectation:
 - Review `integrityVerdict` and `issueCount` before release handoff.
 - If verdict is fail, regenerate required artifacts and closure manifest, then rerun drift and integrity checks.
 
+### Closure integrity trend history
+
+Archive and index recent closure integrity reports for audit trend review:
+
+```powershell
+.\scripts\update-release-ops-closure-package-integrity-history.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -ArchiveLatest -MaxEntries 20 -RetentionDays 365
+```
+
+History outputs:
+
+- `release-ops-closure-package-integrity-history-index.json`
+- `release-ops-closure-package-integrity-history-index.md`
+- archived reports: `release-ops-closure-package-integrity-report-<timestamp>-<tag>.json|.md`
+
+Trend interpretation guidance:
+
+- Stable posture: repeated `pass` verdicts and low `uniqueManifestHashCount` growth between adjacent releases.
+- Investigate: frequent hash churn with repeated late-stage regeneration notes.
+- Block handoff: any recent `fail` verdict until closure manifest and linked artifacts are regenerated and revalidated.
+
 Expected output layout:
 
 ```text

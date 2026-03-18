@@ -11,6 +11,7 @@ $closureManifestScript = Join-Path $repoRoot 'scripts\generate-release-ops-closu
 $closureManifestCheckScript = Join-Path $repoRoot 'scripts\check-release-ops-closure-package-manifest.ps1'
 $closureManifestDriftScript = Join-Path $repoRoot 'scripts\check-release-ops-closure-package-drift.ps1'
 $closureIntegrityReportScript = Join-Path $repoRoot 'scripts\generate-release-ops-closure-package-integrity-report.ps1'
+$closureIntegrityHistoryScript = Join-Path $repoRoot 'scripts\update-release-ops-closure-package-integrity-history.ps1'
 
 function New-TestFile {
     param(
@@ -126,6 +127,33 @@ function New-PromotionGateReportFixture {
         thresholds = @{ requiredRecentReadyCount = 3; noHoldInRecentCount = 2 }
         directorOverride = @{ allowed = $true; used = $OverrideUsed; reference = if ($OverrideUsed) { 'DIR-1' } else { '' } }
         summary = @{ totalEntries = 3; latestEntries = @() }
+    } | ConvertTo-Json -Depth 8
+
+    New-TestFile -RelativePath $RelativePath -Content $content | Out-Null
+}
+
+function New-ClosureIntegrityReportFixture {
+    param(
+        [string]$RelativePath,
+        [string]$TagName,
+        [string]$Verdict,
+        [int]$IssueCount = 0,
+        [string]$ManifestSha = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        [DateTimeOffset]$GeneratedAtUtc = [DateTimeOffset]::UtcNow
+    )
+
+    $content = @{
+        generatedAtUtc = $GeneratedAtUtc.ToString('o')
+        tagName = $TagName
+        integrityVerdict = $Verdict
+        issueCount = $IssueCount
+        issues = @()
+        manifest = @{
+            path = 'artifacts/release-ops-tag-readiness/release-ops-closure-package-manifest.json'
+            sha256 = $ManifestSha
+        }
+        verifiedArtifactCount = 4
+        verifiedArtifacts = @()
     } | ConvertTo-Json -Depth 8
 
     New-TestFile -RelativePath $RelativePath -Content $content | Out-Null
@@ -611,5 +639,46 @@ Describe 'Release evidence validators' {
         Remove-Item -LiteralPath (Join-Path $closureRoot 'release-ops-promotion-gate-report.json') -Force
 
         { & $closureIntegrityReportScript -ReadinessRoot $closureRoot -OutputDir $closureRoot -TagName "v$script:testVersion" -FailOnIssues } | Should Throw
+    }
+
+    It 'update-release-ops-closure-package-integrity-history archives latest report and writes trend index' {
+        $integrityRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\closure-i'
+        if (-not (Test-Path -LiteralPath $integrityRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $integrityRoot -Force | Out-Null
+            $script:createdFiles += $integrityRoot
+        }
+
+        New-ClosureIntegrityReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-i/release-ops-closure-package-integrity-report.json' -TagName "v$script:testVersion" -Verdict 'pass' -IssueCount 0 -ManifestSha 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' -GeneratedAtUtc ([DateTimeOffset]::UtcNow.AddMinutes(-1))
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-i/release-ops-closure-package-integrity-report.md' -Content '# integrity latest' | Out-Null
+
+        { & $closureIntegrityHistoryScript -ReadinessRoot $integrityRoot -ArchiveLatest -MaxEntries 20 -RetentionDays 365 } | Should Not Throw
+
+        $indexPath = Join-Path $integrityRoot 'release-ops-closure-package-integrity-history-index.json'
+        (Test-Path -LiteralPath $indexPath -PathType Leaf) | Should Be $true
+
+        $archived = @(Get-ChildItem -LiteralPath $integrityRoot -File -Filter 'release-ops-closure-package-integrity-report-*.json' |
+            Where-Object { $_.Name -ne 'release-ops-closure-package-integrity-report.json' })
+        $archived.Count | Should BeGreaterThan 0
+
+        $index = Get-Content -LiteralPath $indexPath -Raw | ConvertFrom-Json
+        $index.totalEntries | Should BeGreaterThan 0
+        $index.verdictCounts.pass | Should Be 1
+        $index.uniqueManifestHashCount | Should Be 1
+    }
+
+    It 'update-release-ops-closure-package-integrity-history prunes stale archived reports' {
+        $integrityRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\closure-j'
+        if (-not (Test-Path -LiteralPath $integrityRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $integrityRoot -Force | Out-Null
+            $script:createdFiles += $integrityRoot
+        }
+
+        New-ClosureIntegrityReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-j/release-ops-closure-package-integrity-report-20000101010101-v0.0.1.json' -TagName 'v0.0.1' -Verdict 'fail' -IssueCount 2 -ManifestSha 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' -GeneratedAtUtc ([DateTimeOffset]::UtcNow.AddYears(-10))
+        $stalePath = Join-Path $integrityRoot 'release-ops-closure-package-integrity-report-20000101010101-v0.0.1.json'
+        (Get-Item -LiteralPath $stalePath).LastWriteTimeUtc = [DateTime]::UtcNow.AddDays(-500)
+
+        { & $closureIntegrityHistoryScript -ReadinessRoot $integrityRoot -MaxEntries 20 -RetentionDays 365 } | Should Not Throw
+
+        (Test-Path -LiteralPath $stalePath -PathType Leaf) | Should Be $false
     }
 }

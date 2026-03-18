@@ -114,6 +114,7 @@ build_script:
       if ($env:APPVEYOR_REPO_TAG -eq 'true') {
         $readinessRoot = '.\artifacts\release-ops-tag-readiness'
         .\scripts\generate-release-ops-closure-package-integrity-report.ps1 -ReadinessRoot $readinessRoot -OutputDir $readinessRoot
+        .\scripts\update-release-ops-closure-package-integrity-history.ps1 -ReadinessRoot $readinessRoot -ArchiveLatest -MaxEntries 20 -RetentionDays 365
       }
       else {
         Write-Host 'Release-ops closure package integrity report skipped on non-tag build.'
@@ -291,6 +292,14 @@ artifacts:
     name: ReleaseOpsClosurePackageIntegrityReport
   - path: artifacts/release-ops-tag-readiness/release-ops-closure-package-integrity-report.md
     name: ReleaseOpsClosurePackageIntegrityReportMarkdown
+  - path: artifacts/release-ops-tag-readiness/release-ops-closure-package-integrity-history-index.json
+    name: ReleaseOpsClosurePackageIntegrityHistoryIndex
+  - path: artifacts/release-ops-tag-readiness/release-ops-closure-package-integrity-history-index.md
+    name: ReleaseOpsClosurePackageIntegrityHistoryIndexMarkdown
+  - path: artifacts/release-ops-tag-readiness/release-ops-closure-package-integrity-report-*.json
+    name: ReleaseOpsClosurePackageIntegrityReportArchive
+  - path: artifacts/release-ops-tag-readiness/release-ops-closure-package-integrity-report-*.md
+    name: ReleaseOpsClosurePackageIntegrityReportArchiveMarkdown
   - path: TestResults/**/*.trx
     name: DotNetTestResults
   - path: controller-extension/test-results/*.xml

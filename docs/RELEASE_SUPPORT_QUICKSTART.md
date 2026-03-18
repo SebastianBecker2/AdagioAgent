@@ -129,6 +129,15 @@ Get-Content .\artifacts\release-ops-tag-readiness\release-ops-closure-package-in
    - Confirm `IntegrityVerdict` is pass and `IssueCount` is 0 before handoff.
    - Attach or link the integrity report alongside closure manifest in release notes.
 
+   Trend review:
+
+```powershell
+.\scripts\update-release-ops-closure-package-integrity-history.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -ArchiveLatest -MaxEntries 20 -RetentionDays 365
+Get-Content .\artifacts\release-ops-tag-readiness\release-ops-closure-package-integrity-history-index.md
+```
+
+   - Review recent integrity verdict trend before final promotion sign-off.
+
 12. Review dry-run diagnostics index trends before pilot handoff approval:
 
 ```powershell
@@ -305,3 +314,17 @@ Common failures and fixes:
 - Integrity report is pass but hashes changed after late rerun:
    treat as post-manifest regeneration event and rerun manifest, drift, and
    integrity checks as one sequence before handoff.
+
+### 12. Troubleshooting closure integrity trend history
+
+Common failures and fixes:
+
+- Integrity history index has no entries after tagged build:
+   ensure integrity report generation ran first, then rerun integrity history
+   update with `-ArchiveLatest`.
+- Integrity history shows recurring fail verdicts:
+   stop handoff and review linked artifact regeneration order; rerun manifest,
+   drift, and integrity checks in sequence.
+- Integrity history grows too large locally:
+   reduce `-RetentionDays` for local runs or prune archived reports after
+   exporting required audit artifacts.
