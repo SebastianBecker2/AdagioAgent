@@ -84,7 +84,18 @@ Get-Content .\artifacts\release-ops-tag-readiness\release-ops-tag-readiness-hist
    - `director-approval-required`: require release-ops director approval ID and rerun with `-AllowDirectorOverride -DirectorApprovalReference <id>`.
    - `fail`: stop promotion; remediation required. Director override is not allowed for `fail`.
 
-9. Review dry-run diagnostics index trends before pilot handoff approval:
+9. During post-release retrospective, review promotion gate trend health:
+
+```powershell
+.\scripts\update-release-ops-promotion-gate-trend.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -ArchiveLatest -MaxEntries 20 -RetentionDays 365
+Get-Content .\artifacts\release-ops-tag-readiness\release-ops-promotion-gate-trend-index.md
+```
+
+   Retrospective audit checks:
+   - confirm override usage remains rare and documented,
+   - confirm fail/blocked outcomes are not recurring across recent tags.
+
+10. Review dry-run diagnostics index trends before pilot handoff approval:
 
 ```powershell
 .\scripts\update-release-ops-diagnostics-index.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics -MaxEntries 20

@@ -285,6 +285,31 @@ Escalation requirement:
 
 - If the gate verdict is `fail`, or if `hold` appears in the latest 2 tagged summaries, release promotion is blocked and director override is not permitted.
 
+### Promotion gate trend summary and audit guidance
+
+Summarize promotion gate outcomes across recent tagged builds:
+
+```powershell
+.\scripts\update-release-ops-promotion-gate-trend.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -ArchiveLatest -MaxEntries 20 -RetentionDays 365
+```
+
+Trend outputs:
+
+- `release-ops-promotion-gate-trend-index.json`
+- `release-ops-promotion-gate-trend-index.md`
+
+Audit signals to monitor over time:
+
+- Override frequency: `directorOverrideUsedCount` should remain rare and justified by documented approval references.
+- Escalation health: `blockedCount` and `verdictCounts.fail` should trend toward zero across recent tags.
+- Governance pressure: repeated `directorApprovalRequired` outcomes suggest chronic release readiness debt and should trigger process review.
+
+Recommended audit cadence:
+
+1. Review trend index during each post-release retrospective.
+2. If 2 or more overrides occur in the most recent 5 tagged builds, open a release-ops process improvement action.
+3. If any `fail` verdict appears in the most recent 3 tagged builds, require escalation follow-up closure before next promotion.
+
 Expected output layout:
 
 ```text

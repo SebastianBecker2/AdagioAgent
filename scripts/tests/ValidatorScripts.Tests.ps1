@@ -6,6 +6,7 @@ $checkIndexContentScript = Join-Path $repoRoot 'scripts\check-evidence-index-con
 $tagReadinessSummaryScript = Join-Path $repoRoot 'scripts\generate-release-ops-tag-readiness-summary.ps1'
 $tagReadinessHistoryScript = Join-Path $repoRoot 'scripts\update-release-ops-tag-readiness-history.ps1'
 $promotionGateScript = Join-Path $repoRoot 'scripts\check-release-ops-promotion-gate.ps1'
+$promotionGateTrendScript = Join-Path $repoRoot 'scripts\update-release-ops-promotion-gate-trend.ps1'
 
 function New-TestFile {
     param(
@@ -98,6 +99,29 @@ function New-TagReadinessHistoryIndexFixture {
             unknown = @($Entries | Where-Object { @('ready','ready-with-note','hold') -notcontains $_.readinessVerdict }).Count
         }
         entries = $Entries
+    } | ConvertTo-Json -Depth 8
+
+    New-TestFile -RelativePath $RelativePath -Content $content | Out-Null
+}
+
+function New-PromotionGateReportFixture {
+    param(
+        [string]$RelativePath,
+        [string]$Verdict,
+        [bool]$GatePassed,
+        [bool]$OverrideUsed,
+        [DateTimeOffset]$GeneratedAtUtc = [DateTimeOffset]::UtcNow
+    )
+
+    $content = @{
+        generatedAtUtc = $GeneratedAtUtc.ToString('u')
+        historyIndexPath = 'artifacts/release-ops-tag-readiness/release-ops-tag-readiness-history-index.json'
+        promotionVerdict = $Verdict
+        gatePassed = $GatePassed
+        decisionReason = 'fixture'
+        thresholds = @{ requiredRecentReadyCount = 3; noHoldInRecentCount = 2 }
+        directorOverride = @{ allowed = $true; used = $OverrideUsed; reference = if ($OverrideUsed) { 'DIR-1' } else { '' } }
+        summary = @{ totalEntries = 3; latestEntries = @() }
     } | ConvertTo-Json -Depth 8
 
     New-TestFile -RelativePath $RelativePath -Content $content | Out-Null
@@ -372,5 +396,47 @@ Describe 'Release evidence validators' {
         $report.gatePassed | Should Be $true
         $report.promotionVerdict | Should Be 'director-approval-required'
         $report.directorOverride.used | Should Be $true
+    }
+
+    It 'update-release-ops-promotion-gate-trend archives latest report and summarizes pass/director/fail counts' {
+        $trendRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\promotion-trend-a'
+        if (-not (Test-Path -LiteralPath $trendRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $trendRoot -Force | Out-Null
+            $script:createdFiles += $trendRoot
+        }
+
+        New-PromotionGateReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/promotion-trend-a/release-ops-promotion-gate-report.json' -Verdict 'director-approval-required' -GatePassed $true -OverrideUsed $true -GeneratedAtUtc ([DateTimeOffset]::UtcNow)
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/promotion-trend-a/release-ops-promotion-gate-report.md' -Content '# latest' | Out-Null
+
+        New-PromotionGateReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/promotion-trend-a/release-ops-promotion-gate-report-20260101010101.json' -Verdict 'pass' -GatePassed $true -OverrideUsed $false -GeneratedAtUtc ([DateTimeOffset]::UtcNow.AddDays(-2))
+        New-PromotionGateReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/promotion-trend-a/release-ops-promotion-gate-report-20251201010101.json' -Verdict 'fail' -GatePassed $false -OverrideUsed $false -GeneratedAtUtc ([DateTimeOffset]::UtcNow.AddDays(-3))
+
+        { & $promotionGateTrendScript -ReadinessRoot $trendRoot -ArchiveLatest -MaxEntries 20 -RetentionDays 365 } | Should Not Throw
+
+        $indexPath = Join-Path $trendRoot 'release-ops-promotion-gate-trend-index.json'
+        (Test-Path -LiteralPath $indexPath -PathType Leaf) | Should Be $true
+
+        $index = Get-Content -LiteralPath $indexPath -Raw | ConvertFrom-Json
+        $index.verdictCounts.pass | Should Be 1
+        $index.verdictCounts.directorApprovalRequired | Should Be 1
+        $index.verdictCounts.fail | Should Be 1
+        $index.directorOverrideUsedCount | Should Be 1
+        $index.blockedCount | Should Be 1
+    }
+
+    It 'update-release-ops-promotion-gate-trend prunes stale archived reports' {
+        $trendRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\promotion-trend-b'
+        if (-not (Test-Path -LiteralPath $trendRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $trendRoot -Force | Out-Null
+            $script:createdFiles += $trendRoot
+        }
+
+        New-PromotionGateReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/promotion-trend-b/release-ops-promotion-gate-report-20000101010101.json' -Verdict 'fail' -GatePassed $false -OverrideUsed $false -GeneratedAtUtc ([DateTimeOffset]::UtcNow.AddYears(-10))
+        $stalePath = Join-Path $trendRoot 'release-ops-promotion-gate-report-20000101010101.json'
+        (Get-Item -LiteralPath $stalePath).LastWriteTimeUtc = [DateTime]::UtcNow.AddDays(-500)
+
+        { & $promotionGateTrendScript -ReadinessRoot $trendRoot -MaxEntries 20 -RetentionDays 365 } | Should Not Throw
+
+        (Test-Path -LiteralPath $stalePath -PathType Leaf) | Should Be $false
     }
 }

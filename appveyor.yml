@@ -59,7 +59,21 @@ build_script:
   - ps: |
       if ($env:APPVEYOR_REPO_TAG -eq 'true') {
         $readinessRoot = '.\artifacts\release-ops-tag-readiness'
-        .\scripts\check-release-ops-promotion-gate.ps1 -ReadinessRoot $readinessRoot -FailOnBlock
+        $gateError = $null
+        try {
+          .\scripts\check-release-ops-promotion-gate.ps1 -ReadinessRoot $readinessRoot -FailOnBlock
+        }
+        catch {
+          $gateError = $_
+          Write-Host "Promotion gate failed: $($_.Exception.Message)"
+        }
+        finally {
+          .\scripts\update-release-ops-promotion-gate-trend.ps1 -ReadinessRoot $readinessRoot -ArchiveLatest -MaxEntries 20 -RetentionDays 365
+        }
+
+        if ($gateError) {
+          throw $gateError.Exception
+        }
       }
       else {
         Write-Host 'Release-ops promotion gate skipped on non-tag build.'
@@ -221,6 +235,14 @@ artifacts:
     name: ReleaseOpsPromotionGateReport
   - path: artifacts/release-ops-tag-readiness/release-ops-promotion-gate-report.md
     name: ReleaseOpsPromotionGateReportMarkdown
+  - path: artifacts/release-ops-tag-readiness/release-ops-promotion-gate-trend-index.json
+    name: ReleaseOpsPromotionGateTrendIndex
+  - path: artifacts/release-ops-tag-readiness/release-ops-promotion-gate-trend-index.md
+    name: ReleaseOpsPromotionGateTrendIndexMarkdown
+  - path: artifacts/release-ops-tag-readiness/release-ops-promotion-gate-report-*.json
+    name: ReleaseOpsPromotionGateReportArchive
+  - path: artifacts/release-ops-tag-readiness/release-ops-promotion-gate-report-*.md
+    name: ReleaseOpsPromotionGateReportArchiveMarkdown
   - path: TestResults/**/*.trx
     name: DotNetTestResults
   - path: controller-extension/test-results/*.xml

@@ -524,7 +524,16 @@ The next implementation slice should focus on release-ops promotion gate enforce
 
 The next implementation slice should focus on promotion gate observability and auditability:
 
-1. Add script to summarize promotion gate outcomes across recent tagged builds (pass/director/fail counts).
-2. Add CI tagged-build artifact for promotion gate outcome trend summary.
-3. Add docs guidance on how to audit override frequency and escalation health over time.
-4. Add quickstart check to require promotion-gate trend review during post-release retrospective.
+1. [x] Add script to summarize promotion gate outcomes across recent tagged builds (pass/director/fail counts).
+2. [x] Add CI tagged-build artifact for promotion gate outcome trend summary.
+3. [x] Add docs guidance on how to audit override frequency and escalation health over time.
+4. [x] Add quickstart check to require promotion-gate trend review during post-release retrospective.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on release-ops closure package consolidation:
+
+1. Add script to generate a single release-ops closure package manifest linking readiness, promotion-gate, and evidence artifacts for a release tag.
+2. Add CI tagged-build artifact for the closure package manifest.
+3. Add docs section describing closure package contents and retention expectations.
+4. Add quickstart handoff step requiring closure package manifest attachment in release notes.
