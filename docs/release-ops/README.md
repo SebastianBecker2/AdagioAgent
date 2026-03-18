@@ -91,6 +91,21 @@ Dry-run script parameters and common usage patterns:
 - `validate-release-ops-dry-run.ps1`
 	- `-OutputRoot`: validates latest package under root when `-PackagePath` is omitted.
 	- `-PackagePath`: validates one explicit dry-run package directory.
+	- `-SummaryOutputPath`: writes machine-readable JSON validation summary
+		(`success`, `error`, categorized `issues`) for CI diagnostics.
+
+### Dry-run validator failure categories
+
+`validate-release-ops-dry-run.ps1` reports categorized issues in summary output:
+
+- `structure`: required folders/files missing under dry-run package root.
+- `manifest`: invalid/missing manifest fields or malformed values.
+- `signoff`: sign-off file reference missing or mismatched evidence-index field.
+- `index`: evidence index missing labels or sign-off cross-link mismatch.
+- `fixture`: fixture file paths referenced in manifest but missing on disk.
+
+Use category counts to route fixes quickly: structure/fixture for generation
+issues, manifest/index/signoff for content or cross-link problems.
 
 Expected output layout:
 

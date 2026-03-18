@@ -57,11 +57,30 @@ build_script:
       }
       else {
         $dryRunRoot = Join-Path $env:TEMP 'adagio-release-ops-dryrun-ci'
-        .\scripts\generate-release-ops-dry-run.ps1 -OutputRoot $dryRunRoot -Force
-        $latest = Get-ChildItem -LiteralPath $dryRunRoot -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-        if (-not $latest) { throw 'Dry-run package generation produced no output directory.' }
-        .\scripts\validate-release-ops-dry-run.ps1 -PackagePath $latest.FullName
-        Remove-Item -LiteralPath $dryRunRoot -Recurse -Force
+        $diagnosticsRoot = '.\artifacts\release-ops-dryrun-diagnostics'
+        New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
+        $summaryPath = Join-Path $diagnosticsRoot 'dryrun-validation-summary.json'
+
+        try {
+          .\scripts\generate-release-ops-dry-run.ps1 -OutputRoot $dryRunRoot -Force
+          $latest = Get-ChildItem -LiteralPath $dryRunRoot -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $latest) { throw 'Dry-run package generation produced no output directory.' }
+          .\scripts\validate-release-ops-dry-run.ps1 -PackagePath $latest.FullName -SummaryOutputPath $summaryPath
+          Remove-Item -LiteralPath $dryRunRoot -Recurse -Force
+          Remove-Item -LiteralPath $summaryPath -Force -ErrorAction SilentlyContinue
+        }
+        catch {
+          if (-not (Test-Path -LiteralPath $summaryPath -PathType Leaf)) {
+            @{
+              generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u')
+              success = $false
+              error = $_.Exception.Message
+            } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
+          }
+
+          Write-Host "Dry-run diagnostics summary captured at: $summaryPath"
+          throw
+        }
       }
 
   # 0.2 Generate and validate offline support bundle manifest shape
@@ -101,6 +120,8 @@ test_script:
 artifacts:
   - path: installer/bin/x64/Release/AdagioMachineAgentSetup.msi
     name: AdagioMachineAgentSetup
+  - path: artifacts/release-ops-dryrun-diagnostics/*.json
+    name: DryRunValidationDiagnostics
   - path: TestResults/**/*.trx
     name: DotNetTestResults
   - path: controller-extension/test-results/*.xml

@@ -452,7 +452,16 @@ The next implementation slice should focus on dry-run test coverage and hardenin
 
 The next implementation slice should focus on dry-run failure diagnostics quality:
 
-1. Add machine-readable summary output option for dry-run validator failures.
-2. Add CI capture step to persist dry-run validation diagnostics when non-tag smoke checks fail.
-3. Add docs section describing how to interpret dry-run validator failure categories.
-4. Add quickstart escalation path for repeated dry-run validation failures before pilot handoff.
+1. [x] Add machine-readable summary output option for dry-run validator failures.
+2. [x] Add CI capture step to persist dry-run validation diagnostics when non-tag smoke checks fail.
+3. [x] Add docs section describing how to interpret dry-run validator failure categories.
+4. [x] Add quickstart escalation path for repeated dry-run validation failures before pilot handoff.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on release-ops diagnostics retention hygiene:
+
+1. Add script to prune stale dry-run diagnostics summaries older than a configurable retention window.
+2. Add CI non-tag step to prune stale dry-run diagnostics before writing new summaries.
+3. Add docs note defining recommended retention duration for dry-run diagnostics summaries.
+4. Add quickstart guidance for manual cleanup when local diagnostics directories grow unexpectedly.

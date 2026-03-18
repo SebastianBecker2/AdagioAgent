@@ -130,3 +130,10 @@ Safe output-root guidance:
    evidence fixture files are present.
 - CI/local cleanup errors on dry-run output root:
    close file handles/editors pointing into the dry-run folder and retry cleanup.
+
+Escalation path for repeated failures before pilot handoff:
+
+1. Stop pilot handoff until dry-run validation is green in both local run and CI.
+2. Attach the latest dry-run summary JSON diagnostics to the release ops thread.
+3. Assign follow-up owner from release ops and rerun pre-release verification
+   after fixes.

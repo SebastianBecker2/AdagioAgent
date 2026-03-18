@@ -55,4 +55,20 @@ Describe 'Release-ops dry-run scripts' {
 
         { & $validateDryRunScript -PackagePath $package.FullName } | Should Throw
     }
+
+    It 'validate-release-ops-dry-run writes summary output with categorized issues on failure' {
+        & $generateDryRunScript -OutputRoot $script:testRoot -Version $script:testVersion -Force
+
+        $package = Get-LatestDryRunPackage -Root $script:testRoot
+        $summaryPath = Join-Path $script:testRoot 'dryrun-summary.json'
+        $missingFixture = Join-Path $package.FullName "evidence\\rollback\\v$script:testVersion-dryrun-rollback.md"
+        Remove-Item -LiteralPath $missingFixture -Force
+
+        { & $validateDryRunScript -PackagePath $package.FullName -SummaryOutputPath $summaryPath } | Should Throw
+        (Test-Path -LiteralPath $summaryPath -PathType Leaf) | Should Be $true
+
+        $summary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
+        $summary.success | Should Be $false
+        ($summary.issues | Where-Object { $_.category -eq 'fixture' } | Measure-Object).Count | Should BeGreaterThan 0
+    }
 }

@@ -1,12 +1,51 @@
 param(
     [string]$OutputRoot = (Join-Path $PSScriptRoot '..\artifacts\release-ops-dry-run'),
-    [string]$PackagePath
+    [string]$PackagePath,
+    [string]$SummaryOutputPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$issues = New-Object System.Collections.Generic.List[string]
+$issueRecords = New-Object System.Collections.Generic.List[object]
+
+function Add-Issue {
+    param(
+        [string]$Category,
+        [string]$Message
+    )
+
+    $issueRecords.Add([pscustomobject]@{
+        category = $Category
+        message = $Message
+    }) | Out-Null
+}
+
+function Write-Summary {
+    param(
+        [bool]$Success,
+        [string]$ErrorMessage
+    )
+
+    if ([string]::IsNullOrWhiteSpace($script:SummaryOutputPath)) {
+        return
+    }
+
+    $summaryParent = Split-Path -Parent $script:SummaryOutputPath
+    if (-not [string]::IsNullOrWhiteSpace($summaryParent) -and -not (Test-Path -LiteralPath $summaryParent -PathType Container)) {
+        New-Item -ItemType Directory -Path $summaryParent -Force | Out-Null
+    }
+
+    $summary = [pscustomobject]@{
+        generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u')
+        success = $Success
+        packagePath = $script:PackagePath
+        error = $ErrorMessage
+        issues = @($issueRecords.ToArray())
+    }
+
+    $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $script:SummaryOutputPath -Encoding UTF8
+}
 
 if ([string]::IsNullOrWhiteSpace($PackagePath)) {
     if (-not (Test-Path -LiteralPath $OutputRoot -PathType Container)) {
@@ -38,13 +77,14 @@ $requiredRelativeFiles = @(
 foreach ($relative in $requiredRelativeFiles) {
     $path = Join-Path $PackagePath $relative
     if (-not (Test-Path -LiteralPath $path)) {
-        $issues.Add("Missing required package path: $relative")
+        Add-Issue -Category 'structure' -Message "Missing required package path: $relative"
     }
 }
 
-if ($issues.Count -gt 0) {
-    foreach ($issue in $issues) { Write-Host " - $issue" }
-    throw "Dry-run package validation failed with $($issues.Count) structural issue(s)."
+if ($issueRecords.Count -gt 0) {
+    foreach ($issue in $issueRecords) { Write-Host " - [$($issue.category)] $($issue.message)" }
+    Write-Summary -Success $false -ErrorMessage "Dry-run package validation failed with $($issueRecords.Count) structural issue(s)."
+    throw "Dry-run package validation failed with $($issueRecords.Count) structural issue(s)."
 }
 
 $manifestPath = Join-Path $PackagePath 'manifest.json'
@@ -61,37 +101,37 @@ $requiredManifestFields = @('version', 'dateStamp', 'signoffPath', 'evidenceInde
 foreach ($field in $requiredManifestFields) {
     $value = $manifest.$field
     if ($null -eq $value -or ([string]::IsNullOrWhiteSpace([string]$value) -and $field -ne 'fixturePaths')) {
-        $issues.Add("manifest.json missing required field: $field")
+        Add-Issue -Category 'manifest' -Message "manifest.json missing required field: $field"
     }
 }
 
 if ($manifest.version -and $manifest.version -notmatch '^\d+\.\d+\.\d+$') {
-    $issues.Add("manifest.json field 'version' is not SemVer: $($manifest.version)")
+    Add-Issue -Category 'manifest' -Message "manifest.json field 'version' is not SemVer: $($manifest.version)"
 }
 
 if ($manifest.dateStamp -and $manifest.dateStamp -notmatch '^\d{8}$') {
-    $issues.Add("manifest.json field 'dateStamp' must be yyyymmdd: $($manifest.dateStamp)")
+    Add-Issue -Category 'manifest' -Message "manifest.json field 'dateStamp' must be yyyymmdd: $($manifest.dateStamp)"
 }
 
 if ($manifest.fixturePaths -and $manifest.fixturePaths.Count -lt 4) {
-    $issues.Add('manifest.json field fixturePaths must contain at least four entries.')
+    Add-Issue -Category 'manifest' -Message 'manifest.json field fixturePaths must contain at least four entries.'
 }
 
 $signoffPath = if ($manifest.signoffPath) { Join-Path $PackagePath $manifest.signoffPath } else { $null }
 $indexPath = if ($manifest.evidenceIndexPath) { Join-Path $PackagePath $manifest.evidenceIndexPath } else { $null }
 
 if ($signoffPath -and -not (Test-Path -LiteralPath $signoffPath -PathType Leaf)) {
-    $issues.Add("Sign-off file referenced by manifest does not exist: $($manifest.signoffPath)")
+    Add-Issue -Category 'signoff' -Message "Sign-off file referenced by manifest does not exist: $($manifest.signoffPath)"
 }
 
 if ($indexPath -and -not (Test-Path -LiteralPath $indexPath -PathType Leaf)) {
-    $issues.Add("Evidence index file referenced by manifest does not exist: $($manifest.evidenceIndexPath)")
+    Add-Issue -Category 'index' -Message "Evidence index file referenced by manifest does not exist: $($manifest.evidenceIndexPath)"
 }
 
 if ($signoffPath -and (Test-Path -LiteralPath $signoffPath -PathType Leaf)) {
     $signoffContent = Get-Content -LiteralPath $signoffPath -Raw
     if ($signoffContent -notmatch '(?m)^-\s*Evidence index path:\s*(.+)$') {
-        $issues.Add("Sign-off file missing 'Evidence index path' field: $($manifest.signoffPath)")
+        Add-Issue -Category 'signoff' -Message "Sign-off file missing 'Evidence index path' field: $($manifest.signoffPath)"
     }
 }
 
@@ -101,14 +141,14 @@ if ($indexPath -and (Test-Path -LiteralPath $indexPath -PathType Leaf)) {
     $requiredIndexLabels = @('Support bundle:', 'Correlation trace:', 'Rollback rehearsal:', 'Upgrade validation:')
     foreach ($label in $requiredIndexLabels) {
         if ($indexContent -notmatch ('(?m)^-\s*' + [regex]::Escape($label) + '\s*(.+)$')) {
-            $issues.Add("Evidence index missing required label: $label")
+            Add-Issue -Category 'index' -Message "Evidence index missing required label: $label"
         }
     }
 
     if ($manifest.signoffPath) {
         $expectedSignoff = '- SignOffRecord: ' + ($manifest.signoffPath -replace '\\', '/')
         if ($indexContent -notmatch [regex]::Escape($expectedSignoff)) {
-            $issues.Add("Evidence index SignOffRecord does not match manifest signoffPath: $($manifest.signoffPath)")
+            Add-Issue -Category 'index' -Message "Evidence index SignOffRecord does not match manifest signoffPath: $($manifest.signoffPath)"
         }
     }
 }
@@ -116,24 +156,26 @@ if ($indexPath -and (Test-Path -LiteralPath $indexPath -PathType Leaf)) {
 if ($manifest.fixturePaths) {
     foreach ($fixtureRelative in $manifest.fixturePaths) {
         if ([string]::IsNullOrWhiteSpace([string]$fixtureRelative)) {
-            $issues.Add('manifest.json fixturePaths contains an empty path entry.')
+            Add-Issue -Category 'manifest' -Message 'manifest.json fixturePaths contains an empty path entry.'
             continue
         }
 
         $fixturePath = Join-Path $PackagePath $fixtureRelative
         if (-not (Test-Path -LiteralPath $fixturePath -PathType Leaf)) {
-            $issues.Add("Fixture file referenced by manifest does not exist: $fixtureRelative")
+            Add-Issue -Category 'fixture' -Message "Fixture file referenced by manifest does not exist: $fixtureRelative"
         }
     }
 }
 
-if ($issues.Count -gt 0) {
+if ($issueRecords.Count -gt 0) {
     Write-Host "Dry-run package validation failed for: $PackagePath"
-    foreach ($issue in $issues) {
-        Write-Host " - $issue"
+    foreach ($issue in $issueRecords) {
+        Write-Host " - [$($issue.category)] $($issue.message)"
     }
 
-    throw "Dry-run package validation failed with $($issues.Count) issue(s)."
+    Write-Summary -Success $false -ErrorMessage "Dry-run package validation failed with $($issueRecords.Count) issue(s)."
+    throw "Dry-run package validation failed with $($issueRecords.Count) issue(s)."
 }
 
+Write-Summary -Success $true -ErrorMessage ''
 Write-Host "Dry-run package validation passed for: $PackagePath"
