@@ -87,3 +87,18 @@ $latest = Get-ChildItem .\artifacts\support-bundles -Directory | Sort-Object Las
 2. Archive expired raw evidence artifacts to approved immutable storage.
 3. Keep the sign-off record and evidence index in-repo and update evidence paths
    to archive URIs with archive date notes.
+
+### 7. Troubleshooting evidence/sign-off validation
+
+Common failures and fixes:
+
+- Missing `Evidence index path` in sign-off record:
+   add a repo-relative path under `docs/release-ops/evidence/indexes/`.
+- Evidence index fails cross-link check:
+   ensure `- SignOffRecord:` points to the exact sign-off file path.
+- Evidence index content check fails required entries:
+   populate `Support bundle`, `Correlation trace`, `Rollback rehearsal`, and
+   `Upgrade validation` with concrete non-placeholder values.
+- Repo-relative path policy errors:
+   use evidence paths under `docs/release-ops/evidence/...` or approved external
+   URI formats only.

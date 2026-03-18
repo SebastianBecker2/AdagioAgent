@@ -26,6 +26,19 @@ Generate a release evidence index scaffold with:
 .\scripts\generate-evidence-index.ps1 -Version <semver>
 ```
 
+### Update cadence
+
+- Update the evidence index whenever a support bundle is regenerated for the
+  same release version.
+- Update the `Support bundle:` entry in the index in the same commit where the
+  regenerated bundle manifest is added.
+- Re-run tagged-release validation checks before final sign-off closeout:
+
+```powershell
+.\scripts\check-signoff-evidence-index-reference.ps1
+.\scripts\check-evidence-index-content.ps1
+```
+
 ### Retention and archive checklist
 
 1. Confirm the retention window has elapsed and no active support incident

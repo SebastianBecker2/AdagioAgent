@@ -41,6 +41,9 @@ build_script:
   # 0.07 On tagged builds, require evidence index reference and cross-link
   - ps: .\scripts\check-signoff-evidence-index-reference.ps1
 
+  # 0.08 On tagged builds, validate evidence index content integrity
+  - ps: .\scripts\check-evidence-index-content.ps1
+
   # 0.2 Generate and validate offline support bundle manifest shape
   - ps: |
       $bundleRoot = Join-Path $env:TEMP 'adagio-support-bundles-ci'

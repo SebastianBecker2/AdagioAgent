@@ -407,7 +407,16 @@ The next implementation slice should focus on sign-off/evidence automation harde
 
 The next implementation slice should focus on evidence integrity and drift detection:
 
-1. Add script check that evidence index files contain all required categories and non-placeholder paths for tagged releases.
-2. Add CI tagged-build step to run evidence index content validation.
-3. Add docs guidance for evidence index update cadence when support bundles are regenerated.
-4. Add quickstart troubleshooting notes for common evidence index/sign-off validation failures.
+1. [x] Add script check that evidence index files contain all required categories and non-placeholder paths for tagged releases.
+2. [x] Add CI tagged-build step to run evidence index content validation.
+3. [x] Add docs guidance for evidence index update cadence when support bundles are regenerated.
+4. [x] Add quickstart troubleshooting notes for common evidence index/sign-off validation failures.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on evidence validation test coverage:
+
+1. Add Pester tests for tagged-build sign-off/evidence index validators (success and failure cases).
+2. Add CI step to run validator script tests.
+3. Add docs section listing validator scripts with expected pass/fail behaviors.
+4. Add troubleshooting guidance for strict-mode pitfalls in PowerShell validator scripts.
