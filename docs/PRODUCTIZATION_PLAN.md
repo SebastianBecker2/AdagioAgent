@@ -2,6 +2,13 @@
 
 Turn AdagioAgent from an engineer-operated tool into a supportable product by sequencing work in seven phases: define the supported operating model, automate secure deployment, harden backend operations, improve extension onboarding and admin UX, formalize the API contract, professionalize release and compliance, and run a controlled pilot. The recommended approach is Windows-first and admin-managed, with Linux parity, richer auth, and broader distribution treated as follow-on work after deployment, observability, and supportability are stable.
 
+## Progress Tracker
+
+- [x] Document supported operating model and support boundaries.
+- [x] Decide bootstrap strategy for certificate and API key provisioning.
+- [x] Add startup validation and readiness endpoint for secure install verification.
+- [x] Add a first-run extension health check.
+
 ### Phase 0: Product Definition And Support Boundaries
 
 Lock the product shape before adding more surface area.
@@ -151,7 +158,17 @@ Run installs, upgrades, and rollbacks in representative environments, validate s
 
 Start with Phase 0 and the first thin slice of Phase 1:
 
-1. Document the supported operating model and support boundaries.
-2. Decide the bootstrap strategy for certificate and API key provisioning.
-3. Add startup validation and a readiness endpoint for secure install verification.
-4. Add a first-run extension health check after the backend bootstrap contract is stable.
+1. [x] Document the supported operating model and support boundaries.
+2. [x] Decide the bootstrap strategy for certificate and API key provisioning.
+3. [x] Add startup validation and a readiness endpoint for secure install verification.
+4. [x] Add a first-run extension health check after the backend bootstrap contract is stable.
+
+## Next Active Slice
+
+The next implementation slice should focus on completing bootstrap mechanics and
+operator-facing diagnostics:
+
+1. Implement certificate provisioning helper path for first-service-start.
+2. Implement API key provisioning and secure storage strategy.
+3. Add readiness checks for certificate validity window and API key quality.
+4. Add extension command to re-run startup diagnostics on demand.

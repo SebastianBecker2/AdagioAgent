@@ -9,6 +9,7 @@ import {
   TypeRequest,
   TypeResponse,
   HealthResponse,
+  ReadinessResponse,
   AgentError,
   CopyFileRequest,
   CopyFileResponse,
@@ -68,6 +69,10 @@ export class AgentClient {
 
   async health(): Promise<HealthResponse> {
     return this.get<HealthResponse>("/health");
+  }
+
+  async ready(): Promise<ReadinessResponse> {
+    return this.get<ReadinessResponse>("/ready");
   }
 
   // ─── Process ─────────────────────────────────────────────────────────────

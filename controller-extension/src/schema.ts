@@ -227,6 +227,15 @@ export interface HealthResponse {
   maxSupportedClientVersion?: string;
 }
 
+export interface ReadinessResponse {
+  status: "ready" | "degraded";
+  version: string;
+  apiVersion: number;
+  platform: "windows" | "linux" | "unsupported";
+  uiAutomationAvailable: boolean;
+  issues: string[];
+}
+
 export interface AgentError {
   error: string;
   detail?: string;

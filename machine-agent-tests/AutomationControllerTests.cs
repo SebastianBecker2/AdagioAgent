@@ -46,6 +46,31 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void Ready_ReturnsDegradedWhenSecurityConfigIsInvalid()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+
+        var securityOptions = Options.Create(new global::SecurityOptions
+        {
+            RequireHttps = true,
+            HttpsCertificatePath = string.Empty,
+            RequireApiKey = true,
+            ApiKey = "CHANGE_ME",
+        });
+
+        var sut = CreateController(processService, uiService.Object, securityOptions: securityOptions);
+
+        var result = sut.Ready();
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<ReadinessResponse>(ok.Value);
+        Assert.Equal("degraded", payload.Status);
+        Assert.Contains(payload.Issues, issue => issue.Contains("certificate path", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(payload.Issues, issue => issue.Contains("ApiKey", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void Run_ReturnsBadRequestWhenCommandMissing()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
@@ -922,7 +947,11 @@ public sealed class AutomationControllerTests
         }
     }
 
-    private static AutomationController CreateController(ProcessService processService, IUiAutomationService uiService, IOptions<AgentOptions>? options = null)
+    private static AutomationController CreateController(
+        ProcessService processService,
+        IUiAutomationService uiService,
+        IOptions<AgentOptions>? options = null,
+        IOptions<global::SecurityOptions>? securityOptions = null)
     {
         var controller = new AutomationController(
             processService,
@@ -939,11 +968,20 @@ public sealed class AutomationControllerTests
             ProcessTimeoutSeconds = 60,
         });
 
+        securityOptions ??= Options.Create(new global::SecurityOptions
+        {
+            RequireHttps = false,
+            RequireApiKey = false,
+        });
+
         var httpContextMock = new Mock<HttpContext>();
         var serviceProviderMock = new Mock<IServiceProvider>();
         serviceProviderMock
             .Setup(x => x.GetService(typeof(IOptions<AgentOptions>)))
             .Returns(options);
+        serviceProviderMock
+            .Setup(x => x.GetService(typeof(IOptions<global::SecurityOptions>)))
+            .Returns(securityOptions);
 
         httpContextMock.Setup(x => x.RequestServices).Returns(serviceProviderMock.Object);
         controller.ControllerContext = new ControllerContext

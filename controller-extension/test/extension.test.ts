@@ -5,6 +5,7 @@ const {
   toolHandlers,
   showInputBoxMock,
   showErrorMessageMock,
+  showWarningMessageMock,
   showInformationMessageMock,
   withProgressMock,
   openTextDocumentMock,
@@ -64,6 +65,7 @@ const {
     toolHandlers: hoistedToolHandlers,
     showInputBoxMock: vi.fn(),
     showErrorMessageMock: vi.fn(),
+    showWarningMessageMock: vi.fn(),
     showInformationMessageMock: vi.fn(),
     withProgressMock: vi.fn(async (_opts, task) => task()),
     openTextDocumentMock: vi.fn(),
@@ -93,6 +95,7 @@ vi.mock("vscode", () => ({
   window: {
     showInputBox: showInputBoxMock,
     showErrorMessage: showErrorMessageMock,
+    showWarningMessage: showWarningMessageMock,
     showInformationMessage: showInformationMessageMock,
     withProgress: withProgressMock,
     showTextDocument: showTextDocumentMock,
@@ -133,6 +136,57 @@ describe("extension activation and commands", () => {
     showTextDocumentMock.mockResolvedValue(undefined);
     writeFileMock.mockResolvedValue(undefined);
     executeCommandMock.mockResolvedValue(undefined);
+  });
+
+  it("runs startup connection check once and persists completion when ready", async () => {
+    const updateMock = vi.fn().mockResolvedValue(undefined);
+    const readyMock = vi.fn().mockResolvedValue({
+      status: "ready",
+      version: "0.1.0",
+      apiVersion: 1,
+      platform: "windows",
+      uiAutomationAvailable: true,
+      issues: [],
+    });
+
+    createAgentClientMock.mockReturnValue({ ready: readyMock });
+
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      globalState: {
+        get: vi.fn().mockReturnValue(false),
+        update: updateMock,
+      },
+    };
+
+    activate(context as never);
+    await Promise.resolve();
+
+    expect(createAgentClientMock).toHaveBeenCalledTimes(1);
+    expect(readyMock).toHaveBeenCalledTimes(1);
+    expect(updateMock).toHaveBeenCalledWith("adagioAgent.startupConnectionCheckCompleted", true);
+    expect(showWarningMessageMock).not.toHaveBeenCalled();
+  });
+
+  it("shows warning when startup connection check fails", async () => {
+    createAgentClientMock.mockImplementation(() => {
+      throw new Error("connection refused");
+    });
+
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      globalState: {
+        get: vi.fn().mockReturnValue(false),
+        update: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+
+    activate(context as never);
+    await Promise.resolve();
+
+    expect(showWarningMessageMock).toHaveBeenCalledWith(
+      "Adagio Agent startup connection check failed: connection refused"
+    );
   });
 
   it("registers all commands and tools on activate", () => {

@@ -35,6 +35,33 @@ describe("AgentClient", () => {
     });
   });
 
+  it("calls readiness endpoint for startup validation", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: "ready",
+          version: "0.1.0",
+          apiVersion: 1,
+          platform: "windows",
+          uiAutomationAvailable: true,
+          issues: [],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+
+    const client = new AgentClient("http://localhost:5000");
+    await client.ready();
+
+    expect(fetchMock).toHaveBeenCalledWith("http://localhost:5000/ready", {
+      headers: {},
+    });
+  });
+
   it("sends POST body for runExecutable", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock.mockResolvedValue(

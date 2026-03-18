@@ -137,6 +137,51 @@ interface SelectOptionInput {
   optionIndex?: number;
 }
 
+const startupConnectionCheckKey = "adagioAgent.startupConnectionCheckCompleted";
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === "string" && error.length > 0) {
+    return error;
+  }
+
+  return "Unknown error.";
+}
+
+async function runStartupConnectionCheck(context: vscode.ExtensionContext): Promise<void> {
+  const state = (context as Partial<vscode.ExtensionContext>).globalState;
+  if (!state) {
+    return;
+  }
+
+  const alreadyChecked = state.get<boolean>(startupConnectionCheckKey, false);
+  if (alreadyChecked) {
+    return;
+  }
+
+  try {
+    const readiness = await createAgentClient().ready();
+    if (readiness.status === "ready") {
+      await state.update(startupConnectionCheckKey, true);
+      return;
+    }
+
+    const issueSummary = readiness.issues.length > 0
+      ? readiness.issues.join("; ")
+      : "The agent reported a degraded readiness state.";
+    vscode.window.showWarningMessage(
+      `Adagio Agent startup check reports degraded readiness: ${issueSummary}`
+    );
+  } catch (error) {
+    vscode.window.showWarningMessage(
+      `Adagio Agent startup connection check failed: ${errorMessage(error)}`
+    );
+  }
+}
+
 // ─── Activation ──────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -251,6 +296,8 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.lm.registerTool("adagioAgent_selectOption", new SelectOptionTool())
     );
   }
+
+  void runStartupConnectionCheck(context);
 }
 
 export function deactivate(): void {

@@ -9,7 +9,9 @@ extension) to a UI-automation agent running inside a Windows or Linux VM.
 
 Current product posture: Windows-first, admin-managed deployment for controlled
 environments. See [docs/OPERATING_MODEL.md](docs/OPERATING_MODEL.md) for the
-current support boundaries and deployment assumptions.
+current support boundaries and deployment assumptions, and
+[docs/BOOTSTRAP_STRATEGY.md](docs/BOOTSTRAP_STRATEGY.md) for the provisioning
+strategy decision.
 
 ---
 

@@ -46,13 +46,72 @@ public sealed class AutomationController : ControllerBase
     [ProducesResponseType(typeof(ReadinessResponse), StatusCodes.Status200OK)]
     public IActionResult Ready()
     {
+        var issues = new List<string>();
+        var platform = OperatingSystem.IsWindows()
+            ? "windows"
+            : OperatingSystem.IsLinux()
+                ? "linux"
+                : "unsupported";
+
+        if (platform == "unsupported")
+        {
+            issues.Add("Platform is not supported. Only Windows and Linux are supported.");
+        }
+
+        var services = HttpContext?.RequestServices;
+        var securityOptions = services?.GetService(typeof(IOptions<global::SecurityOptions>)) as IOptions<global::SecurityOptions>;
+        var agentOptions = services?.GetService(typeof(IOptions<global::AgentOptions>)) as IOptions<global::AgentOptions>;
+
+        if (securityOptions is null)
+        {
+            issues.Add("SecurityOptions are not available in DI.");
+        }
+        else
+        {
+            var security = securityOptions.Value;
+            if (security.RequireHttps && string.IsNullOrWhiteSpace(security.HttpsCertificatePath))
+            {
+                issues.Add("HTTPS is required but no certificate path is configured.");
+            }
+
+            if (security.RequireApiKey &&
+                (string.IsNullOrWhiteSpace(security.ApiKey) ||
+                 string.Equals(security.ApiKey, "CHANGE_ME", StringComparison.Ordinal)))
+            {
+                issues.Add("API key authentication is required but ApiKey is unset.");
+            }
+        }
+
+        if (agentOptions is null)
+        {
+            issues.Add("AgentOptions are not available in DI.");
+        }
+        else
+        {
+            var agent = agentOptions.Value;
+            if (agent.AllowedExecutablePaths.Count == 0)
+            {
+                issues.Add("AllowedExecutablePaths is empty.");
+            }
+
+            if (agent.AllowedReadablePaths.Count == 0)
+            {
+                issues.Add("AllowedReadablePaths is empty.");
+            }
+
+            if (agent.AllowedWritablePaths.Count == 0)
+            {
+                issues.Add("AllowedWritablePaths is empty.");
+            }
+        }
+
         return Ok(new ReadinessResponse(
-            Status: "ready",
+            Status: issues.Count == 0 ? "ready" : "degraded",
             Version: AgentVersion,
             ApiVersion: 1,
-            Platform: OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsLinux() ? "linux" : "unsupported",
+            Platform: platform,
             UiAutomationAvailable: true,
-            Issues: []));
+            Issues: issues));
     }
 
     // ── POST /run ────────────────────────────────────────────────────────────
