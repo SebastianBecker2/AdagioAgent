@@ -60,6 +60,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add CI execution step for observability-doc consistency check.
 - [x] Add troubleshooting cross-links to observability field reference and support severity matrix.
 - [x] Add release preflight observability-doc presence checks.
+- [x] Add release-support quickstart checklist linking release, diagnostics, and support-bundle workflows.
+- [x] Add explicit Sev-1/Sev-2 owner role mapping in pilot runbook.
+- [x] Add operational docs ownership and review cadence policy.
+- [x] Add CI check for README operational docs index completeness.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -337,7 +341,16 @@ The next implementation slice should focus on support workflow consistency check
 
 The next implementation slice should focus on release and support runbook consolidation:
 
-1. Add a single release-support quickstart checklist linking release, diagnostics, and support-bundle workflows.
-2. Add explicit owner/role mapping for Sev-1/Sev-2 incident handling in pilot docs.
-3. Add periodic doc-review cadence and ownership section for operational docs.
-4. Add CI check that operational docs index in README includes all required runbook/schema docs.
+1. [x] Add a single release-support quickstart checklist linking release, diagnostics, and support-bundle workflows.
+2. [x] Add explicit owner/role mapping for Sev-1/Sev-2 incident handling in pilot docs.
+3. [x] Add periodic doc-review cadence and ownership section for operational docs.
+4. [x] Add CI check that operational docs index in README includes all required runbook/schema docs.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on operational readiness sign-off workflow:
+
+1. Add an operations sign-off template doc for release gates and pilot readiness checks.
+2. Add required evidence checklist (support-bundle, correlation trace, rollback rehearsal).
+3. Add release checklist cross-link to sign-off template.
+4. Add CI check that sign-off template and required operational docs are linked in README.

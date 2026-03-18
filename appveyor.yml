@@ -23,6 +23,9 @@ build_script:
   # 0.1 Ensure README/SUPPORT markdown links resolve to existing workspace files
   - ps: .\scripts\check-doc-links.ps1
 
+  # 0.12 Ensure README operational docs index includes required runbook/schema docs
+  - ps: .\scripts\check-operational-docs-index.ps1
+
   # 0.15 Ensure observability docs mention required core fields and policy tokens
   - ps: .\scripts\check-observability-docs.ps1
 

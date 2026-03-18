@@ -63,6 +63,18 @@ incident:
 6. Learn
    - Document root cause and update checklists/docs/preflight checks.
 
+### Sev-1/Sev-2 owner role mapping
+
+- `Incident Commander`: coordinates triage, communications, and go/no-go decisions.
+- `Backend Owner`: investigates machine-agent behavior, logs, and correlation traces.
+- `Extension Owner`: investigates extension command UX, diagnostics output, and client-side errors.
+- `Release Owner`: manages rollback/redeploy actions and artifact integrity checks.
+
+Minimum assignment requirements:
+
+- Sev-1: all four roles must be assigned.
+- Sev-2: Incident Commander + one technical owner (Backend or Extension) + Release Owner.
+
 ### Evidence package per incident
 
 - Timestamped support bundle output.

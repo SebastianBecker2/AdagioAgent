@@ -87,3 +87,18 @@ Support is best-effort during active productization.
 
 These are target service levels during active productization, not hard
 guarantees.
+
+## Operational Docs Ownership And Review Cadence
+
+Operational docs owners (role-based):
+
+- `Backend Owner`: `docs/OBSERVABILITY_FIELDS.md`, API-error and correlation behavior docs.
+- `Support Owner`: `SUPPORT.md`, `docs/DIAGNOSTICS_TROUBLESHOOTING.md`, severity/SLA policies.
+- `Release Owner`: `docs/RELEASING.md`, release-support quickstart and preflight procedures.
+- `Pilot Operations Owner`: `docs/PILOT_RUNBOOK.md`, rollback/upgrade checklists.
+
+Review cadence:
+
+- Minimum monthly review of all operational docs.
+- Mandatory review in any release where logging fields, error contracts,
+  support-bundle schema, or incident workflows changed.
