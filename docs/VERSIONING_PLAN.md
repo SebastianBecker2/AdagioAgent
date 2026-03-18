@@ -32,7 +32,7 @@
 1. [x] Update controller-extension to call `/api/v1/...` by default.
 2. [x] Keep configuration-based override for transition windows.
 3. [x] Align and test contracts between C# models and TypeScript schema.
-3. [x] Add tests for:
+4. [x] Add tests for:
 - `/api/v1` routes
 - legacy route compatibility
 - health compatibility metadata

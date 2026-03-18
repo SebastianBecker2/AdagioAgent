@@ -364,10 +364,12 @@ version and the minimum client version the agent supports:
 ### Deprecation timeline
 
 The unversioned legacy routes (`/health`, `/run`, etc.) are **deprecated** and
-will be removed when a `/api/v2` surface is introduced.  No removal date is set
+will be removed when a `/api/v2` surface is introduced. No removal date is set
 yet; they will remain available throughout the API v1 lifecycle.
 
-For the full step-by-step release procedure see [RELEASING.md](RELEASING.md).
+For the full step-by-step release procedure see [docs/RELEASING.md](docs/RELEASING.md).
+For the implementation status of versioning work see [docs/VERSIONING_PLAN.md](docs/VERSIONING_PLAN.md).
+For the broader product roadmap see [docs/PRODUCTIZATION_PLAN.md](docs/PRODUCTIZATION_PLAN.md).
 
 ---
 

@@ -1,7 +1,7 @@
 # Release Checklist
 
 This document describes the steps required to produce and publish a new
-AdagioAgent release.  Follow every step in order.
+AdagioAgent release. Follow every step in order.
 
 ---
 
@@ -20,7 +20,7 @@ The installer MSI version is automatically derived from the machine-agent
 
 ## Steps
 
-### 1 — Decide the new version
+### 1 - Decide the new version
 
 Determine the next version following [Semantic Versioning](https://semver.org/):
 
@@ -29,28 +29,28 @@ Determine the next version following [Semantic Versioning](https://semver.org/):
 - **MAJOR** (`x.0.0`): breaking changes (new API version path `/api/vN/...`
   required; deprecation of previous version aliases).
 
-### 2 — Bump versions
+### 2 - Bump versions
 
 Update both artifact version fields to the new version:
 
 ```powershell
 # 1. machine-agent/AdagioMachineAgent.csproj
-#    Change: <Version>OLD</Version>  →  <Version>NEW</Version>
+#    Change: <Version>OLD</Version>  ->  <Version>NEW</Version>
 
 # 2. controller-extension/package.json
-#    Change: "version": "OLD"  →  "version": "NEW"
+#    Change: "version": "OLD"  ->  "version": "NEW"
 ```
 
-No change is needed in the installer project — it reads the version from the
+No change is needed in the installer project - it reads the version from the
 machine-agent csproj automatically.
 
-### 3 — Update the compatibility matrix
+### 3 - Update the compatibility matrix
 
 If the extension's supported API major version changed, update the table in
-[README.md](README.md) under **Versioning and Compatibility → Compatibility
+[README.md](../README.md) under **Versioning and Compatibility -> Compatibility
 matrix**.
 
-### 4 — Run all tests
+### 4 - Run all tests
 
 ```powershell
 # .NET backend tests (machine-agent + integration)
@@ -64,14 +64,14 @@ Set-Location ..
 
 All tests must pass before proceeding.
 
-### 5 — Commit the version bump
+### 5 - Commit the version bump
 
 ```powershell
 git add machine-agent/AdagioMachineAgent.csproj controller-extension/package.json
 git commit -m "chore: release vNEW"
 ```
 
-### 6 — Create a release tag
+### 6 - Create a release tag
 
 ```powershell
 git tag -a vNEW -m "Release vNEW"
@@ -81,7 +81,7 @@ git push origin main --tags
 AppVeyor will automatically build the tagged commit and produce the MSI
 installer artifact.
 
-### 7 — Publish artifacts
+### 7 - Publish artifacts
 
 Download the `AdagioMachineAgentSetup` artifact from AppVeyor and attach it
 to a GitHub release for the tag created in step 6.
