@@ -10,6 +10,7 @@ $promotionGateTrendScript = Join-Path $repoRoot 'scripts\update-release-ops-prom
 $closureManifestScript = Join-Path $repoRoot 'scripts\generate-release-ops-closure-package-manifest.ps1'
 $closureManifestCheckScript = Join-Path $repoRoot 'scripts\check-release-ops-closure-package-manifest.ps1'
 $closureManifestDriftScript = Join-Path $repoRoot 'scripts\check-release-ops-closure-package-drift.ps1'
+$closureIntegrityReportScript = Join-Path $repoRoot 'scripts\generate-release-ops-closure-package-integrity-report.ps1'
 
 function New-TestFile {
     param(
@@ -562,5 +563,53 @@ Describe 'Release evidence validators' {
         (Get-Item -LiteralPath $promotionReportPath).LastWriteTimeUtc = [DateTime]::UtcNow.AddMinutes(1)
 
         { & $closureManifestDriftScript -ReadinessRoot $closureRoot -TagName "v$script:testVersion" } | Should Throw
+    }
+
+    It 'generate-release-ops-closure-package-integrity-report emits pass verdict with hashes for complete closure package' {
+        New-EvidenceFixture -Version $script:testVersion -DateStamp $script:testDateStamp -IncludeIndex -IncludeIndexEntries | Out-Null
+
+        $closureRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\closure-g'
+        if (-not (Test-Path -LiteralPath $closureRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $closureRoot -Force | Out-Null
+            $script:createdFiles += $closureRoot
+        }
+
+        New-TagReadinessSummaryFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-g/release-ops-tag-readiness-summary.json' -TagName "v$script:testVersion" -Verdict 'ready' -DiagnosticsOverallStatus 'pass' -ValidatorFailed 0
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-g/release-ops-tag-readiness-history-index.json' -Content '{}' | Out-Null
+        New-PromotionGateReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-g/release-ops-promotion-gate-report.json' -Verdict 'pass' -GatePassed $true -OverrideUsed $false
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-g/release-ops-promotion-gate-trend-index.json' -Content '{}' | Out-Null
+
+        { & $closureManifestScript -ReadinessRoot $closureRoot -OutputDir $closureRoot -TagName "v$script:testVersion" } | Should Not Throw
+        { & $closureIntegrityReportScript -ReadinessRoot $closureRoot -OutputDir $closureRoot -TagName "v$script:testVersion" } | Should Not Throw
+
+        $reportPath = Join-Path $closureRoot 'release-ops-closure-package-integrity-report.json'
+        (Test-Path -LiteralPath $reportPath -PathType Leaf) | Should Be $true
+
+        $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+        $report.integrityVerdict | Should Be 'pass'
+        $report.issueCount | Should Be 0
+        $report.verifiedArtifactCount | Should BeGreaterThan 0
+        ([string]$report.manifest.sha256).Length | Should Be 64
+    }
+
+    It 'generate-release-ops-closure-package-integrity-report fails with FailOnIssues when linked artifact is missing' {
+        New-EvidenceFixture -Version $script:testVersion -DateStamp $script:testDateStamp -IncludeIndex -IncludeIndexEntries | Out-Null
+
+        $closureRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\closure-h'
+        if (-not (Test-Path -LiteralPath $closureRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $closureRoot -Force | Out-Null
+            $script:createdFiles += $closureRoot
+        }
+
+        New-TagReadinessSummaryFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-h/release-ops-tag-readiness-summary.json' -TagName "v$script:testVersion" -Verdict 'ready' -DiagnosticsOverallStatus 'pass' -ValidatorFailed 0
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-h/release-ops-tag-readiness-history-index.json' -Content '{}' | Out-Null
+        New-PromotionGateReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-h/release-ops-promotion-gate-report.json' -Verdict 'pass' -GatePassed $true -OverrideUsed $false
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-h/release-ops-promotion-gate-trend-index.json' -Content '{}' | Out-Null
+
+        { & $closureManifestScript -ReadinessRoot $closureRoot -OutputDir $closureRoot -TagName "v$script:testVersion" } | Should Not Throw
+
+        Remove-Item -LiteralPath (Join-Path $closureRoot 'release-ops-promotion-gate-report.json') -Force
+
+        { & $closureIntegrityReportScript -ReadinessRoot $closureRoot -OutputDir $closureRoot -TagName "v$script:testVersion" -FailOnIssues } | Should Throw
     }
 }

@@ -109,6 +109,16 @@ build_script:
         Write-Host 'Release-ops closure package drift check skipped on non-tag build.'
       }
 
+  # 0.0895 On tagged builds, emit closure package integrity report with artifact hashes
+  - ps: |
+      if ($env:APPVEYOR_REPO_TAG -eq 'true') {
+        $readinessRoot = '.\artifacts\release-ops-tag-readiness'
+        .\scripts\generate-release-ops-closure-package-integrity-report.ps1 -ReadinessRoot $readinessRoot -OutputDir $readinessRoot
+      }
+      else {
+        Write-Host 'Release-ops closure package integrity report skipped on non-tag build.'
+      }
+
   # 0.09 Run validator script tests (Pester)
   - ps: Invoke-Pester -Script .\scripts\tests\ValidatorScripts.Tests.ps1 -EnableExit
 
@@ -277,6 +287,10 @@ artifacts:
     name: ReleaseOpsClosurePackageManifest
   - path: artifacts/release-ops-tag-readiness/release-ops-closure-package-manifest.md
     name: ReleaseOpsClosurePackageManifestMarkdown
+  - path: artifacts/release-ops-tag-readiness/release-ops-closure-package-integrity-report.json
+    name: ReleaseOpsClosurePackageIntegrityReport
+  - path: artifacts/release-ops-tag-readiness/release-ops-closure-package-integrity-report.md
+    name: ReleaseOpsClosurePackageIntegrityReportMarkdown
   - path: TestResults/**/*.trx
     name: DotNetTestResults
   - path: controller-extension/test-results/*.xml

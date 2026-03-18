@@ -58,6 +58,11 @@ sign-off record file (enforced in CI tagged builds).
 		concrete values and valid paths.
 	- Fails when required entries are missing, placeholders are used, version
 		scoping is incorrect, or referenced files are absent.
+- `scripts/generate-release-ops-closure-package-integrity-report.ps1`
+	- Passes with `integrityVerdict=pass` when closure manifest linked artifacts
+		are present and hashable, with no manifest-vs-disk mismatch.
+	- Reports `integrityVerdict=fail` with issue details when linked artifacts are
+		missing or `exists` flags are stale.
 
 ### Dry-run package walkthrough
 
@@ -388,6 +393,31 @@ Recommended sequencing for tagged builds:
 
 - Treat closure manifest generation as a late-stage step after all readiness and promotion outputs are final.
 - If any late artifact regeneration occurs, regenerate closure manifest and rerun drift/validation checks before promotion.
+
+### Closure package integrity attestation
+
+Generate a closure package integrity report from the closure manifest:
+
+```powershell
+.\scripts\generate-release-ops-closure-package-integrity-report.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -OutputDir .\artifacts\release-ops-tag-readiness
+```
+
+Integrity report outputs:
+
+- `release-ops-closure-package-integrity-report.json`
+- `release-ops-closure-package-integrity-report.md`
+
+Integrity report includes:
+
+- Closure manifest SHA256 digest.
+- Per-artifact SHA256 digest for each linked artifact present on disk.
+- Per-artifact last write timestamp for audit timeline reconstruction.
+- Manifest-vs-disk mismatch issues (`exists` drift or missing required artifacts).
+
+Handoff expectation:
+
+- Review `integrityVerdict` and `issueCount` before release handoff.
+- If verdict is fail, regenerate required artifacts and closure manifest, then rerun drift and integrity checks.
 
 Expected output layout:
 

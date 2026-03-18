@@ -555,3 +555,12 @@ The next implementation slice should focus on closure package drift detection:
 2. [x] Add CI tagged-build check to fail when closure manifest drift is detected after manifest generation.
 3. [x] Add docs section explaining drift scenarios and safe regeneration workflow.
 4. [x] Add quickstart note for when to rerun closure manifest generation late in release tagging flow.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on closure package integrity attestation:
+
+1. [x] Add script to generate closure package integrity report with SHA256 digests for manifest-linked artifacts.
+2. [x] Add CI tagged-build step and artifact publication for closure package integrity report outputs.
+3. [x] Add docs section describing integrity report fields and remediation workflow for mismatches.
+4. [x] Add quickstart note requiring integrity verdict review before final release handoff.

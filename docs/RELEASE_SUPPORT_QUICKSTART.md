@@ -119,6 +119,16 @@ Get-Content .\artifacts\release-ops-tag-readiness\release-ops-closure-package-ma
     - If drift is detected, rerun closure manifest generation and rerun drift
        check before promotion continues.
 
+   Integrity attestation:
+
+```powershell
+.\scripts\generate-release-ops-closure-package-integrity-report.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -OutputDir .\artifacts\release-ops-tag-readiness
+Get-Content .\artifacts\release-ops-tag-readiness\release-ops-closure-package-integrity-report.md
+```
+
+   - Confirm `IntegrityVerdict` is pass and `IssueCount` is 0 before handoff.
+   - Attach or link the integrity report alongside closure manifest in release notes.
+
 12. Review dry-run diagnostics index trends before pilot handoff approval:
 
 ```powershell
@@ -281,3 +291,17 @@ Common failures and fixes:
    if any readiness or promotion output is regenerated after closure manifest
    creation, always regenerate closure manifest and rerun both manifest
    validation and drift checks before release handoff.
+
+### 11. Troubleshooting closure package integrity report
+
+Common failures and fixes:
+
+- Integrity report shows missing required linked artifact:
+   regenerate missing readiness/promotion/sign-off/evidence artifact and rerun
+   closure manifest generation before rerunning integrity report.
+- Integrity report shows stale manifest exists flag:
+   regenerate closure manifest from the same readiness root, then rerun drift
+   and integrity checks.
+- Integrity report is pass but hashes changed after late rerun:
+   treat as post-manifest regeneration event and rerun manifest, drift, and
+   integrity checks as one sequence before handoff.
