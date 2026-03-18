@@ -164,6 +164,15 @@ approval:
 The release verdict should be `ready` or `ready-with-note`. A `hold` verdict
 blocks release approval until validator or diagnostics gate issues are resolved.
 
+Update and review readiness history index before final promotion:
+
+```powershell
+.\scripts\update-release-ops-tag-readiness-history.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -ArchiveLatest -MaxEntries 20 -RetentionDays 180
+```
+
+Preferred promotion trend: last 3 tagged summaries are `ready` with no `hold`
+verdict in the last 2 tags.
+
 ### 6 - Commit the version bump
 
 ```powershell

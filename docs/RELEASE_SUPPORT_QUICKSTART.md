@@ -58,7 +58,18 @@ Get-Content .\artifacts\release-ops-tag-readiness\release-ops-tag-readiness-summ
    - `ready-with-note`: approve only with documented sign-off notes.
    - `hold`: do not approve tag; resolve failed validator(s) or diagnostics gate.
 
-7. Review dry-run diagnostics index trends before pilot handoff approval:
+7. Review readiness verdict trend history before final release promotion:
+
+```powershell
+.\scripts\update-release-ops-tag-readiness-history.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -ArchiveLatest -MaxEntries 20 -RetentionDays 180
+Get-Content .\artifacts\release-ops-tag-readiness\release-ops-tag-readiness-history-index.md
+```
+
+   Promotion trend rule:
+   - last 3 tagged summaries should be `ready`, and
+   - no `hold` verdict in the last 2 tagged summaries.
+
+8. Review dry-run diagnostics index trends before pilot handoff approval:
 
 ```powershell
 .\scripts\update-release-ops-diagnostics-index.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics -MaxEntries 20

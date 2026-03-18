@@ -506,7 +506,16 @@ The next implementation slice should focus on release-ops sign-off readiness sum
 
 The next implementation slice should focus on readiness summary trend history:
 
-1. Add script to retain and index recent tagged-release readiness summaries for audit trend review.
-2. Add CI tagged-build step to update readiness history index and publish it as an artifact.
-3. Add docs guidance for interpreting readiness verdict trends over recent release tags.
-4. Add quickstart checklist item requiring readiness trend review before final release promotion.
+1. [x] Add script to retain and index recent tagged-release readiness summaries for audit trend review.
+2. [x] Add CI tagged-build step to update readiness history index and publish it as an artifact.
+3. [x] Add docs guidance for interpreting readiness verdict trends over recent release tags.
+4. [x] Add quickstart checklist item requiring readiness trend review before final release promotion.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on release-ops promotion gate enforcement:
+
+1. Add script to evaluate readiness history index against promotion trend thresholds and emit a pass/fail verdict.
+2. Add CI tagged-build gate that fails when promotion trend thresholds are not met.
+3. Add docs section defining override/escalation process for exceptional promotions.
+4. Add quickstart decision notes for when to require explicit release-ops director approval.

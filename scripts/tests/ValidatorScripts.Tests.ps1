@@ -4,6 +4,7 @@ $checkEvidenceRefsScript = Join-Path $repoRoot 'scripts\check-signoff-evidence-r
 $checkIndexReferenceScript = Join-Path $repoRoot 'scripts\check-signoff-evidence-index-reference.ps1'
 $checkIndexContentScript = Join-Path $repoRoot 'scripts\check-evidence-index-content.ps1'
 $tagReadinessSummaryScript = Join-Path $repoRoot 'scripts\generate-release-ops-tag-readiness-summary.ps1'
+$tagReadinessHistoryScript = Join-Path $repoRoot 'scripts\update-release-ops-tag-readiness-history.ps1'
 
 function New-TestFile {
     param(
@@ -37,6 +38,40 @@ function New-CiStatusReportFixture {
             trendGate = @{ passed = ($OverallStatus -ne 'hold' -and $OverallStatus -ne 'escalate'); level = $OverallStatus; message = 'trend' }
         }
         summary = @{ totalEntries = 5; successCount = 5; failureCount = 0; recentEntryCount = 5 }
+    } | ConvertTo-Json -Depth 6
+
+    New-TestFile -RelativePath $RelativePath -Content $content | Out-Null
+}
+
+function New-TagReadinessSummaryFixture {
+    param(
+        [string]$RelativePath,
+        [string]$TagName,
+        [string]$Verdict,
+        [string]$DiagnosticsOverallStatus = 'pass',
+        [int]$ValidatorFailed = 0,
+        [DateTimeOffset]$GeneratedAtUtc = [DateTimeOffset]::UtcNow
+    )
+
+    $content = @{
+        generatedAtUtc = $GeneratedAtUtc.ToString('u')
+        tagName = $TagName
+        readinessVerdict = $Verdict
+        readinessMessage = 'fixture'
+        validatorSummary = @{
+            total = 3
+            passed = 3 - $ValidatorFailed
+            failed = $ValidatorFailed
+            results = @()
+        }
+        diagnosticsQualityGate = @{
+            available = $true
+            overallStatus = $DiagnosticsOverallStatus
+            trendLevel = $DiagnosticsOverallStatus
+            indexFreshPassed = $true
+            trendGatePassed = ($DiagnosticsOverallStatus -eq 'pass' -or $DiagnosticsOverallStatus -eq 'pass-with-note')
+            message = 'fixture'
+        }
     } | ConvertTo-Json -Depth 6
 
     New-TestFile -RelativePath $RelativePath -Content $content | Out-Null
@@ -222,5 +257,45 @@ Describe 'Release evidence validators' {
         $summary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
         $summary.readinessVerdict | Should Be 'hold'
         $summary.validatorSummary.failed | Should BeGreaterThan 0
+    }
+
+    It 'update-release-ops-tag-readiness-history archives latest summary and writes history index' {
+        $historyRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\history-a'
+        if (-not (Test-Path -LiteralPath $historyRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $historyRoot -Force | Out-Null
+            $script:createdFiles += $historyRoot
+        }
+
+        New-TagReadinessSummaryFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/history-a/release-ops-tag-readiness-summary.json' -TagName "v$script:testVersion" -Verdict 'ready' -DiagnosticsOverallStatus 'pass' -ValidatorFailed 0 -GeneratedAtUtc ([DateTimeOffset]::UtcNow.AddMinutes(-1))
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/history-a/release-ops-tag-readiness-summary.md' -Content '# latest' | Out-Null
+
+        { & $tagReadinessHistoryScript -ReadinessRoot $historyRoot -ArchiveLatest -MaxEntries 20 -RetentionDays 180 } | Should Not Throw
+
+        $indexPath = Join-Path $historyRoot 'release-ops-tag-readiness-history-index.json'
+        (Test-Path -LiteralPath $indexPath -PathType Leaf) | Should Be $true
+
+        $archived = @(Get-ChildItem -LiteralPath $historyRoot -File -Filter 'release-ops-tag-readiness-summary-*.json' |
+            Where-Object { $_.Name -ne 'release-ops-tag-readiness-summary.json' })
+        $archived.Count | Should BeGreaterThan 0
+
+        $index = Get-Content -LiteralPath $indexPath -Raw | ConvertFrom-Json
+        $index.totalEntries | Should BeGreaterThan 0
+        $index.verdictCounts.ready | Should Be 1
+    }
+
+    It 'update-release-ops-tag-readiness-history prunes stale archived summaries' {
+        $historyRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\history-b'
+        if (-not (Test-Path -LiteralPath $historyRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $historyRoot -Force | Out-Null
+            $script:createdFiles += $historyRoot
+        }
+
+        New-TagReadinessSummaryFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/history-b/release-ops-tag-readiness-summary-20000101000000-vold.json' -TagName 'v0.0.1' -Verdict 'hold' -DiagnosticsOverallStatus 'hold' -ValidatorFailed 1 -GeneratedAtUtc ([DateTimeOffset]::UtcNow.AddYears(-10))
+        $stalePath = Join-Path $historyRoot 'release-ops-tag-readiness-summary-20000101000000-vold.json'
+        (Get-Item -LiteralPath $stalePath).LastWriteTimeUtc = [DateTime]::UtcNow.AddDays(-400)
+
+        { & $tagReadinessHistoryScript -ReadinessRoot $historyRoot -MaxEntries 20 -RetentionDays 180 } | Should Not Throw
+
+        (Test-Path -LiteralPath $stalePath -PathType Leaf) | Should Be $false
     }
 }

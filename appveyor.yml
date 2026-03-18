@@ -49,6 +49,7 @@ build_script:
       if ($env:APPVEYOR_REPO_TAG -eq 'true') {
         $readinessRoot = '.\artifacts\release-ops-tag-readiness'
         .\scripts\generate-release-ops-tag-readiness-summary.ps1 -OutputDir $readinessRoot -FailOnHold
+        .\scripts\update-release-ops-tag-readiness-history.ps1 -ReadinessRoot $readinessRoot -ArchiveLatest -MaxEntries 20 -RetentionDays 180
       }
       else {
         Write-Host 'Release-ops tag readiness summary skipped on non-tag build.'
@@ -198,6 +199,14 @@ artifacts:
     name: ReleaseOpsTagReadinessSummary
   - path: artifacts/release-ops-tag-readiness/release-ops-tag-readiness-summary.md
     name: ReleaseOpsTagReadinessSummaryMarkdown
+  - path: artifacts/release-ops-tag-readiness/release-ops-tag-readiness-history-index.json
+    name: ReleaseOpsTagReadinessHistoryIndex
+  - path: artifacts/release-ops-tag-readiness/release-ops-tag-readiness-history-index.md
+    name: ReleaseOpsTagReadinessHistoryIndexMarkdown
+  - path: artifacts/release-ops-tag-readiness/release-ops-tag-readiness-summary-*.json
+    name: ReleaseOpsTagReadinessSummaryArchive
+  - path: artifacts/release-ops-tag-readiness/release-ops-tag-readiness-summary-*.md
+    name: ReleaseOpsTagReadinessSummaryArchiveMarkdown
   - path: TestResults/**/*.trx
     name: DotNetTestResults
   - path: controller-extension/test-results/*.xml

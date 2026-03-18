@@ -232,6 +232,26 @@ Tagged-build usage:
 .\scripts\generate-release-ops-tag-readiness-summary.ps1 -TagName v<semver> -FailOnHold
 ```
 
+### Tag readiness history index and trend interpretation
+
+Archive and index recent tagged readiness summaries:
+
+```powershell
+.\scripts\update-release-ops-tag-readiness-history.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -ArchiveLatest -MaxEntries 20 -RetentionDays 180
+```
+
+History outputs:
+
+- `release-ops-tag-readiness-history-index.json`: machine-readable trend index.
+- `release-ops-tag-readiness-history-index.md`: human-readable recent verdict list.
+
+Trend guidance across recent release tags:
+
+- Promotion-ready trend: last 3 tagged summaries are `ready`.
+- Caution trend: one `ready-with-note` in last 3 tags; ensure note closure in sign-off.
+- Hold trend: any `hold` verdict in last 2 tags; block promotion until resolved.
+- Escalation trend: 2 or more `hold` verdicts in last 5 tags; open release-ops incident and require owner sign-off.
+
 Expected output layout:
 
 ```text
