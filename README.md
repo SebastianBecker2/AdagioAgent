@@ -13,6 +13,9 @@ current support boundaries and deployment assumptions, and
 [docs/BOOTSTRAP_STRATEGY.md](docs/BOOTSTRAP_STRATEGY.md) for the provisioning
 strategy decision.
 
+Bootstrap helper script: `scripts/bootstrap-agent.ps1` (certificate + API key
+generation for controlled environments).
+
 ---
 
 ## Architecture

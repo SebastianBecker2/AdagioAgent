@@ -151,21 +151,32 @@ function errorMessage(error: unknown): string {
   return "Unknown error.";
 }
 
-async function runStartupConnectionCheck(context: vscode.ExtensionContext): Promise<void> {
-  const state = (context as Partial<vscode.ExtensionContext>).globalState;
-  if (!state) {
-    return;
-  }
+async function runStartupConnectionCheck(
+  context?: vscode.ExtensionContext,
+  options?: { force?: boolean; showSuccess?: boolean }
+): Promise<void> {
+  const state = context?.globalState;
 
-  const alreadyChecked = state.get<boolean>(startupConnectionCheckKey, false);
-  if (alreadyChecked) {
-    return;
+  if (state && !options?.force) {
+    const alreadyChecked = state.get<boolean>(startupConnectionCheckKey, false);
+    if (alreadyChecked) {
+      return;
+    }
   }
 
   try {
     const readiness = await createAgentClient().ready();
     if (readiness.status === "ready") {
-      await state.update(startupConnectionCheckKey, true);
+      if (state) {
+        await state.update(startupConnectionCheckKey, true);
+      }
+
+      if (options?.showSuccess) {
+        vscode.window.showInformationMessage(
+          `Adagio Agent diagnostics passed (${readiness.platform}, API v${readiness.apiVersion}).`
+        );
+      }
+
       return;
     }
 
@@ -237,7 +248,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("adagioAgent.sendKeys", wrapCommand(cmdSendKeys)),
     vscode.commands.registerCommand("adagioAgent.pressHotkey", wrapCommand(cmdPressHotkey)),
     vscode.commands.registerCommand("adagioAgent.setCheckbox", wrapCommand(cmdSetCheckbox)),
-    vscode.commands.registerCommand("adagioAgent.selectOption", wrapCommand(cmdSelectOption))
+    vscode.commands.registerCommand("adagioAgent.selectOption", wrapCommand(cmdSelectOption)),
+    vscode.commands.registerCommand("adagioAgent.runStartupDiagnostics", wrapCommand(cmdRunStartupDiagnostics))
   );
 
   // ── Copilot language-model tools ─────────────────────────────────────────
@@ -329,6 +341,10 @@ async function cmdRunExecutable(): Promise<void> {
       );
     }
   );
+}
+
+async function cmdRunStartupDiagnostics(): Promise<void> {
+  await runStartupConnectionCheck(undefined, { force: true, showSuccess: true });
 }
 
 async function cmdRunInstallerAndCollectArtifacts(): Promise<void> {

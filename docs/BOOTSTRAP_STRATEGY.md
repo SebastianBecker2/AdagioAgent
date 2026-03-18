@@ -37,6 +37,30 @@ The first-service-start path will:
 4. Add optional provisioning helper scripts later (outside MSI custom actions)
    if teams need assisted setup.
 
+## Implemented helper
+
+The repository now includes `scripts/bootstrap-agent.ps1` to assist first-run
+bootstrap in controlled environments.
+
+- It can create/export a self-signed HTTPS certificate.
+- It generates a high-entropy API key and certificate password.
+- It can persist values to user environment variables:
+   - `SecurityOptions__ApiKey`
+   - `SecurityOptions__HttpsCertificatePath`
+   - `SecurityOptions__HttpsCertificatePassword`
+- It can optionally write values into `machine-agent/appsettings.json` for
+   local/dev use.
+
+Example:
+
+```powershell
+# Preferred: user-scoped environment variables (safer than plaintext config)
+PowerShell -ExecutionPolicy Bypass -File scripts/bootstrap-agent.ps1 -PersistToEnvironment
+
+# Optional: also write generated values into appsettings.json for local testing
+PowerShell -ExecutionPolicy Bypass -File scripts/bootstrap-agent.ps1 -WriteToAppSettings
+```
+
 ## Deferred items
 
 - Automated certificate generation and secure storage are still planned and not

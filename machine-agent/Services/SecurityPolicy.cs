@@ -8,6 +8,9 @@ namespace AdagioMachineAgent.Services;
 /// </summary>
 public static class SecurityPolicy
 {
+    public const int RecommendedApiKeyMinLength = 24;
+    public const int CertificateExpiryWarningDays = 30;
+
     public static bool IsApiKeyMatch(string candidate, string configured)
     {
         var candidateBytes = System.Text.Encoding.UTF8.GetBytes(candidate);
@@ -96,5 +99,116 @@ public static class SecurityPolicy
                 $"Failed to load HTTPS certificate from '{fullPath}'. Verify the certificate path and password.",
                 ex);
         }
+    }
+
+    public static List<string> GetReadinessIssues(
+        SecurityOptions securityOptions,
+        global::AgentOptions agentOptions,
+        DateTimeOffset nowUtc)
+    {
+        var issues = new List<string>();
+
+        issues.AddRange(GetSecurityReadinessIssues(securityOptions, nowUtc));
+        issues.AddRange(GetAgentPolicyReadinessIssues(agentOptions));
+
+        return issues;
+    }
+
+    private static List<string> GetSecurityReadinessIssues(SecurityOptions options, DateTimeOffset nowUtc)
+    {
+        var issues = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(options.ApiKeyHeaderName))
+        {
+            issues.Add("ApiKeyHeaderName is required.");
+        }
+
+        if (options.RequireApiKey)
+        {
+            if (string.IsNullOrWhiteSpace(options.ApiKey) ||
+                string.Equals(options.ApiKey, "CHANGE_ME", StringComparison.Ordinal))
+            {
+                issues.Add("API key authentication is required but ApiKey is unset.");
+            }
+            else if (options.ApiKey.Trim().Length < RecommendedApiKeyMinLength)
+            {
+                issues.Add($"API key is shorter than the recommended minimum length ({RecommendedApiKeyMinLength}).");
+            }
+        }
+
+        if (!options.RequireHttps)
+        {
+            return issues;
+        }
+
+        if (string.IsNullOrWhiteSpace(options.HttpsCertificatePath))
+        {
+            issues.Add("HTTPS is required but no certificate path is configured.");
+            return issues;
+        }
+
+        var fullPath = Path.GetFullPath(options.HttpsCertificatePath);
+        if (!File.Exists(fullPath))
+        {
+            issues.Add($"Configured HTTPS certificate file was not found: '{fullPath}'.");
+            return issues;
+        }
+
+        DateTime expiresAt;
+        try
+        {
+            using var certificate = new X509Certificate2(fullPath, options.HttpsCertificatePassword);
+            expiresAt = certificate.NotAfter;
+        }
+        catch
+        {
+            issues.Add($"Failed to load HTTPS certificate from '{fullPath}'. Verify path and password.");
+            return issues;
+        }
+
+        if (expiresAt <= nowUtc.UtcDateTime)
+        {
+            issues.Add($"HTTPS certificate has expired ({expiresAt:O}).");
+            return issues;
+        }
+
+        if (expiresAt <= nowUtc.UtcDateTime.AddDays(CertificateExpiryWarningDays))
+        {
+            issues.Add($"HTTPS certificate expires soon ({expiresAt:O}).");
+        }
+
+        return issues;
+    }
+
+    private static List<string> GetAgentPolicyReadinessIssues(global::AgentOptions options)
+    {
+        var issues = new List<string>();
+
+        if (options.AllowedExecutablePaths.Count == 0)
+        {
+            issues.Add("AllowedExecutablePaths is empty.");
+        }
+
+        if (options.AllowedReadablePaths.Count == 0)
+        {
+            issues.Add("AllowedReadablePaths is empty.");
+        }
+
+        if (options.AllowedWritablePaths.Count == 0)
+        {
+            issues.Add("AllowedWritablePaths is empty.");
+        }
+
+        if (options.ProcessTimeoutSeconds <= 0)
+        {
+            issues.Add("ProcessTimeoutSeconds must be greater than zero.");
+        }
+
+        if (options.MaxConcurrentProcesses <= 0)
+        {
+            issues.Add("MaxConcurrentProcesses must be greater than zero.");
+        }
+
+        return issues;
     }
 }

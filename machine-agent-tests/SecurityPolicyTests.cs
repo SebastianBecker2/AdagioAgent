@@ -129,4 +129,77 @@ public sealed class SecurityPolicyTests
             }
         }
     }
+
+    [Fact]
+    public void GetReadinessIssues_FlagsWeakApiKeyAndMissingAllowedPaths()
+    {
+        var security = new SecurityOptions
+        {
+            RequireHttps = false,
+            RequireApiKey = true,
+            ApiKey = "too-short",
+            ApiKeyHeaderName = "X-API-Key",
+        };
+
+        var agent = new global::AgentOptions
+        {
+            AllowedExecutablePaths = [],
+            AllowedReadablePaths = [],
+            AllowedWritablePaths = [],
+            MaxConcurrentProcesses = 0,
+            ProcessTimeoutSeconds = 0,
+        };
+
+        var issues = SecurityPolicy.GetReadinessIssues(security, agent, DateTimeOffset.UtcNow);
+
+        Assert.Contains(issues, issue => issue.Contains("recommended minimum length", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(issues, issue => issue.Contains("AllowedExecutablePaths", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(issues, issue => issue.Contains("AllowedReadablePaths", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(issues, issue => issue.Contains("AllowedWritablePaths", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(issues, issue => issue.Contains("ProcessTimeoutSeconds", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(issues, issue => issue.Contains("MaxConcurrentProcesses", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void GetReadinessIssues_FlagsCertificateExpiringSoon()
+    {
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest(
+            "CN=AdagioMachineAgentExpiringSoon",
+            key,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+
+        using var cert = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddDays(5));
+
+        var tempPath = Path.Combine(Path.GetTempPath(), $"adagio-expiring-{Guid.NewGuid():N}.pfx");
+        const string password = "test-password";
+
+        try
+        {
+            var bytes = cert.Export(X509ContentType.Pfx, password);
+            File.WriteAllBytes(tempPath, bytes);
+
+            var security = new SecurityOptions
+            {
+                RequireHttps = true,
+                HttpsCertificatePath = tempPath,
+                HttpsCertificatePassword = password,
+                RequireApiKey = false,
+                ApiKeyHeaderName = "X-API-Key",
+            };
+
+            var agent = new global::AgentOptions();
+            var issues = SecurityPolicy.GetReadinessIssues(security, agent, DateTimeOffset.UtcNow);
+
+            Assert.Contains(issues, issue => issue.Contains("expires soon", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+    }
 }

@@ -8,6 +8,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Decide bootstrap strategy for certificate and API key provisioning.
 - [x] Add startup validation and readiness endpoint for secure install verification.
 - [x] Add a first-run extension health check.
+- [x] Implement certificate bootstrap helper path for first-service-start.
+- [x] Implement API key provisioning and secure storage strategy for controlled environments.
+- [x] Add readiness checks for certificate validity window and API key quality.
+- [x] Add extension command to re-run startup diagnostics on demand.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -168,7 +172,16 @@ Start with Phase 0 and the first thin slice of Phase 1:
 The next implementation slice should focus on completing bootstrap mechanics and
 operator-facing diagnostics:
 
-1. Implement certificate provisioning helper path for first-service-start.
-2. Implement API key provisioning and secure storage strategy.
-3. Add readiness checks for certificate validity window and API key quality.
-4. Add extension command to re-run startup diagnostics on demand.
+1. [x] Implement certificate provisioning helper path for first-service-start.
+2. [x] Implement API key provisioning and secure storage strategy.
+3. [x] Add readiness checks for certificate validity window and API key quality.
+4. [x] Add extension command to re-run startup diagnostics on demand.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on diagnostics and readiness depth:
+
+1. Add readiness checks for UI automation backend capability (not only config).
+2. Add a diagnostics endpoint that returns summarized startup/runtime health data.
+3. Add extension-side status indicator for readiness state.
+4. Add structured logging output channel in the extension.

@@ -66,43 +66,18 @@ public sealed class AutomationController : ControllerBase
         {
             issues.Add("SecurityOptions are not available in DI.");
         }
-        else
-        {
-            var security = securityOptions.Value;
-            if (security.RequireHttps && string.IsNullOrWhiteSpace(security.HttpsCertificatePath))
-            {
-                issues.Add("HTTPS is required but no certificate path is configured.");
-            }
-
-            if (security.RequireApiKey &&
-                (string.IsNullOrWhiteSpace(security.ApiKey) ||
-                 string.Equals(security.ApiKey, "CHANGE_ME", StringComparison.Ordinal)))
-            {
-                issues.Add("API key authentication is required but ApiKey is unset.");
-            }
-        }
 
         if (agentOptions is null)
         {
             issues.Add("AgentOptions are not available in DI.");
         }
-        else
+
+        if (securityOptions is not null && agentOptions is not null)
         {
-            var agent = agentOptions.Value;
-            if (agent.AllowedExecutablePaths.Count == 0)
-            {
-                issues.Add("AllowedExecutablePaths is empty.");
-            }
-
-            if (agent.AllowedReadablePaths.Count == 0)
-            {
-                issues.Add("AllowedReadablePaths is empty.");
-            }
-
-            if (agent.AllowedWritablePaths.Count == 0)
-            {
-                issues.Add("AllowedWritablePaths is empty.");
-            }
+            issues.AddRange(SecurityPolicy.GetReadinessIssues(
+                securityOptions.Value,
+                agentOptions.Value,
+                DateTimeOffset.UtcNow));
         }
 
         return Ok(new ReadinessResponse(

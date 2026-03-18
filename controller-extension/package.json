@@ -10,7 +10,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -129,6 +131,10 @@
       {
         "command": "adagioAgent.selectOption",
         "title": "Adagio Agent: Select Option"
+      },
+      {
+        "command": "adagioAgent.runStartupDiagnostics",
+        "title": "Adagio Agent: Run Startup Diagnostics"
       }
     ],
     "configuration": {

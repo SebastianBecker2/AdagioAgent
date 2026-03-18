@@ -194,7 +194,7 @@ describe("extension activation and commands", () => {
 
     activate(context as never);
 
-    expect(registerCommandMock).toHaveBeenCalledTimes(29);
+    expect(registerCommandMock).toHaveBeenCalledTimes(30);
     expect(commandHandlers.has("adagioAgent.runExecutable")).toBe(true);
     expect(commandHandlers.has("adagioAgent.runInstallerAndCollectArtifacts")).toBe(true);
     expect(commandHandlers.has("adagioAgent.runAndCollectArtifacts")).toBe(true);
@@ -224,6 +224,7 @@ describe("extension activation and commands", () => {
     expect(commandHandlers.has("adagioAgent.pressHotkey")).toBe(true);
     expect(commandHandlers.has("adagioAgent.setCheckbox")).toBe(true);
     expect(commandHandlers.has("adagioAgent.selectOption")).toBe(true);
+    expect(commandHandlers.has("adagioAgent.runStartupDiagnostics")).toBe(true);
 
     expect(registerToolMock).toHaveBeenCalledTimes(29);
     expect(toolHandlers.has("adagioAgent_runExecutable")).toBe(true);
@@ -257,9 +258,33 @@ describe("extension activation and commands", () => {
     expect(toolHandlers.has("adagioAgent_selectOption")).toBe(true);
   });
 
+  it("runStartupDiagnostics command executes readiness check and shows success", async () => {
+    createAgentClientMock.mockReturnValue({
+      ready: vi.fn().mockResolvedValue({
+        status: "ready",
+        version: "0.1.0",
+        apiVersion: 1,
+        platform: "windows",
+        uiAutomationAvailable: true,
+        issues: [],
+      }),
+    });
+
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    activate(context as never);
+
+    const handler = commandHandlers.get("adagioAgent.runStartupDiagnostics");
+    await handler?.();
+
+    expect(showInformationMessageMock).toHaveBeenCalledWith(
+      "Adagio Agent diagnostics passed (windows, API v1)."
+    );
+  });
+
   it("getUiTree command rejects invalid pid without calling API", async () => {
     const context = { subscriptions: [] as Array<{ dispose: () => void }> };
     activate(context as never);
+    createAgentClientMock.mockClear();
 
     showInputBoxMock.mockResolvedValueOnce("abc");
 
@@ -273,6 +298,7 @@ describe("extension activation and commands", () => {
   it("click/screenshot/type commands reject invalid pid", async () => {
     const context = { subscriptions: [] as Array<{ dispose: () => void }> };
     activate(context as never);
+    createAgentClientMock.mockClear();
 
     showInputBoxMock.mockResolvedValueOnce("-4");
     await commandHandlers.get("adagioAgent.clickElement")?.();
