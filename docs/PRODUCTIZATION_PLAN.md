@@ -533,7 +533,16 @@ The next implementation slice should focus on promotion gate observability and a
 
 The next implementation slice should focus on release-ops closure package consolidation:
 
-1. Add script to generate a single release-ops closure package manifest linking readiness, promotion-gate, and evidence artifacts for a release tag.
-2. Add CI tagged-build artifact for the closure package manifest.
-3. Add docs section describing closure package contents and retention expectations.
-4. Add quickstart handoff step requiring closure package manifest attachment in release notes.
+1. [x] Add script to generate a single release-ops closure package manifest linking readiness, promotion-gate, and evidence artifacts for a release tag.
+2. [x] Add CI tagged-build artifact for the closure package manifest.
+3. [x] Add docs section describing closure package contents and retention expectations.
+4. [x] Add quickstart handoff step requiring closure package manifest attachment in release notes.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on closure manifest policy enforcement:
+
+1. Add script to validate closure package manifest completeness and required artifact existence for tagged releases.
+2. Add CI tagged-build gate that fails when closure package manifest validation fails.
+3. Add docs guidance for closure manifest remediation when artifacts are missing or stale.
+4. Add quickstart troubleshooting notes for closure manifest validation failures during release handoff.

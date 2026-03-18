@@ -95,7 +95,18 @@ Get-Content .\artifacts\release-ops-tag-readiness\release-ops-promotion-gate-tre
    - confirm override usage remains rare and documented,
    - confirm fail/blocked outcomes are not recurring across recent tags.
 
-10. Review dry-run diagnostics index trends before pilot handoff approval:
+10. Generate and attach the closure package manifest to release notes handoff:
+
+```powershell
+.\scripts\generate-release-ops-closure-package-manifest.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -TagName v<semver>
+Get-Content .\artifacts\release-ops-tag-readiness\release-ops-closure-package-manifest.md
+```
+
+   Handoff requirement:
+   - Attach the closure package manifest (JSON or Markdown) to release notes,
+     or link it from the release notes body.
+
+11. Review dry-run diagnostics index trends before pilot handoff approval:
 
 ```powershell
 .\scripts\update-release-ops-diagnostics-index.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics -MaxEntries 20

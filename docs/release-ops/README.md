@@ -310,6 +310,35 @@ Recommended audit cadence:
 2. If 2 or more overrides occur in the most recent 5 tagged builds, open a release-ops process improvement action.
 3. If any `fail` verdict appears in the most recent 3 tagged builds, require escalation follow-up closure before next promotion.
 
+### Closure package manifest
+
+Generate a single closure package manifest for a tagged release that links
+readiness, promotion-gate, sign-off, and evidence index artifacts:
+
+```powershell
+.\scripts\generate-release-ops-closure-package-manifest.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -TagName v<semver>
+```
+
+Manifest outputs:
+
+- `release-ops-closure-package-manifest.json`
+- `release-ops-closure-package-manifest.md`
+
+Required linked artifacts in closure manifest:
+
+- Sign-off record for tag version (`docs/release-ops/signoffs/v<semver>-*.md`)
+- Evidence index referenced by sign-off record
+- Tagged readiness summary JSON
+- Tagged readiness history index JSON
+- Promotion gate report JSON
+- Promotion gate trend index JSON
+
+Retention expectations:
+
+- Keep closure package manifest with tagged release artifacts for audit traceability.
+- Keep sign-off and evidence index in-repo for at least one full release cycle.
+- Keep promotion/readiness trend summaries through the next release retrospective window.
+
 Expected output layout:
 
 ```text

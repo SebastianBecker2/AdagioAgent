@@ -79,6 +79,16 @@ build_script:
         Write-Host 'Release-ops promotion gate skipped on non-tag build.'
       }
 
+  # 0.087 On tagged builds, generate closure package manifest linking release artifacts
+  - ps: |
+      if ($env:APPVEYOR_REPO_TAG -eq 'true') {
+        $readinessRoot = '.\artifacts\release-ops-tag-readiness'
+        .\scripts\generate-release-ops-closure-package-manifest.ps1 -ReadinessRoot $readinessRoot -OutputDir $readinessRoot
+      }
+      else {
+        Write-Host 'Release-ops closure package manifest skipped on non-tag build.'
+      }
+
   # 0.09 Run validator script tests (Pester)
   - ps: Invoke-Pester -Script .\scripts\tests\ValidatorScripts.Tests.ps1 -EnableExit
 
@@ -243,6 +253,10 @@ artifacts:
     name: ReleaseOpsPromotionGateReportArchive
   - path: artifacts/release-ops-tag-readiness/release-ops-promotion-gate-report-*.md
     name: ReleaseOpsPromotionGateReportArchiveMarkdown
+  - path: artifacts/release-ops-tag-readiness/release-ops-closure-package-manifest.json
+    name: ReleaseOpsClosurePackageManifest
+  - path: artifacts/release-ops-tag-readiness/release-ops-closure-package-manifest.md
+    name: ReleaseOpsClosurePackageManifestMarkdown
   - path: TestResults/**/*.trx
     name: DotNetTestResults
   - path: controller-extension/test-results/*.xml

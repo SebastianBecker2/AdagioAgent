@@ -7,6 +7,7 @@ $tagReadinessSummaryScript = Join-Path $repoRoot 'scripts\generate-release-ops-t
 $tagReadinessHistoryScript = Join-Path $repoRoot 'scripts\update-release-ops-tag-readiness-history.ps1'
 $promotionGateScript = Join-Path $repoRoot 'scripts\check-release-ops-promotion-gate.ps1'
 $promotionGateTrendScript = Join-Path $repoRoot 'scripts\update-release-ops-promotion-gate-trend.ps1'
+$closureManifestScript = Join-Path $repoRoot 'scripts\generate-release-ops-closure-package-manifest.ps1'
 
 function New-TestFile {
     param(
@@ -438,5 +439,46 @@ Describe 'Release evidence validators' {
         { & $promotionGateTrendScript -ReadinessRoot $trendRoot -MaxEntries 20 -RetentionDays 365 } | Should Not Throw
 
         (Test-Path -LiteralPath $stalePath -PathType Leaf) | Should Be $false
+    }
+
+    It 'generate-release-ops-closure-package-manifest links required artifacts for release tag' {
+        New-EvidenceFixture -Version $script:testVersion -DateStamp $script:testDateStamp -IncludeIndex -IncludeIndexEntries | Out-Null
+
+        $closureRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\closure-a'
+        if (-not (Test-Path -LiteralPath $closureRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $closureRoot -Force | Out-Null
+            $script:createdFiles += $closureRoot
+        }
+
+        New-TagReadinessSummaryFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-a/release-ops-tag-readiness-summary.json' -TagName "v$script:testVersion" -Verdict 'ready' -DiagnosticsOverallStatus 'pass' -ValidatorFailed 0
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-a/release-ops-tag-readiness-history-index.json' -Content '{}' | Out-Null
+        New-PromotionGateReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-a/release-ops-promotion-gate-report.json' -Verdict 'pass' -GatePassed $true -OverrideUsed $false
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-a/release-ops-promotion-gate-trend-index.json' -Content '{}' | Out-Null
+
+        { & $closureManifestScript -ReadinessRoot $closureRoot -OutputDir $closureRoot -TagName "v$script:testVersion" } | Should Not Throw
+
+        $manifestPath = Join-Path $closureRoot 'release-ops-closure-package-manifest.json'
+        (Test-Path -LiteralPath $manifestPath -PathType Leaf) | Should Be $true
+
+        $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+        $manifest.missingRequiredCount | Should Be 0
+        ($manifest.linkedArtifacts | Where-Object { -not $_.exists }).Count | Should Be 0
+    }
+
+    It 'generate-release-ops-closure-package-manifest fails when required artifact is missing' {
+        New-EvidenceFixture -Version $script:testVersion -DateStamp $script:testDateStamp -IncludeIndex -IncludeIndexEntries | Out-Null
+
+        $closureRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\closure-b'
+        if (-not (Test-Path -LiteralPath $closureRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $closureRoot -Force | Out-Null
+            $script:createdFiles += $closureRoot
+        }
+
+        New-TagReadinessSummaryFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-b/release-ops-tag-readiness-summary.json' -TagName "v$script:testVersion" -Verdict 'ready' -DiagnosticsOverallStatus 'pass' -ValidatorFailed 0
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-b/release-ops-tag-readiness-history-index.json' -Content '{}' | Out-Null
+        # Intentionally omit promotion gate report JSON to trigger missing required artifact failure.
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-b/release-ops-promotion-gate-trend-index.json' -Content '{}' | Out-Null
+
+        { & $closureManifestScript -ReadinessRoot $closureRoot -OutputDir $closureRoot -TagName "v$script:testVersion" } | Should Throw
     }
 }
