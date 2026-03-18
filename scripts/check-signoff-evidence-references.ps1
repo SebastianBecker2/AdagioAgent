@@ -1,6 +1,32 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Test-ApprovedExternalEvidenceUri {
+    param([string]$Value)
+
+    if ($Value -match '^https://') { return $true }
+    if ($Value -match '^s3://') { return $true }
+    if ($Value -match '^gs://') { return $true }
+    if ($Value -match '^az://') { return $true }
+    if ($Value -match '^\\\\[^\\]+\\[^\\]+') { return $true }
+
+    return $false
+}
+
+function Test-RepoRelativeEvidencePath {
+    param([string]$Value)
+
+    if ($Value -match '^[a-zA-Z]:[\\/]') { return $false }
+    if ($Value -match '^/') { return $false }
+    if ($Value -match '^\\(?!\\)') { return $false }
+    if ($Value -match '(^|[\\/])\.\.([\\/]|$)') { return $false }
+
+    $normalized = $Value -replace '\\', '/'
+    if (-not $normalized.StartsWith('docs/release-ops/evidence/')) { return $false }
+
+    return $true
+}
+
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 
 $isTaggedBuild = ($env:APPVEYOR_REPO_TAG -eq 'true') -or ($env:GITHUB_REF_TYPE -eq 'tag')
@@ -58,8 +84,18 @@ foreach ($label in $requiredLabels) {
         continue
     }
 
-    if ($value -match '^(https?://|s3://|\\\\)') {
-        # External/UNC evidence is allowed if explicit location is provided.
+    if ($value -match '^http://') {
+        $issues.Add("Unapproved external URI format for label '$label': use https:// if web-hosted.")
+        continue
+    }
+
+    if (Test-ApprovedExternalEvidenceUri -Value $value) {
+        # Approved external evidence URI formats are allowed.
+        continue
+    }
+
+    if (-not (Test-RepoRelativeEvidencePath -Value $value)) {
+        $issues.Add("Evidence value for label '$label' must be repo-relative under docs/release-ops/evidence/ or use an approved external URI format (https://, s3://, gs://, az://, \\\\UNC).")
         continue
     }
 

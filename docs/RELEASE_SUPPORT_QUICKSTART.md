@@ -57,3 +57,22 @@ $latest = Get-ChildItem .\artifacts\support-bundles -Directory | Sort-Object Las
 2. Collect support bundle and include extension output metadata if available.
 3. Build incident timeline in UTC and map correlation IDs to backend logs.
 4. Apply mitigation or rollback and log closure notes.
+
+### 5. Evidence packaging handoff
+
+1. Generate or update the per-release evidence index:
+
+```powershell
+.\scripts\generate-evidence-index.ps1 -Version <semver>
+```
+
+2. Populate concrete evidence files in the index and ensure each sign-off evidence
+   path is either:
+   - repo-relative under `docs/release-ops/evidence/`, or
+   - an approved external URI format (`https://`, `s3://`, `gs://`, `az://`, `\\server\share`).
+
+3. On tagged release validation, run:
+
+```powershell
+.\scripts\check-signoff-evidence-references.ps1
+```

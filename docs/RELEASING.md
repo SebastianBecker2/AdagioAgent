@@ -135,6 +135,16 @@ You can scaffold a dated sign-off record from the template:
 Store generated records under `docs/release-ops/signoffs/` and reference the
 selected record path in `CHANGELOG.md` for tagged releases.
 
+Generate and populate a release evidence index:
+
+```powershell
+.\scripts\generate-evidence-index.ps1 -Version NEW
+```
+
+Use repo-relative evidence paths under `docs/release-ops/evidence/` where
+possible. Approved external URI formats are `https://`, `s3://`, `gs://`,
+`az://`, and UNC paths (`\\server\share`).
+
 For tagged releases, ensure sign-off records include concrete evidence file
 references and validate them:
 

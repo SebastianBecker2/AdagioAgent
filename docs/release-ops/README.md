@@ -6,11 +6,18 @@ releases.
 ### Storage convention
 
 - Sign-off records are stored under `docs/release-ops/signoffs/`.
+- Evidence indexes and artifacts are stored under `docs/release-ops/evidence/`.
 - Naming convention: `v<semver>-<yyyymmdd>.md`.
 - Records are generated from `docs/OPERATIONS_SIGNOFF_TEMPLATE.md` using:
 
 ```powershell
 .\scripts\generate-signoff-record.ps1 -Version <semver>
+```
+
+Evidence indexes can be scaffolded using:
+
+```powershell
+.\scripts\generate-evidence-index.ps1 -Version <semver>
 ```
 
 ### Release reference requirement

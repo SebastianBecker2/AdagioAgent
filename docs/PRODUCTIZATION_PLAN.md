@@ -389,7 +389,16 @@ The next implementation slice should focus on release-signoff evidence traceabil
 
 The next implementation slice should focus on evidence repository conventions:
 
-1. Add `docs/release-ops/evidence/` structure guidance with category folders.
-2. Add script to scaffold evidence index files per release sign-off record.
-3. Add CI check ensuring sign-off records reference either repo-relative evidence paths or approved external URI formats.
-4. Add release quickstart section for evidence packaging handoff.
+1. [x] Add `docs/release-ops/evidence/` structure guidance with category folders.
+2. [x] Add script to scaffold evidence index files per release sign-off record.
+3. [x] Add CI check ensuring sign-off records reference either repo-relative evidence paths or approved external URI formats.
+4. [x] Add release quickstart section for evidence packaging handoff.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on sign-off/evidence automation hardening:
+
+1. Add script check ensuring each tagged-release sign-off includes a matching evidence index reference.
+2. Add CI tagged-build step to validate evidence index presence for the release version.
+3. Add docs examples for cross-linking sign-off records and evidence index files.
+4. Add retention/archive checklist section for evidence pruning after retention window.
