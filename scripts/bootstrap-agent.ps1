@@ -57,17 +57,39 @@ $pfxPassword = ConvertTo-SecureString -String $certificatePassword -AsPlainText 
 $createCertificate = $ForceRegenerate.IsPresent -or -not (Test-Path -LiteralPath $CertificatePath)
 
 if ($createCertificate) {
-    $newCertParams = @{
-        DnsName           = @("localhost", "127.0.0.1")
-        CertStoreLocation = "Cert:\LocalMachine\My"
-        FriendlyName      = "AdagioMachineAgent Bootstrap"
-        NotAfter          = (Get-Date).AddYears(2)
+    $candidateStores = @(
+        "Cert:\LocalMachine\My",
+        "Cert:\CurrentUser\My"
+    )
+
+    $cert = $null
+    $selectedStore = $null
+    $lastError = $null
+
+    foreach ($store in $candidateStores) {
+        try {
+            $newCertParams = @{
+                DnsName           = @("localhost", "127.0.0.1")
+                CertStoreLocation = $store
+                FriendlyName      = "AdagioMachineAgent Bootstrap"
+                NotAfter          = (Get-Date).AddYears(2)
+            }
+
+            $cert = New-SelfSignedCertificate @newCertParams
+            $selectedStore = $store
+            break
+        }
+        catch {
+            $lastError = $_
+        }
     }
 
-    $cert = New-SelfSignedCertificate @newCertParams
+    if (-not $cert -or [string]::IsNullOrWhiteSpace($selectedStore)) {
+        throw "Failed to create bootstrap certificate in LocalMachine and CurrentUser stores. Last error: $($lastError.Exception.Message)"
+    }
 
     $exportParams = @{
-        Cert     = "Cert:\LocalMachine\My\$($cert.Thumbprint)"
+        Cert     = "$selectedStore\$($cert.Thumbprint)"
         FilePath = $CertificatePath
         Password = $pfxPassword
         Force    = $true
