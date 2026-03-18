@@ -356,7 +356,8 @@ When startup fails, inspect:
 - `%ProgramData%\AdagioMachineAgent\startup-failure.json`
 
 Failure JSON files include a `suggestedAction` field with a first remediation
-step tailored to the detected error.
+step tailored to the detected error, and an `errorCode` field for fast support
+triage.
 
 **Configuration after installation (manual updates):**
 

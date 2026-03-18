@@ -48,24 +48,36 @@ function New-RandomString {
     return [Convert]::ToBase64String($bytes).TrimEnd("=").Replace("+", "-").Replace("/", "_")
 }
 
-function Get-SuggestedAction {
+function Get-FailureMetadata {
     param(
         [string]$ErrorMessage
     )
 
     if ($ErrorMessage -match 'Access denied|0x80070005|0x80090010') {
-        return 'Re-run installer as administrator and ensure LocalMachine certificate store access is allowed.'
+        return @{
+            errorCode = 'AA1001'
+            suggestedAction = 'Re-run installer as administrator and ensure LocalMachine certificate store access is allowed.'
+        }
     }
 
     if ($ErrorMessage -match 'appsettings file not found') {
-        return 'Verify appsettings.json exists in the installation folder before bootstrap runs.'
+        return @{
+            errorCode = 'AA1002'
+            suggestedAction = 'Verify appsettings.json exists in the installation folder before bootstrap runs.'
+        }
     }
 
     if ($ErrorMessage -match 'Failed to create bootstrap certificate') {
-        return 'Ensure certificate services are available and check local security policy restrictions for certificate enrollment.'
+        return @{
+            errorCode = 'AA1003'
+            suggestedAction = 'Ensure certificate services are available and check local security policy restrictions for certificate enrollment.'
+        }
     }
 
-    return 'Inspect bootstrap.log for detailed command output, then retry installation.'
+    return @{
+        errorCode = 'AA1099'
+        suggestedAction = 'Inspect bootstrap.log for detailed command output, then retry installation.'
+    }
 }
 
 $certDirectory = Split-Path -Parent $CertificatePath
@@ -161,6 +173,7 @@ if (-not $SuppressSecretOutput.IsPresent) {
 catch {
     try {
         New-Item -ItemType Directory -Path $bootstrapDiagnosticsRoot -Force | Out-Null
+        $metadata = Get-FailureMetadata -ErrorMessage $_.Exception.Message
 
         $failure = @{
             generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u')
@@ -170,7 +183,8 @@ catch {
             appSettingsPath = $AppSettingsPath
             certificatePath = $CertificatePath
             logPath = $LogPath
-            suggestedAction = Get-SuggestedAction -ErrorMessage $_.Exception.Message
+            errorCode = $metadata.errorCode
+            suggestedAction = $metadata.suggestedAction
         }
 
         $failure | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $bootstrapFailurePath -Encoding UTF8

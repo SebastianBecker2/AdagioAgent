@@ -16,28 +16,43 @@ if (-not [System.IO.Path]::IsPathRooted($AppSettingsPath)) {
 $diagnosticsRoot = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::CommonApplicationData)) "AdagioMachineAgent"
 $failurePath = Join-Path $diagnosticsRoot "bootstrap-preflight-failure.json"
 
-function Get-SuggestedAction {
+function Get-FailureMetadata {
     param(
         [string]$ErrorMessage
     )
 
     if ($ErrorMessage -match 'CHANGE_ME') {
-        return 'Re-run installer to regenerate bootstrap values or update appsettings.json with real security values.'
+        return @{
+            errorCode = 'AA2001'
+            suggestedAction = 'Re-run installer to regenerate bootstrap values or update appsettings.json with real security values.'
+        }
     }
 
     if ($ErrorMessage -match 'certificate file not found') {
-        return 'Verify SecurityOptions.HttpsCertificatePath points to an existing .pfx file and rerun installation.'
+        return @{
+            errorCode = 'AA2002'
+            suggestedAction = 'Verify SecurityOptions.HttpsCertificatePath points to an existing .pfx file and rerun installation.'
+        }
     }
 
     if ($ErrorMessage -match 'Failed to load HTTPS certificate') {
-        return 'Verify SecurityOptions.HttpsCertificatePassword matches the .pfx file password and rerun installation.'
+        return @{
+            errorCode = 'AA2003'
+            suggestedAction = 'Verify SecurityOptions.HttpsCertificatePassword matches the .pfx file password and rerun installation.'
+        }
     }
 
     if ($ErrorMessage -match 'ApiKey is required') {
-        return 'Set a non-empty SecurityOptions.ApiKey value and rerun installation.'
+        return @{
+            errorCode = 'AA2004'
+            suggestedAction = 'Set a non-empty SecurityOptions.ApiKey value and rerun installation.'
+        }
     }
 
-    return 'Inspect bootstrap-preflight.log for detailed validation output, then retry installation.'
+    return @{
+        errorCode = 'AA2099'
+        suggestedAction = 'Inspect bootstrap-preflight.log for detailed validation output, then retry installation.'
+    }
 }
 
 if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
@@ -102,6 +117,7 @@ try {
 catch {
     try {
         New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
+        $metadata = Get-FailureMetadata -ErrorMessage $_.Exception.Message
 
         $failure = @{
             generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u')
@@ -109,7 +125,8 @@ catch {
             exceptionType = $_.Exception.GetType().FullName
             appSettingsPath = $AppSettingsPath
             logPath = $LogPath
-            suggestedAction = Get-SuggestedAction -ErrorMessage $_.Exception.Message
+            errorCode = $metadata.errorCode
+            suggestedAction = $metadata.suggestedAction
         }
 
         $failure | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $failurePath -Encoding UTF8
