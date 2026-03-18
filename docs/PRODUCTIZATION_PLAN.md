@@ -470,7 +470,16 @@ The next implementation slice should focus on release-ops diagnostics retention 
 
 The next implementation slice should focus on diagnostics artifact visibility and indexing:
 
-1. Add CI step to preserve latest successful dry-run summary with build metadata for auditability.
-2. Add script to append/update a local diagnostics index file summarizing recent dry-run outcomes.
-3. Add docs guidance for interpreting diagnostics index trends over consecutive builds.
-4. Add quickstart checklist item to review diagnostics index before pilot handoff approval.
+1. [x] Add CI step to preserve latest successful dry-run summary with build metadata for auditability.
+2. [x] Add script to append/update a local diagnostics index file summarizing recent dry-run outcomes.
+3. [x] Add docs guidance for interpreting diagnostics index trends over consecutive builds.
+4. [x] Add quickstart checklist item to review diagnostics index before pilot handoff approval.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on diagnostics index quality gates:
+
+1. Add script check that diagnostics index is refreshed when new dry-run summaries are created.
+2. Add CI non-tag assertion to fail if diagnostics index update step is skipped or stale.
+3. Add docs note defining acceptable diagnostics trend thresholds for pilot handoff decisions.
+4. Add quickstart decision table for pass/hold based on diagnostics trend outcomes.

@@ -60,27 +60,62 @@ build_script:
         $diagnosticsRoot = '.\artifacts\release-ops-dryrun-diagnostics'
         New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
         .\scripts\prune-release-ops-dryrun-diagnostics.ps1 -DiagnosticsRoot $diagnosticsRoot -RetentionDays 14
-        $summaryPath = Join-Path $diagnosticsRoot 'dryrun-validation-summary.json'
+        $timestamp = [DateTime]::UtcNow.ToString('yyyyMMddHHmmss')
+        $summaryPath = Join-Path $diagnosticsRoot "dryrun-validation-summary-$timestamp.json"
 
         try {
           .\scripts\generate-release-ops-dry-run.ps1 -OutputRoot $dryRunRoot -Force
           $latest = Get-ChildItem -LiteralPath $dryRunRoot -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if (-not $latest) { throw 'Dry-run package generation produced no output directory.' }
           .\scripts\validate-release-ops-dry-run.ps1 -PackagePath $latest.FullName -SummaryOutputPath $summaryPath
-          Remove-Item -LiteralPath $dryRunRoot -Recurse -Force
+
+          $summary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
+          $summary | Add-Member -NotePropertyName buildMetadata -NotePropertyValue @{
+            provider = 'appveyor'
+            buildId = $env:APPVEYOR_BUILD_ID
+            buildNumber = $env:APPVEYOR_BUILD_NUMBER
+            buildVersion = $env:APPVEYOR_BUILD_VERSION
+            commit = $env:APPVEYOR_REPO_COMMIT
+            branch = $env:APPVEYOR_REPO_BRANCH
+            repoTag = $env:APPVEYOR_REPO_TAG
+          } -Force
+
+          $successSummaryPath = Join-Path $diagnosticsRoot "dryrun-validation-summary-success-$timestamp.json"
+          $summary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $successSummaryPath -Encoding UTF8
+          Copy-Item -LiteralPath $successSummaryPath -Destination (Join-Path $diagnosticsRoot 'dryrun-validation-summary-latest-success.json') -Force
           Remove-Item -LiteralPath $summaryPath -Force -ErrorAction SilentlyContinue
+
+          Remove-Item -LiteralPath $dryRunRoot -Recurse -Force
         }
         catch {
+          $failedSummaryPath = Join-Path $diagnosticsRoot "dryrun-validation-summary-failure-$timestamp.json"
+          if (Test-Path -LiteralPath $summaryPath -PathType Leaf) {
+            Move-Item -LiteralPath $summaryPath -Destination $failedSummaryPath -Force
+            $summaryPath = $failedSummaryPath
+          }
+
           if (-not (Test-Path -LiteralPath $summaryPath -PathType Leaf)) {
             @{
               generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u')
               success = $false
               error = $_.Exception.Message
-            } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
+              buildMetadata = @{
+                provider = 'appveyor'
+                buildId = $env:APPVEYOR_BUILD_ID
+                buildNumber = $env:APPVEYOR_BUILD_NUMBER
+                buildVersion = $env:APPVEYOR_BUILD_VERSION
+                commit = $env:APPVEYOR_REPO_COMMIT
+                branch = $env:APPVEYOR_REPO_BRANCH
+                repoTag = $env:APPVEYOR_REPO_TAG
+              }
+            } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
           }
 
           Write-Host "Dry-run diagnostics summary captured at: $summaryPath"
           throw
+        }
+        finally {
+          .\scripts\update-release-ops-diagnostics-index.ps1 -DiagnosticsRoot $diagnosticsRoot -MaxEntries 20
         }
       }
 
@@ -123,6 +158,8 @@ artifacts:
     name: AdagioMachineAgentSetup
   - path: artifacts/release-ops-dryrun-diagnostics/*.json
     name: DryRunValidationDiagnostics
+  - path: artifacts/release-ops-dryrun-diagnostics/*.md
+    name: DryRunValidationDiagnosticsMarkdown
   - path: TestResults/**/*.trx
     name: DotNetTestResults
   - path: controller-extension/test-results/*.xml

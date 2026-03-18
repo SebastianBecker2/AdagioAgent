@@ -3,6 +3,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $generateDryRunScript = Join-Path $repoRoot 'scripts\generate-release-ops-dry-run.ps1'
 $validateDryRunScript = Join-Path $repoRoot 'scripts\validate-release-ops-dry-run.ps1'
 $pruneDiagnosticsScript = Join-Path $repoRoot 'scripts\prune-release-ops-dryrun-diagnostics.ps1'
+$updateDiagnosticsIndexScript = Join-Path $repoRoot 'scripts\update-release-ops-diagnostics-index.ps1'
 
 function Get-LatestDryRunPackage {
     param([string]$Root)
@@ -89,5 +90,45 @@ Describe 'Release-ops dry-run scripts' {
 
         (Test-Path -LiteralPath $staleFile -PathType Leaf) | Should Be $false
         (Test-Path -LiteralPath $recentFile -PathType Leaf) | Should Be $true
+    }
+
+    It 'update-release-ops-diagnostics-index summarizes recent success and failure entries' {
+        $diagnosticsRoot = Join-Path $script:testRoot 'diagnostics'
+        New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
+
+        $successSummary = Join-Path $diagnosticsRoot 'dryrun-validation-summary-success-a.json'
+        $failureSummary = Join-Path $diagnosticsRoot 'dryrun-validation-summary-failure-b.json'
+
+        @{
+            generatedAtUtc = [DateTimeOffset]::UtcNow.AddMinutes(-10).ToString('u')
+            success = $true
+            error = ''
+            issues = @()
+        } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $successSummary -Encoding UTF8
+
+        @{
+            generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u')
+            success = $false
+            error = 'fixture missing'
+            issues = @(
+                @{
+                    category = 'fixture'
+                    message = 'missing file'
+                }
+            )
+        } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $failureSummary -Encoding UTF8
+
+        { & $updateDiagnosticsIndexScript -DiagnosticsRoot $diagnosticsRoot -MaxEntries 20 } | Should Not Throw
+
+        $indexJsonPath = Join-Path $diagnosticsRoot 'dryrun-diagnostics-index.json'
+        $indexMdPath = Join-Path $diagnosticsRoot 'dryrun-diagnostics-index.md'
+
+        (Test-Path -LiteralPath $indexJsonPath -PathType Leaf) | Should Be $true
+        (Test-Path -LiteralPath $indexMdPath -PathType Leaf) | Should Be $true
+
+        $index = Get-Content -LiteralPath $indexJsonPath -Raw | ConvertFrom-Json
+        $index.totalEntries | Should Be 2
+        $index.successCount | Should Be 1
+        $index.failureCount | Should Be 1
     }
 }

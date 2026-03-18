@@ -114,6 +114,27 @@ issues, manifest/index/signoff for content or cross-link problems.
 - For local development, run manual pruning when diagnostic summaries are no
 	longer needed for incident triage.
 
+### Diagnostics index and trend interpretation
+
+Generate/update diagnostics index from retained summaries:
+
+```powershell
+.\scripts\update-release-ops-diagnostics-index.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics -MaxEntries 20
+```
+
+Index outputs:
+
+- `dryrun-diagnostics-index.json`: machine-readable recent diagnostics summary.
+- `dryrun-diagnostics-index.md`: human-readable recent outcomes list.
+
+Trend guidance across consecutive builds:
+
+- Stable readiness: consecutive `SUCCESS` entries with low issue counts.
+- Regression signal: repeated `FAILURE` entries with same category (for example,
+	`fixture` or `index`) across adjacent builds.
+- Flaky pipeline signal: alternating success/failure with no code changes in
+	diagnostics scripts; investigate environment and cleanup timing.
+
 Expected output layout:
 
 ```text

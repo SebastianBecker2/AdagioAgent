@@ -35,6 +35,12 @@ $latest = Get-ChildItem .\artifacts\support-bundles -Directory | Sort-Object Las
 .\scripts\generate-release-ops-dry-run.ps1 -OutputRoot .\artifacts\release-ops-dry-run -Force
 ```
 
+5. Review dry-run diagnostics index trends before pilot handoff approval:
+
+```powershell
+.\scripts\update-release-ops-diagnostics-index.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics -MaxEntries 20
+```
+
 ### 2. Observability and docs verification
 
 1. Verify README and support links:
