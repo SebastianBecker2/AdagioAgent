@@ -70,6 +70,28 @@ Generate a local dry-run package:
 .\scripts\generate-release-ops-dry-run.ps1 -OutputRoot .\artifacts\release-ops-dry-run -Force
 ```
 
+Validate the latest dry-run package under a root:
+
+```powershell
+.\scripts\validate-release-ops-dry-run.ps1 -OutputRoot .\artifacts\release-ops-dry-run
+```
+
+Validate a specific dry-run package path:
+
+```powershell
+.\scripts\validate-release-ops-dry-run.ps1 -PackagePath .\artifacts\release-ops-dry-run\v<semver>-<yyyymmdd>-dryrun
+```
+
+Dry-run script parameters and common usage patterns:
+
+- `generate-release-ops-dry-run.ps1`
+	- `-OutputRoot`: choose where dry-run package folders are generated.
+	- `-Version`: optional semver override for fixture naming.
+	- `-Force`: overwrite existing package directory for same version/date.
+- `validate-release-ops-dry-run.ps1`
+	- `-OutputRoot`: validates latest package under root when `-PackagePath` is omitted.
+	- `-PackagePath`: validates one explicit dry-run package directory.
+
 Expected output layout:
 
 ```text

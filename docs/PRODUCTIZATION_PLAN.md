@@ -443,7 +443,16 @@ The next implementation slice should focus on dry-run validator integration:
 
 The next implementation slice should focus on dry-run test coverage and hardening:
 
-1. Add Pester tests for dry-run generation and validation scripts (pass and representative failure cases).
-2. Add CI step to run dry-run script tests alongside existing validator tests.
-3. Add docs note for dry-run script parameters (`-OutputRoot`, `-PackagePath`, `-Force`) and common usage patterns.
-4. Add quickstart guidance for choosing safe temporary output roots in CI and local runs.
+1. [x] Add Pester tests for dry-run generation and validation scripts (pass and representative failure cases).
+2. [x] Add CI step to run dry-run script tests alongside existing validator tests.
+3. [x] Add docs note for dry-run script parameters (`-OutputRoot`, `-PackagePath`, `-Force`) and common usage patterns.
+4. [x] Add quickstart guidance for choosing safe temporary output roots in CI and local runs.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on dry-run failure diagnostics quality:
+
+1. Add machine-readable summary output option for dry-run validator failures.
+2. Add CI capture step to persist dry-run validation diagnostics when non-tag smoke checks fail.
+3. Add docs section describing how to interpret dry-run validator failure categories.
+4. Add quickstart escalation path for repeated dry-run validation failures before pilot handoff.

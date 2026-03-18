@@ -115,6 +115,14 @@ Common failures and fixes:
 
 ### 8. Troubleshooting dry-run generation and cleanup
 
+Safe output-root guidance:
+
+- Local runs: prefer a disposable workspace path such as
+   `./artifacts/release-ops-dry-run` and avoid shared synced folders.
+- CI runs: prefer an ephemeral temp path such as
+   `$env:TEMP\adagio-release-ops-dryrun-ci` and remove it after validation.
+- Always use `-Force` for repeatable dry-run automation in preflight scripts.
+
 - Dry-run package generation reports existing directory conflicts:
    rerun with `-Force` or choose a clean `-OutputRoot` path.
 - Dry-run validation fails on missing required files:
