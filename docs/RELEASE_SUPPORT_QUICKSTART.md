@@ -102,3 +102,6 @@ Common failures and fixes:
 - Repo-relative path policy errors:
    use evidence paths under `docs/release-ops/evidence/...` or approved external
    URI formats only.
+- Strict-mode script failures in local test runs:
+   use array-wrapped file enumeration (`@(Get-ChildItem ...)`) and ensure tag
+   env vars are reset between test cases.

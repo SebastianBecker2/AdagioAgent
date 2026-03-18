@@ -44,6 +44,9 @@ build_script:
   # 0.08 On tagged builds, validate evidence index content integrity
   - ps: .\scripts\check-evidence-index-content.ps1
 
+  # 0.09 Run validator script tests (Pester)
+  - ps: Invoke-Pester -Script .\scripts\tests\ValidatorScripts.Tests.ps1 -EnableExit
+
   # 0.2 Generate and validate offline support bundle manifest shape
   - ps: |
       $bundleRoot = Join-Path $env:TEMP 'adagio-support-bundles-ci'

@@ -416,7 +416,16 @@ The next implementation slice should focus on evidence integrity and drift detec
 
 The next implementation slice should focus on evidence validation test coverage:
 
-1. Add Pester tests for tagged-build sign-off/evidence index validators (success and failure cases).
-2. Add CI step to run validator script tests.
-3. Add docs section listing validator scripts with expected pass/fail behaviors.
-4. Add troubleshooting guidance for strict-mode pitfalls in PowerShell validator scripts.
+1. [x] Add Pester tests for tagged-build sign-off/evidence index validators (success and failure cases).
+2. [x] Add CI step to run validator script tests.
+3. [x] Add docs section listing validator scripts with expected pass/fail behaviors.
+4. [x] Add troubleshooting guidance for strict-mode pitfalls in PowerShell validator scripts.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on release-ops dry-run automation:
+
+1. Add script to generate a local dry-run release-ops evidence package from sample fixtures.
+2. Add CI non-tag smoke step to execute dry-run package generation and cleanup.
+3. Add docs walkthrough for dry-run usage and expected output layout.
+4. Add quickstart note for when to run dry-run automation before pilot handoff.

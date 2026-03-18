@@ -39,6 +39,36 @@ In evidence index `docs/release-ops/evidence/indexes/v<semver>-<yyyymmdd>-eviden
 For tagged releases, `CHANGELOG.md` should include a reference to the matching
 sign-off record file (enforced in CI tagged builds).
 
+### Validator scripts and expected behavior
+
+- `scripts/check-signoff-evidence-references.ps1`
+	- Passes when required sign-off evidence labels are populated with concrete
+		repo-relative evidence paths (or approved external URI formats).
+	- Fails when labels are missing, values are placeholders, or repo-relative
+		evidence paths are invalid/non-existent.
+- `scripts/check-signoff-evidence-index-reference.ps1`
+	- Passes when tagged-release sign-off record includes a concrete `Evidence
+		index path` and the referenced index cross-links back to the same sign-off
+		file.
+	- Fails when `Evidence index path` is missing/placeholder/invalid, missing on
+		disk, or cross-link target does not match.
+- `scripts/check-evidence-index-content.ps1`
+	- Passes when the evidence index contains required entries (`Support bundle`,
+		`Correlation trace`, `Rollback rehearsal`, `Upgrade validation`) with
+		concrete values and valid paths.
+	- Fails when required entries are missing, placeholders are used, version
+		scoping is incorrect, or referenced files are absent.
+
+### Strict-mode troubleshooting tips
+
+- In `Set-StrictMode -Version Latest`, single-object pipeline results can break
+	`.Count` checks. Normalize file search results with array wrapping:
+	`@(Get-ChildItem ...)`.
+- Restore environment variables after tests (`APPVEYOR_REPO_TAG`,
+	`APPVEYOR_REPO_TAG_NAME`) to avoid cross-test contamination.
+- Avoid implicit null member access in validators; validate presence of regex
+	matches before reading capture groups.
+
 ### Evidence retention and location convention
 
 - Keep sign-off records and referenced evidence paths for at least one full
