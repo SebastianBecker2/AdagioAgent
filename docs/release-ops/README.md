@@ -91,6 +91,21 @@ artifacts/release-ops-dry-run/
 				v<semver>-dryrun-upgrade.md
 ```
 
+Dry-run to tagged-release file mapping:
+
+- `signoffs/v<semver>-<yyyymmdd>.md` (dry-run fixture) ->
+	`docs/release-ops/signoffs/v<semver>-<yyyymmdd>.md`
+- `evidence/indexes/v<semver>-<yyyymmdd>-evidence.md` (dry-run fixture) ->
+	`docs/release-ops/evidence/indexes/v<semver>-<yyyymmdd>-evidence.md`
+- `evidence/support-bundles/v<semver>-dryrun-bundle.json` ->
+	`docs/release-ops/evidence/support-bundles/v<semver>-<artifact>.json`
+- `evidence/correlation-traces/v<semver>-dryrun-trace.md` ->
+	`docs/release-ops/evidence/correlation-traces/v<semver>-<trace>.md`
+- `evidence/rollback/v<semver>-dryrun-rollback.md` ->
+	`docs/release-ops/evidence/rollback/v<semver>-<rehearsal>.md`
+- `evidence/upgrade-validation/v<semver>-dryrun-upgrade.md` ->
+	`docs/release-ops/evidence/upgrade-validation/v<semver>-<validation>.md`
+
 ### Strict-mode troubleshooting tips
 
 - In `Set-StrictMode -Version Latest`, single-object pipeline results can break

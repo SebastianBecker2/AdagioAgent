@@ -112,3 +112,13 @@ Common failures and fixes:
 - Strict-mode script failures in local test runs:
    use array-wrapped file enumeration (`@(Get-ChildItem ...)`) and ensure tag
    env vars are reset between test cases.
+
+### 8. Troubleshooting dry-run generation and cleanup
+
+- Dry-run package generation reports existing directory conflicts:
+   rerun with `-Force` or choose a clean `-OutputRoot` path.
+- Dry-run validation fails on missing required files:
+   regenerate package and ensure `manifest.json`, sign-off, index, and all four
+   evidence fixture files are present.
+- CI/local cleanup errors on dry-run output root:
+   close file handles/editors pointing into the dry-run folder and retry cleanup.

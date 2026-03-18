@@ -434,7 +434,16 @@ The next implementation slice should focus on release-ops dry-run automation:
 
 The next implementation slice should focus on dry-run validator integration:
 
-1. Add script to validate generated dry-run package structure and required files.
-2. Add CI non-tag check to run dry-run package validation after generation.
-3. Add docs note mapping dry-run package files to tagged-release equivalents.
-4. Add quickstart troubleshooting notes for dry-run generation/cleanup failures.
+1. [x] Add script to validate generated dry-run package structure and required files.
+2. [x] Add CI non-tag check to run dry-run package validation after generation.
+3. [x] Add docs note mapping dry-run package files to tagged-release equivalents.
+4. [x] Add quickstart troubleshooting notes for dry-run generation/cleanup failures.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on dry-run test coverage and hardening:
+
+1. Add Pester tests for dry-run generation and validation scripts (pass and representative failure cases).
+2. Add CI step to run dry-run script tests alongside existing validator tests.
+3. Add docs note for dry-run script parameters (`-OutputRoot`, `-PackagePath`, `-Force`) and common usage patterns.
+4. Add quickstart guidance for choosing safe temporary output roots in CI and local runs.

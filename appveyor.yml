@@ -57,8 +57,7 @@ build_script:
         .\scripts\generate-release-ops-dry-run.ps1 -OutputRoot $dryRunRoot -Force
         $latest = Get-ChildItem -LiteralPath $dryRunRoot -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
         if (-not $latest) { throw 'Dry-run package generation produced no output directory.' }
-        $manifest = Join-Path $latest.FullName 'manifest.json'
-        if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) { throw 'Dry-run package missing manifest.json.' }
+        .\scripts\validate-release-ops-dry-run.ps1 -PackagePath $latest.FullName
         Remove-Item -LiteralPath $dryRunRoot -Recurse -Force
       }
 
