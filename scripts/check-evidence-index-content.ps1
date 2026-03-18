@@ -1,4 +1,4 @@
-Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Test-ApprovedExternalEvidenceUri {
@@ -37,7 +37,7 @@ $tagName = if ($env:APPVEYOR_REPO_TAG_NAME) { $env:APPVEYOR_REPO_TAG_NAME } else
 
 if (-not $isTaggedBuild -or [string]::IsNullOrWhiteSpace($tagName)) {
     Write-Host 'Evidence index content check skipped (not a tagged build).'
-    exit 0
+    return
 }
 
 if ($tagName -notmatch '^v(\d+\.\d+\.\d+)$') {

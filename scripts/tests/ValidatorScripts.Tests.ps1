@@ -12,6 +12,7 @@ $closureManifestCheckScript = Join-Path $repoRoot 'scripts\check-release-ops-clo
 $closureManifestDriftScript = Join-Path $repoRoot 'scripts\check-release-ops-closure-package-drift.ps1'
 $closureIntegrityReportScript = Join-Path $repoRoot 'scripts\generate-release-ops-closure-package-integrity-report.ps1'
 $closureIntegrityHistoryScript = Join-Path $repoRoot 'scripts\update-release-ops-closure-package-integrity-history.ps1'
+$closureIntegrityGateScript    = Join-Path $repoRoot 'scripts\check-release-ops-closure-package-integrity-gate.ps1'
 
 function New-TestFile {
     param(
@@ -127,6 +128,27 @@ function New-PromotionGateReportFixture {
         thresholds = @{ requiredRecentReadyCount = 3; noHoldInRecentCount = 2 }
         directorOverride = @{ allowed = $true; used = $OverrideUsed; reference = if ($OverrideUsed) { 'DIR-1' } else { '' } }
         summary = @{ totalEntries = 3; latestEntries = @() }
+    } | ConvertTo-Json -Depth 8
+
+    New-TestFile -RelativePath $RelativePath -Content $content | Out-Null
+}
+
+function New-ClosureIntegrityHistoryIndexFixture {
+    param(
+        [string]$RelativePath,
+        [object[]]$Entries = @()
+    )
+
+    $passCount    = @($Entries | Where-Object { $_.integrityVerdict -eq 'pass' }).Count
+    $failCount    = @($Entries | Where-Object { $_.integrityVerdict -eq 'fail' }).Count
+    $unknownCount = @($Entries | Where-Object { @('pass','fail') -notcontains $_.integrityVerdict }).Count
+
+    $content = @{
+        generatedAtUtc        = [DateTimeOffset]::UtcNow.ToString('o')
+        totalEntries          = $Entries.Count
+        verdictCounts         = @{ pass = $passCount; fail = $failCount; unknown = $unknownCount }
+        uniqueManifestHashCount = 1
+        entries               = $Entries
     } | ConvertTo-Json -Depth 8
 
     New-TestFile -RelativePath $RelativePath -Content $content | Out-Null
@@ -680,5 +702,48 @@ Describe 'Release evidence validators' {
         { & $closureIntegrityHistoryScript -ReadinessRoot $integrityRoot -MaxEntries 20 -RetentionDays 365 } | Should Not Throw
 
         (Test-Path -LiteralPath $stalePath -PathType Leaf) | Should Be $false
+    }
+
+    It 'check-release-ops-closure-package-integrity-gate passes when history has sufficient recent pass entries' {
+        $gateRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\closure-k'
+        if (-not (Test-Path -LiteralPath $gateRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $gateRoot -Force | Out-Null
+            $script:createdFiles += $gateRoot
+        }
+
+        $entries = @(
+            [pscustomobject]@{ integrityVerdict = 'pass'; tagName = "v$script:testVersion"; generatedAtUtc = [DateTimeOffset]::UtcNow.AddMinutes(-2).ToString('o'); issueCount = 0; manifestSha256 = 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'; fileName = "release-ops-closure-package-integrity-report-pass1.json" },
+            [pscustomobject]@{ integrityVerdict = 'pass'; tagName = "v$script:testVersion"; generatedAtUtc = [DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('o'); issueCount = 0; manifestSha256 = 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'; fileName = "release-ops-closure-package-integrity-report-pass2.json" }
+        )
+        New-ClosureIntegrityHistoryIndexFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-k/release-ops-closure-package-integrity-history-index.json' -Entries $entries
+
+        { & $closureIntegrityGateScript -ReadinessRoot $gateRoot -MinRecentPassCount 1 -RecentWindowCount 5 -FailOnBlock } | Should Not Throw
+
+        $reportPath = Join-Path $gateRoot 'release-ops-closure-package-integrity-gate-report.json'
+        (Test-Path -LiteralPath $reportPath -PathType Leaf) | Should Be $true
+        $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+        $report.gateVerdict | Should Be 'pass'
+        $report.recentPassCount | Should Be 2
+    }
+
+    It 'check-release-ops-closure-package-integrity-gate blocks and throws with FailOnBlock when no recent pass entries exist' {
+        $gateRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\closure-l'
+        if (-not (Test-Path -LiteralPath $gateRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $gateRoot -Force | Out-Null
+            $script:createdFiles += $gateRoot
+        }
+
+        $entries = @(
+            [pscustomobject]@{ integrityVerdict = 'fail'; tagName = "v$script:testVersion"; generatedAtUtc = [DateTimeOffset]::UtcNow.AddMinutes(-2).ToString('o'); issueCount = 1; manifestSha256 = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'; fileName = "release-ops-closure-package-integrity-report-fail1.json" }
+        )
+        New-ClosureIntegrityHistoryIndexFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-l/release-ops-closure-package-integrity-history-index.json' -Entries $entries
+
+        { & $closureIntegrityGateScript -ReadinessRoot $gateRoot -MinRecentPassCount 1 -RecentWindowCount 5 -FailOnBlock } | Should Throw
+
+        $reportPath = Join-Path $gateRoot 'release-ops-closure-package-integrity-gate-report.json'
+        (Test-Path -LiteralPath $reportPath -PathType Leaf) | Should Be $true
+        $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+        $report.gateVerdict | Should Be 'block'
+        $report.recentPassCount | Should Be 0
     }
 }

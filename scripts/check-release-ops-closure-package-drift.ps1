@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$ReadinessRoot = (Join-Path $PSScriptRoot '..\artifacts\release-ops-tag-readiness'),
     [string]$ManifestPath,
     [string]$TagName
@@ -42,7 +42,7 @@ if (-not $TagName) {
 
 if (-not $isTaggedBuild -or [string]::IsNullOrWhiteSpace($TagName)) {
     Write-Host 'Closure package drift check skipped (not a tagged build).'
-    exit 0
+    return
 }
 
 if ($TagName -notmatch '^v(\d+\.\d+\.\d+)$') {
@@ -128,3 +128,4 @@ if ($issues.Count -gt 0) {
 }
 
 Write-Host "Closure package drift check passed for tag $TagName using $ManifestPath."
+

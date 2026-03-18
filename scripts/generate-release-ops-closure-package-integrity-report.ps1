@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$ReadinessRoot = (Join-Path $PSScriptRoot '..\artifacts\release-ops-tag-readiness'),
     [string]$OutputDir,
     [string]$ManifestPath,
@@ -27,7 +27,7 @@ $isTaggedBuild = ($env:APPVEYOR_REPO_TAG -eq 'true') -or ($env:GITHUB_REF_TYPE -
 
 if (-not $isTaggedBuild -or [string]::IsNullOrWhiteSpace($TagName)) {
     Write-Host 'Closure package integrity report skipped (not a tagged build).'
-    exit 0
+    return
 }
 
 if ($TagName -notmatch '^v(\d+\.\d+\.\d+)$') {
@@ -165,3 +165,4 @@ Write-Host "Release-ops closure package integrity report written: $outputJsonPat
 if ($FailOnIssues -and $issues.Count -gt 0) {
     throw "Closure package integrity report detected $($issues.Count) issue(s)."
 }
+

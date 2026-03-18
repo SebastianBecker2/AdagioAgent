@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$DiagnosticsRoot = (Join-Path $PSScriptRoot '..\artifacts\release-ops-dryrun-diagnostics'),
     [int]$RetentionDays = 14
 )
@@ -12,7 +12,7 @@ if ($RetentionDays -lt 0) {
 
 if (-not (Test-Path -LiteralPath $DiagnosticsRoot -PathType Container)) {
     Write-Host "Dry-run diagnostics root not found; nothing to prune: $DiagnosticsRoot"
-    exit 0
+    return
 }
 
 $cutoffUtc = [DateTime]::UtcNow.AddDays(-$RetentionDays)
@@ -32,3 +32,4 @@ foreach ($file in $diagnosticFiles) {
 }
 
 Write-Host "Dry-run diagnostics prune completed. Removed=$removedCount Kept=$keptCount RetentionDays=$RetentionDays Root=$DiagnosticsRoot"
+

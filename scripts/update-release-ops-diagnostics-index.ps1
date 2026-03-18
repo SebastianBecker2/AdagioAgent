@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$DiagnosticsRoot = (Join-Path $PSScriptRoot '..\artifacts\release-ops-dryrun-diagnostics'),
     [int]$MaxEntries = 20
 )
@@ -12,7 +12,7 @@ if ($MaxEntries -le 0) {
 
 if (-not (Test-Path -LiteralPath $DiagnosticsRoot -PathType Container)) {
     Write-Host "Diagnostics root not found; no index update performed: $DiagnosticsRoot"
-    exit 0
+    return
 }
 
 $summaryFiles = @(Get-ChildItem -LiteralPath $DiagnosticsRoot -File -Filter '*.json' |
@@ -115,3 +115,4 @@ else {
 
 Set-Content -LiteralPath $indexMdPath -Value ($mdLines -join "`n") -Encoding UTF8
 Write-Host "Dry-run diagnostics index updated: $indexJsonPath"
+

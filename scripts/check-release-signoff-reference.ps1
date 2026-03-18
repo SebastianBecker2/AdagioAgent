@@ -1,4 +1,4 @@
-Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
@@ -8,7 +8,7 @@ $tagName = if ($env:APPVEYOR_REPO_TAG_NAME) { $env:APPVEYOR_REPO_TAG_NAME } else
 
 if (-not $isTaggedBuild -or [string]::IsNullOrWhiteSpace($tagName)) {
     Write-Host 'Release sign-off reference check skipped (not a tagged build).'
-    exit 0
+    return
 }
 
 if ($tagName -notmatch '^v(\d+\.\d+\.\d+)$') {
@@ -39,3 +39,4 @@ if ($changelog -notmatch [regex]::Escape($relative)) {
 }
 
 Write-Host "Release sign-off reference check passed for tag $tagName using $relative"
+

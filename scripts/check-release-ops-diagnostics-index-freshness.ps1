@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$DiagnosticsRoot = (Join-Path $PSScriptRoot '..\artifacts\release-ops-dryrun-diagnostics'),
     [int]$MaxAgeSeconds = 300
 )
@@ -12,7 +12,7 @@ if ($MaxAgeSeconds -le 0) {
 
 if (-not (Test-Path -LiteralPath $DiagnosticsRoot -PathType Container)) {
     Write-Host "Diagnostics root not found; freshness check skipped: $DiagnosticsRoot"
-    exit 0
+    return
 }
 
 $summaryFiles = @(Get-ChildItem -LiteralPath $DiagnosticsRoot -File -Filter '*.json' |
@@ -24,7 +24,7 @@ $summaryFiles = @(Get-ChildItem -LiteralPath $DiagnosticsRoot -File -Filter '*.j
 
 if ($summaryFiles.Count -eq 0) {
     Write-Host 'No dry-run summary files found in diagnostics root; freshness check skipped.'
-    exit 0
+    return
 }
 
 $indexPath = Join-Path $DiagnosticsRoot 'dryrun-diagnostics-index.json'
@@ -42,3 +42,4 @@ if ($ageOffsetSeconds -lt -$MaxAgeSeconds) {
 }
 
 Write-Host "Diagnostics index freshness check passed (newest summary: '$($newest.Name)', index age offset: $([Math]::Round($ageOffsetSeconds, 1))s, threshold: -${MaxAgeSeconds}s)."
+

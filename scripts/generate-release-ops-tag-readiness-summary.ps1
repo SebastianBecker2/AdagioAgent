@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$DiagnosticsRoot = (Join-Path $PSScriptRoot '..\artifacts\release-ops-dryrun-diagnostics'),
     [string]$OutputDir = (Join-Path $PSScriptRoot '..\artifacts\release-ops-tag-readiness'),
     [string]$TagName,
@@ -27,7 +27,7 @@ $isTaggedBuild = ($env:APPVEYOR_REPO_TAG -eq 'true') -or ($env:GITHUB_REF_TYPE -
 
 if (-not $isTaggedBuild -or [string]::IsNullOrWhiteSpace($TagName)) {
     Write-Host 'Release-ops tag readiness summary skipped (not a tagged build).'
-    exit 0
+    return
 }
 
 if ($TagName -notmatch '^v(\d+\.\d+\.\d+)$') {
@@ -200,3 +200,4 @@ Write-Host "Release-ops tag readiness summary written: $summaryJsonPath (readine
 if ($FailOnHold -and ($readinessVerdict -eq 'hold')) {
     throw "Release tag readiness verdict is HOLD. See $summaryJsonPath"
 }
+

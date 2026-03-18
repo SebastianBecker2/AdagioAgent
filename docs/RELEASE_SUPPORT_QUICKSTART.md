@@ -138,6 +138,15 @@ Get-Content .\artifacts\release-ops-tag-readiness\release-ops-closure-package-in
 
    - Review recent integrity verdict trend before final promotion sign-off.
 
+   Integrity gate enforcement:
+
+```powershell
+.\scripts\check-release-ops-closure-package-integrity-gate.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -FailOnBlock
+Get-Content .\artifacts\release-ops-tag-readiness\release-ops-closure-package-integrity-gate-report.md
+```
+
+   - Require gate verdict pass before final release promotion.
+
 12. Review dry-run diagnostics index trends before pilot handoff approval:
 
 ```powershell
@@ -328,3 +337,17 @@ Common failures and fixes:
 - Integrity history grows too large locally:
    reduce `-RetentionDays` for local runs or prune archived reports after
    exporting required audit artifacts.
+
+### 13. Troubleshooting closure integrity gate
+
+Common failures and fixes:
+
+- Gate blocks due to recent fail verdict:
+   inspect integrity history index entries and resolve artifact mismatches,
+   then regenerate closure manifest and rerun integrity checks.
+- Gate blocks due to insufficient recent pass entries:
+   run additional tagged validation cycles and confirm latest integrity reports
+   are pass before final promotion.
+- Gate report missing:
+   rerun integrity gate script from the same readiness root used for integrity
+   report and integrity history generation.

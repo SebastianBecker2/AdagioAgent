@@ -439,6 +439,32 @@ Trend interpretation guidance:
 - Investigate: frequent hash churn with repeated late-stage regeneration notes.
 - Block handoff: any recent `fail` verdict until closure manifest and linked artifacts are regenerated and revalidated.
 
+### Closure integrity gate enforcement
+
+Evaluate closure integrity history against promotion thresholds before allowing final release promotion:
+
+```powershell
+.\scripts\check-release-ops-closure-package-integrity-gate.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness -FailOnBlock
+```
+
+Gate outputs:
+
+- `release-ops-closure-package-integrity-gate-report.json`
+- `release-ops-closure-package-integrity-gate-report.md`
+
+Gate policy:
+
+- `gateVerdict = 'pass'`: at least `MinRecentPassCount` (default 1) of the most recent `RecentWindowCount` (default 5) history entries carry a `pass` integrity verdict.
+- `gateVerdict = 'block'`: insufficient recent pass entries; promotion is blocked.
+- `-FailOnBlock` causes the script to throw when verdict is `block`, which fails the CI step.
+
+Remediation when gate blocks:
+
+1. Inspect the integrity history index: `release-ops-closure-package-integrity-history-index.md`.
+2. Resolve any artifact mismatches reported in recent fail-verdict integrity reports.
+3. Regenerate the closure manifest and rerun integrity checks until a `pass` verdict is recorded.
+4. Rerun the gate script to confirm `pass` before final release promotion.
+
 Expected output layout:
 
 ```text

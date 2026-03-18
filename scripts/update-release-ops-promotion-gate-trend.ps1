@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$ReadinessRoot = (Join-Path $PSScriptRoot '..\artifacts\release-ops-tag-readiness'),
     [int]$MaxEntries = 20,
     [int]$RetentionDays = 365,
@@ -18,7 +18,7 @@ if ($RetentionDays -le 0) {
 
 if (-not (Test-Path -LiteralPath $ReadinessRoot -PathType Container)) {
     Write-Host "Readiness root not found; promotion gate trend update skipped: $ReadinessRoot"
-    exit 0
+    return
 }
 
 $latestJsonPath = Join-Path $ReadinessRoot 'release-ops-promotion-gate-report.json'
@@ -187,3 +187,4 @@ else {
 
 Set-Content -LiteralPath $indexMdPath -Value ($mdLines -join "`n") -Encoding UTF8
 Write-Host "Release-ops promotion gate trend index updated: $indexJsonPath"
+

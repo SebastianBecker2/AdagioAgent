@@ -573,3 +573,12 @@ The next implementation slice should focus on closure integrity trend history:
 2. [x] Add CI tagged-build step and artifacts for closure integrity history index outputs.
 3. [x] Add docs guidance for interpreting integrity trend signals and hash churn patterns.
 4. [x] Add quickstart step for integrity trend review before final release promotion sign-off.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on closure integrity gate enforcement:
+
+1. [x] Add script to evaluate closure integrity history against promotion thresholds and emit pass/fail gate verdict.
+2. [x] Add CI tagged-build gate that fails when closure integrity gate thresholds are not met.
+3. [x] Add docs section defining integrity gate policy and remediation flow.
+4. [x] Add quickstart check requiring integrity gate pass before final release promotion.
