@@ -30,6 +30,9 @@ bundle:
 Manifest schema and artifact categories are documented in
 `docs/SUPPORT_BUNDLE_SCHEMA.md`.
 
+Completed operational sign-off records are stored in
+`docs/release-ops/signoffs/` (see `docs/release-ops/README.md`).
+
 5. Confirm machine-agent and extension versions.
 
 ## Correlation ID guidance

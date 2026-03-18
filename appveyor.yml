@@ -32,6 +32,9 @@ build_script:
   # 0. Preflight release trust checks (versions, governance docs, tag/changelog rules)
   - ps: .\scripts\release-preflight.ps1 -Ci
 
+  # 0.05 On tagged builds, ensure changelog references matching release sign-off record
+  - ps: .\scripts\check-release-signoff-reference.ps1
+
   # 0.2 Generate and validate offline support bundle manifest shape
   - ps: |
       $bundleRoot = Join-Path $env:TEMP 'adagio-support-bundles-ci'

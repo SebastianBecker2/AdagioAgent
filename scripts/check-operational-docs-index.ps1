@@ -17,6 +17,7 @@ $requiredLinks = @(
     'docs/SUPPORT_BUNDLE_SCHEMA.md',
     'docs/RELEASE_SUPPORT_QUICKSTART.md',
     'docs/OPERATIONS_SIGNOFF_TEMPLATE.md',
+    'docs/release-ops/README.md',
     'docs/OBSERVABILITY_FIELDS.md',
     'docs/DIAGNOSTICS_TROUBLESHOOTING.md'
 )

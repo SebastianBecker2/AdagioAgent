@@ -29,6 +29,7 @@ Pilot-readiness docs:
 - [docs/SUPPORT_BUNDLE_SCHEMA.md](docs/SUPPORT_BUNDLE_SCHEMA.md)
 - [docs/RELEASE_SUPPORT_QUICKSTART.md](docs/RELEASE_SUPPORT_QUICKSTART.md)
 - [docs/OPERATIONS_SIGNOFF_TEMPLATE.md](docs/OPERATIONS_SIGNOFF_TEMPLATE.md)
+- [docs/release-ops/README.md](docs/release-ops/README.md)
 
 Observability docs:
 

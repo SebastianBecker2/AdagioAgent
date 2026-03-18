@@ -68,6 +68,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add required evidence checklist in sign-off workflow (support-bundle, correlation trace, rollback rehearsal).
 - [x] Add release checklist cross-link to operations sign-off template.
 - [x] Add CI check coverage that sign-off template is linked in README operational docs index.
+- [x] Add script to scaffold dated sign-off records into release-ops/signoffs.
+- [x] Add README/SUPPORT guidance for sign-off record storage location.
+- [x] Add CI tagged-build check for matching sign-off record reference.
+- [x] Add release checklist command snippet for sign-off record generation.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -363,7 +367,16 @@ The next implementation slice should focus on operational readiness sign-off wor
 
 The next implementation slice should focus on operational template automation:
 
-1. Add a script to scaffold dated sign-off records from the template into a release-ops folder.
-2. Add README/SUPPORT guidance for where completed sign-off records are stored.
-3. Add CI check that release tags include a matching sign-off record reference.
-4. Add release checklist command snippet for generating sign-off records.
+1. [x] Add a script to scaffold dated sign-off records from the template into a release-ops folder.
+2. [x] Add README/SUPPORT guidance for where completed sign-off records are stored.
+3. [x] Add CI check that release tags include a matching sign-off record reference.
+4. [x] Add release checklist command snippet for generating sign-off records.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on release-signoff evidence traceability:
+
+1. Add sign-off template section for linking concrete artifact paths (bundle, logs, checklist outputs).
+2. Add helper script to verify a sign-off record references required evidence files.
+3. Add CI optional check to validate evidence references for tagged-release sign-off records.
+4. Add docs guidance for evidence retention period and repository location conventions.

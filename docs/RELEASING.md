@@ -126,6 +126,15 @@ Before tagging, fill and store a completed copy of:
 Ensure required evidence is attached or linked (support bundle, correlation
 trace, rollback rehearsal, upgrade validation).
 
+You can scaffold a dated sign-off record from the template:
+
+```powershell
+.\scripts\generate-signoff-record.ps1 -Version NEW
+```
+
+Store generated records under `docs/release-ops/signoffs/` and reference the
+selected record path in `CHANGELOG.md` for tagged releases.
+
 ### 6 - Commit the version bump
 
 ```powershell
