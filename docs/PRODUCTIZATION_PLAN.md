@@ -56,6 +56,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add correlation-ID retention and incident timeline guidance.
 - [x] Add support severity matrix and triage SLA targets.
 - [x] Add release checklist verification for observability docs freshness.
+- [x] Add observability-doc consistency check script for core field references.
+- [x] Add CI execution step for observability-doc consistency check.
+- [x] Add troubleshooting cross-links to observability field reference and support severity matrix.
+- [x] Add release preflight observability-doc presence checks.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -324,7 +328,16 @@ The next implementation slice should focus on production observability policy:
 
 The next implementation slice should focus on support workflow consistency checks:
 
-1. Add a script to validate observability docs mention core fields (`CorrelationId`, `DurationMs`, error contract fields).
-2. Add CI step to run observability-doc consistency check.
-3. Add troubleshooting doc cross-links to observability field reference and support severity matrix.
-4. Add release preflight check for required observability docs presence.
+1. [x] Add a script to validate observability docs mention core fields (`CorrelationId`, `DurationMs`, error contract fields).
+2. [x] Add CI step to run observability-doc consistency check.
+3. [x] Add troubleshooting doc cross-links to observability field reference and support severity matrix.
+4. [x] Add release preflight check for required observability docs presence.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on release and support runbook consolidation:
+
+1. Add a single release-support quickstart checklist linking release, diagnostics, and support-bundle workflows.
+2. Add explicit owner/role mapping for Sev-1/Sev-2 incident handling in pilot docs.
+3. Add periodic doc-review cadence and ownership section for operational docs.
+4. Add CI check that operational docs index in README includes all required runbook/schema docs.

@@ -66,6 +66,11 @@ try {
     Assert-FileExists (Join-Path $repoRoot 'CHANGELOG.md') 'CHANGELOG.md'
     Write-Host 'Governance docs presence check passed.'
 
+    Assert-FileExists (Join-Path $repoRoot 'docs\OBSERVABILITY_FIELDS.md') 'docs/OBSERVABILITY_FIELDS.md'
+    Assert-FileExists (Join-Path $repoRoot 'docs\PILOT_RUNBOOK.md') 'docs/PILOT_RUNBOOK.md'
+    Assert-FileExists (Join-Path $repoRoot 'docs\DIAGNOSTICS_TROUBLESHOOTING.md') 'docs/DIAGNOSTICS_TROUBLESHOOTING.md'
+    Write-Host 'Observability docs presence check passed.'
+
     if (-not $SkipTagChecks) {
         $isTaggedBuild = ($env:APPVEYOR_REPO_TAG -eq 'true') -or ($env:GITHUB_REF_TYPE -eq 'tag')
         $tagName = if ($env:APPVEYOR_REPO_TAG_NAME) { $env:APPVEYOR_REPO_TAG_NAME } elseif ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { '' }

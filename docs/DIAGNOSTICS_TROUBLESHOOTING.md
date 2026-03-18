@@ -3,6 +3,11 @@
 Use this workflow when onboarding a new machine, investigating startup failures,
 or collecting support context without exposing sensitive values.
 
+Related references:
+
+- Structured log field semantics: [OBSERVABILITY_FIELDS.md](OBSERVABILITY_FIELDS.md)
+- Support severity and triage targets: [../SUPPORT.md](../SUPPORT.md)
+
 ### 1. Run extension startup diagnostics
 
 - Command: `Adagio Agent: Run Startup Diagnostics`
