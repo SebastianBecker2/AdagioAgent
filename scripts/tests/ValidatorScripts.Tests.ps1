@@ -9,6 +9,7 @@ $promotionGateScript = Join-Path $repoRoot 'scripts\check-release-ops-promotion-
 $promotionGateTrendScript = Join-Path $repoRoot 'scripts\update-release-ops-promotion-gate-trend.ps1'
 $closureManifestScript = Join-Path $repoRoot 'scripts\generate-release-ops-closure-package-manifest.ps1'
 $closureManifestCheckScript = Join-Path $repoRoot 'scripts\check-release-ops-closure-package-manifest.ps1'
+$closureManifestDriftScript = Join-Path $repoRoot 'scripts\check-release-ops-closure-package-drift.ps1'
 
 function New-TestFile {
     param(
@@ -520,5 +521,46 @@ Describe 'Release evidence validators' {
         Remove-Item -LiteralPath (Join-Path $closureRoot 'release-ops-promotion-gate-report.json') -Force
 
         { & $closureManifestCheckScript -ReadinessRoot $closureRoot -TagName "v$script:testVersion" } | Should Throw
+    }
+
+    It 'check-release-ops-closure-package-drift passes when linked readiness and promotion outputs are unchanged' {
+        New-EvidenceFixture -Version $script:testVersion -DateStamp $script:testDateStamp -IncludeIndex -IncludeIndexEntries | Out-Null
+
+        $closureRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\closure-e'
+        if (-not (Test-Path -LiteralPath $closureRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $closureRoot -Force | Out-Null
+            $script:createdFiles += $closureRoot
+        }
+
+        New-TagReadinessSummaryFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-e/release-ops-tag-readiness-summary.json' -TagName "v$script:testVersion" -Verdict 'ready' -DiagnosticsOverallStatus 'pass' -ValidatorFailed 0
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-e/release-ops-tag-readiness-history-index.json' -Content '{}' | Out-Null
+        New-PromotionGateReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-e/release-ops-promotion-gate-report.json' -Verdict 'pass' -GatePassed $true -OverrideUsed $false
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-e/release-ops-promotion-gate-trend-index.json' -Content '{}' | Out-Null
+
+        { & $closureManifestScript -ReadinessRoot $closureRoot -OutputDir $closureRoot -TagName "v$script:testVersion" } | Should Not Throw
+        { & $closureManifestDriftScript -ReadinessRoot $closureRoot -TagName "v$script:testVersion" } | Should Not Throw
+    }
+
+    It 'check-release-ops-closure-package-drift fails when linked promotion output is modified after manifest generation' {
+        New-EvidenceFixture -Version $script:testVersion -DateStamp $script:testDateStamp -IncludeIndex -IncludeIndexEntries | Out-Null
+
+        $closureRoot = Join-Path $repoRoot 'artifacts\release-ops-tag-readiness-tests\closure-f'
+        if (-not (Test-Path -LiteralPath $closureRoot -PathType Container)) {
+            New-Item -ItemType Directory -Path $closureRoot -Force | Out-Null
+            $script:createdFiles += $closureRoot
+        }
+
+        New-TagReadinessSummaryFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-f/release-ops-tag-readiness-summary.json' -TagName "v$script:testVersion" -Verdict 'ready' -DiagnosticsOverallStatus 'pass' -ValidatorFailed 0
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-f/release-ops-tag-readiness-history-index.json' -Content '{}' | Out-Null
+        New-PromotionGateReportFixture -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-f/release-ops-promotion-gate-report.json' -Verdict 'pass' -GatePassed $true -OverrideUsed $false
+        New-TestFile -RelativePath 'artifacts/release-ops-tag-readiness-tests/closure-f/release-ops-promotion-gate-trend-index.json' -Content '{}' | Out-Null
+
+        { & $closureManifestScript -ReadinessRoot $closureRoot -OutputDir $closureRoot -TagName "v$script:testVersion" } | Should Not Throw
+
+        $promotionReportPath = Join-Path $closureRoot 'release-ops-promotion-gate-report.json'
+        Add-Content -LiteralPath $promotionReportPath -Value "`n# drift"
+        (Get-Item -LiteralPath $promotionReportPath).LastWriteTimeUtc = [DateTime]::UtcNow.AddMinutes(1)
+
+        { & $closureManifestDriftScript -ReadinessRoot $closureRoot -TagName "v$script:testVersion" } | Should Throw
     }
 }

@@ -120,7 +120,7 @@ foreach ($entry in $artifactEntries) {
 
 $manifest = [pscustomobject]@{
     manifestVersion = 1
-    generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u')
+    generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
     tagName = $TagName
     releaseVersion = $version
     closureScope = 'release-ops-tagged-release'

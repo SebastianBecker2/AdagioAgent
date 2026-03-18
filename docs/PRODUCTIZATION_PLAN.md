@@ -551,7 +551,7 @@ The next implementation slice should focus on closure manifest policy enforcemen
 
 The next implementation slice should focus on closure package drift detection:
 
-1. Add script to compare closure manifest linked artifacts against current readiness/promotion outputs and detect drift.
-2. Add CI tagged-build check to fail when closure manifest drift is detected after manifest generation.
-3. Add docs section explaining drift scenarios and safe regeneration workflow.
-4. Add quickstart note for when to rerun closure manifest generation late in release tagging flow.
+1. [x] Add script to compare closure manifest linked artifacts against current readiness/promotion outputs and detect drift.
+2. [x] Add CI tagged-build check to fail when closure manifest drift is detected after manifest generation.
+3. [x] Add docs section explaining drift scenarios and safe regeneration workflow.
+4. [x] Add quickstart note for when to rerun closure manifest generation late in release tagging flow.

@@ -361,6 +361,34 @@ Common closure manifest validation failures and fixes:
 If validation fails in CI tagged builds, release handoff is blocked until the
 closure manifest validates cleanly.
 
+### Closure manifest drift detection and safe regeneration
+
+Detect closure manifest drift against current readiness/promotion outputs:
+
+```powershell
+.\scripts\check-release-ops-closure-package-drift.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness
+```
+
+Drift scenarios that should block handoff:
+
+- Readiness or promotion output files are regenerated after closure manifest generation.
+- Manifest linked paths no longer match current readiness root output locations.
+- Manifest `exists` flags no longer reflect on-disk artifact state.
+
+Safe regeneration workflow when drift is detected:
+
+1. Re-run readiness and promotion generators until final release-tag outputs are stable.
+2. Re-run closure manifest generation in the same tagged build context.
+3. Re-run both closure checks:
+	- `check-release-ops-closure-package-manifest.ps1`
+	- `check-release-ops-closure-package-drift.ps1`
+4. Attach only the latest regenerated closure manifest to release notes handoff.
+
+Recommended sequencing for tagged builds:
+
+- Treat closure manifest generation as a late-stage step after all readiness and promotion outputs are final.
+- If any late artifact regeneration occurs, regenerate closure manifest and rerun drift/validation checks before promotion.
+
 Expected output layout:
 
 ```text

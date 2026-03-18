@@ -99,6 +99,16 @@ build_script:
         Write-Host 'Release-ops closure package manifest validation skipped on non-tag build.'
       }
 
+  # 0.089 On tagged builds, detect closure manifest drift against current outputs
+  - ps: |
+      if ($env:APPVEYOR_REPO_TAG -eq 'true') {
+        $readinessRoot = '.\artifacts\release-ops-tag-readiness'
+        .\scripts\check-release-ops-closure-package-drift.ps1 -ReadinessRoot $readinessRoot
+      }
+      else {
+        Write-Host 'Release-ops closure package drift check skipped on non-tag build.'
+      }
+
   # 0.09 Run validator script tests (Pester)
   - ps: Invoke-Pester -Script .\scripts\tests\ValidatorScripts.Tests.ps1 -EnableExit
 

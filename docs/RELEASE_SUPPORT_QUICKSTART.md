@@ -105,8 +105,21 @@ Get-Content .\artifacts\release-ops-tag-readiness\release-ops-closure-package-ma
    Handoff requirement:
    - Attach the closure package manifest (JSON or Markdown) to release notes,
      or link it from the release notes body.
+    - Treat manifest generation as a late-stage step; if readiness/promotion
+       outputs are regenerated afterward, regenerate closure manifest before
+       release handoff.
 
-11. Review dry-run diagnostics index trends before pilot handoff approval:
+11. Verify closure manifest drift is clean before final promotion:
+
+```powershell
+.\scripts\check-release-ops-closure-package-drift.ps1 -ReadinessRoot .\artifacts\release-ops-tag-readiness
+```
+
+    Drift policy:
+    - If drift is detected, rerun closure manifest generation and rerun drift
+       check before promotion continues.
+
+12. Review dry-run diagnostics index trends before pilot handoff approval:
 
 ```powershell
 .\scripts\update-release-ops-diagnostics-index.ps1 -DiagnosticsRoot .\artifacts\release-ops-dryrun-diagnostics -MaxEntries 20
@@ -250,3 +263,21 @@ Common failures and fixes:
    rerun closure manifest generation after all artifact-producing steps finish.
 - Tag mismatch in manifest:
    regenerate closure manifest with correct `-TagName v<semver>`.
+
+### 10. Troubleshooting closure manifest drift detection
+
+Common failures and fixes:
+
+- Drift check reports readiness/promotion output modified after manifest generation:
+   rerun `generate-release-ops-closure-package-manifest.ps1` after all
+   readiness and promotion scripts have finished.
+- Drift check reports manifest path mismatch:
+   ensure drift check and manifest generation use the same `-ReadinessRoot` and
+   regenerate manifest in that context.
+- Drift check reports `exists` mismatch:
+   regenerate missing artifact(s) or remove stale references by regenerating the
+   closure manifest.
+- Late-stage rerun rule:
+   if any readiness or promotion output is regenerated after closure manifest
+   creation, always regenerate closure manifest and rerun both manifest
+   validation and drift checks before release handoff.
