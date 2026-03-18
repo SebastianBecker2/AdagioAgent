@@ -117,6 +117,15 @@ workflows:
 If backend log fields or error-contract fields changed, update docs in the same
 release commit.
 
+### 5.6 - Complete operations sign-off template
+
+Before tagging, fill and store a completed copy of:
+
+- `docs/OPERATIONS_SIGNOFF_TEMPLATE.md`
+
+Ensure required evidence is attached or linked (support bundle, correlation
+trace, rollback rehearsal, upgrade validation).
+
 ### 6 - Commit the version bump
 
 ```powershell

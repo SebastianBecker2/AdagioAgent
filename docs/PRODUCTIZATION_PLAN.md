@@ -64,6 +64,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add explicit Sev-1/Sev-2 owner role mapping in pilot runbook.
 - [x] Add operational docs ownership and review cadence policy.
 - [x] Add CI check for README operational docs index completeness.
+- [x] Add operations sign-off template for release gates and pilot readiness.
+- [x] Add required evidence checklist in sign-off workflow (support-bundle, correlation trace, rollback rehearsal).
+- [x] Add release checklist cross-link to operations sign-off template.
+- [x] Add CI check coverage that sign-off template is linked in README operational docs index.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -350,7 +354,16 @@ The next implementation slice should focus on release and support runbook consol
 
 The next implementation slice should focus on operational readiness sign-off workflow:
 
-1. Add an operations sign-off template doc for release gates and pilot readiness checks.
-2. Add required evidence checklist (support-bundle, correlation trace, rollback rehearsal).
-3. Add release checklist cross-link to sign-off template.
-4. Add CI check that sign-off template and required operational docs are linked in README.
+1. [x] Add an operations sign-off template doc for release gates and pilot readiness checks.
+2. [x] Add required evidence checklist (support-bundle, correlation trace, rollback rehearsal).
+3. [x] Add release checklist cross-link to sign-off template.
+4. [x] Add CI check that sign-off template and required operational docs are linked in README.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on operational template automation:
+
+1. Add a script to scaffold dated sign-off records from the template into a release-ops folder.
+2. Add README/SUPPORT guidance for where completed sign-off records are stored.
+3. Add CI check that release tags include a matching sign-off record reference.
+4. Add release checklist command snippet for generating sign-off records.
