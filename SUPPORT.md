@@ -14,7 +14,13 @@ See `docs/OPERATING_MODEL.md` for support boundaries and deployment assumptions.
    - `/api/v1/ready`
    - `/api/v1/diagnostics/status`
    - `/api/v1/diagnostics/export-metadata`
-4. Confirm machine-agent and extension versions.
+4. Collect a support bundle:
+
+```powershell
+.\scripts\collect-support-bundle.ps1 -ApiKey '<api-key>'
+```
+
+5. Confirm machine-agent and extension versions.
 
 ## Information To Include
 
@@ -23,6 +29,7 @@ See `docs/OPERATING_MODEL.md` for support boundaries and deployment assumptions.
 - Exact command/tool used when issue occurred.
 - Error messages and timestamps.
 - Sanitized diagnostics output and readiness payload.
+- Support bundle folder path and manifest.
 - Whether issue is deterministic or intermittent.
 
 Do not include secrets, API keys, or certificate private keys.

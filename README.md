@@ -21,8 +21,17 @@ Governance and support docs:
 - [SUPPORT.md](SUPPORT.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 
+Pilot-readiness docs:
+
+- [docs/PILOT_RUNBOOK.md](docs/PILOT_RUNBOOK.md)
+- [docs/ROLLBACK_CHECKLIST.md](docs/ROLLBACK_CHECKLIST.md)
+- [docs/UPGRADE_VALIDATION_CHECKLIST.md](docs/UPGRADE_VALIDATION_CHECKLIST.md)
+
 Bootstrap helper script: `scripts/bootstrap-agent.ps1` (certificate + API key
 generation for controlled environments).
+
+Support bundle helper script: `scripts/collect-support-bundle.ps1`
+(sanitized diagnostics and operational evidence collection).
 
 ---
 

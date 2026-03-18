@@ -28,6 +28,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add CI validation for governance document presence.
 - [x] Add release preflight script for backend/extension/installer version consistency.
 - [x] Document release preflight workflow and tag gates in release checklist.
+- [x] Add support bundle script for sanitized diagnostics payload and operational evidence collection.
+- [x] Add rollback checklist for installer upgrades.
+- [x] Add adjacent-version upgrade validation checklist.
+- [x] Add pilot runbook with incident response flow.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -233,7 +237,16 @@ The next implementation slice should focus on release automation trust checks:
 
 The next implementation slice should focus on pilot-readiness operations:
 
-1. Add a support bundle command/script that collects sanitized diagnostics payloads and recent logs.
-2. Add a documented rollback checklist for installer upgrades.
-3. Add an upgrade-validation checklist for adjacent-version upgrades.
-4. Add a pilot runbook section in docs with incident response flow.
+1. [x] Add a support bundle command/script that collects sanitized diagnostics payloads and recent logs.
+2. [x] Add a documented rollback checklist for installer upgrades.
+3. [x] Add an upgrade-validation checklist for adjacent-version upgrades.
+4. [x] Add a pilot runbook section in docs with incident response flow.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on backend observability and lifecycle safety:
+
+1. Add request correlation ID propagation and structured request logging fields.
+2. Standardize API error payloads for unhandled exceptions and validation failures.
+3. Add graceful shutdown verification and cleanup diagnostics in process lifecycle paths.
+4. Add backend tests for correlation/error-shape/lifecycle behavior regressions.
