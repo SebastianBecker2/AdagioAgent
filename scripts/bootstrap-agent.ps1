@@ -3,11 +3,19 @@ param(
     [switch]$PersistToEnvironment,
     [switch]$WriteToAppSettings,
     [string]$AppSettingsPath = "machine-agent\appsettings.json",
-    [switch]$ForceRegenerate
+    [switch]$ForceRegenerate,
+    [switch]$SuppressSecretOutput
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+if ($WriteToAppSettings.IsPresent -and -not [System.IO.Path]::IsPathRooted($AppSettingsPath)) {
+    $coLocatedAppSettings = Join-Path -Path (Split-Path -Parent $PSCommandPath) -ChildPath "appsettings.json"
+    if (Test-Path -LiteralPath $coLocatedAppSettings -PathType Leaf -and -not (Test-Path -LiteralPath $AppSettingsPath -PathType Leaf)) {
+        $AppSettingsPath = $coLocatedAppSettings
+    }
+}
 
 function New-RandomString {
     param(
@@ -81,11 +89,14 @@ Write-Host "Certificate path: $CertificatePath"
 Write-Host "API key generated (hidden)."
 Write-Host "Persisted to user environment: $($PersistToEnvironment.IsPresent)"
 Write-Host "Written to appsettings: $($WriteToAppSettings.IsPresent)"
-Write-Host ""
-Write-Host "Next steps:"
-Write-Host "1. Restart the AdagioMachineAgent service after updating config/environment."
-Write-Host "2. Configure adagioAgent.vmAgentApiKey in VS Code with the generated key value."
-Write-Host ""
-Write-Host "Generated values (copy securely now):"
-Write-Host "SecurityOptions__ApiKey=$apiKey"
-Write-Host "SecurityOptions__HttpsCertificatePassword=$certificatePassword"
+
+if (-not $SuppressSecretOutput.IsPresent) {
+    Write-Host ""
+    Write-Host "Next steps:"
+    Write-Host "1. Restart the AdagioMachineAgent service after updating config/environment."
+    Write-Host "2. Configure adagioAgent.vmAgentApiKey in VS Code with the generated key value."
+    Write-Host ""
+    Write-Host "Generated values (copy securely now):"
+    Write-Host "SecurityOptions__ApiKey=$apiKey"
+    Write-Host "SecurityOptions__HttpsCertificatePassword=$certificatePassword"
+}

@@ -317,7 +317,7 @@ installer/bin/x64/Release/AdagioMachineAgentSetup.msi
 | Install location | `%ProgramFiles%\AdagioMachineAgent\` |
 | Service name | `AdagioMachineAgent` |
 | Service display name | `Adagio Machine Agent` |
-| Start type | Automatic (starts on boot) |
+| Start type | Automatic (starts on boot; startup is verified during install) |
 | Service account | `NT AUTHORITY\LocalService` |
 | Listens on | `https://127.0.0.1:5443` |
 | Uninstall | Stops & removes the service, deletes all installed files |
@@ -335,16 +335,31 @@ msiexec /x AdagioMachineAgentSetup.msi /quiet
 
 Or use **Add / Remove Programs** for a GUI experience.
 
-**Configuration after installation:**
+**Configuration during installation:**
 
-Edit `%ProgramFiles%\AdagioMachineAgent\appsettings.json` then restart the
-service:
+On first install, MSI runs `bootstrap-agent.ps1` automatically (elevated) to:
+
+- generate a self-signed certificate at `C:\ProgramData\AdagioMachineAgent\tls\agent.pfx`
+- generate a random API key
+- write startup-critical values into `%ProgramFiles%\AdagioMachineAgent\appsettings.json`
+
+MSI then attempts to start `AdagioMachineAgent`. If startup validation fails,
+installation fails (error 1920) and rolls back.
+
+When startup fails, inspect:
+
+- MSI verbose log (`msiexec /i ... /l*v install.log`)
+- `%ProgramData%\AdagioMachineAgent\startup-failure.json`
+
+**Configuration after installation (manual updates):**
+
+If you later change security settings in `%ProgramFiles%\AdagioMachineAgent\appsettings.json`, restart the service:
 
 ```powershell
 Restart-Service AdagioMachineAgent
 ```
 
-Set these values before starting the service:
+Startup-critical values:
 
 - `SecurityOptions.ApiKey`
 - `SecurityOptions.HttpsCertificatePath`

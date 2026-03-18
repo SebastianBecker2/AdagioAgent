@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Diagnostics;
+using System.Text.Json;
 using AdagioMachineAgent.Models;
 using AdagioMachineAgent.Services;
 using Microsoft.OpenApi.Models;
@@ -15,6 +16,7 @@ builder.Host.UseWindowsService(options =>
 {
     options.ServiceName = "AdagioMachineAgent";
 });
+builder.Logging.AddEventLog();
 #endif
 
 // ── Services ─────────────────────────────────────────────────────────────────
@@ -73,8 +75,16 @@ builder.Services.Configure<SecurityOptions>(
     securityOptionsSection);
 
 var securityOptions = securityOptionsSection.Get<SecurityOptions>() ?? new SecurityOptions();
-ConfigureTransportSecurity(builder, securityOptions);
-SecurityPolicy.ValidateSecurityOptions(securityOptions);
+try
+{
+    ConfigureTransportSecurity(builder, securityOptions);
+    SecurityPolicy.ValidateSecurityOptions(securityOptions);
+}
+catch (Exception ex)
+{
+    WriteStartupFailureDiagnostics(ex, securityOptions);
+    throw;
+}
 
 var app = builder.Build();
 
@@ -295,6 +305,37 @@ static string ResolveCorrelationId(HttpContext context)
     }
 
     return context.TraceIdentifier;
+}
+
+static void WriteStartupFailureDiagnostics(Exception ex, SecurityOptions securityOptions)
+{
+    try
+    {
+        var diagnosticsRoot = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "AdagioMachineAgent");
+        Directory.CreateDirectory(diagnosticsRoot);
+
+        var startupFailurePath = Path.Combine(diagnosticsRoot, "startup-failure.json");
+        var payload = new
+        {
+            generatedAtUtc = DateTimeOffset.UtcNow.ToString("u"),
+            error = ex.Message,
+            exceptionType = ex.GetType().FullName,
+            requireHttps = securityOptions.RequireHttps,
+            certificatePath = securityOptions.HttpsCertificatePath,
+            requireApiKey = securityOptions.RequireApiKey,
+        };
+
+        File.WriteAllText(startupFailurePath, JsonSerializer.Serialize(payload, new JsonSerializerOptions
+        {
+            WriteIndented = true,
+        }));
+    }
+    catch
+    {
+        // Best-effort diagnostics only; do not mask the original startup error.
+    }
 }
 
 // ─── Configuration model ──────────────────────────────────────────────────────

@@ -9,7 +9,7 @@
   Uninstall: stops the service, removes it, and removes all installed files.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
->
+  xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <Package Name="Adagio Machine Agent"
            Manufacturer="AdagioAgent"
@@ -31,9 +31,32 @@
     <Feature Id="Complete" Level="1">
       <!-- Main executable + service registration (defined below). -->
       <ComponentGroupRef Id="AgentService" />
+      <!-- Bootstrap provisioning assets (copied to INSTALLFOLDER). -->
+      <ComponentGroupRef Id="BootstrapAssets" />
       <!-- All other published files (harvested automatically). -->
       <ComponentGroupRef Id="ApplicationFiles" />
     </Feature>
+
+    <!--
+      First-install bootstrap flow:
+      1) MSI installs files, including bootstrap-agent.ps1.
+      2) Custom action runs bootstrap script elevated to generate cert + API key
+         and write startup-critical values into installed appsettings.json.
+      3) ServiceControl Start="install" then verifies the configured service can
+         actually start. If startup still fails, MSI fails with 1920.
+    -->
+    <CustomAction Id="RunBootstrapAgentScript"
+                  Directory="INSTALLFOLDER"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="check"
+                  ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]bootstrap-agent.ps1&quot; -WriteToAppSettings -SuppressSecretOutput" />
+
+    <InstallExecuteSequence>
+      <Custom Action="RunBootstrapAgentScript"
+              After="InstallFiles"
+              Condition="NOT Installed" />
+    </InstallExecuteSequence>
 
     <!--
       Service component: installs AdagioMachineAgent.exe and registers the
@@ -68,6 +91,12 @@
                         Stop="both"
                         Remove="uninstall"
                         Wait="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="BootstrapAssets" Directory="INSTALLFOLDER">
+      <Component>
+        <File Id="BootstrapAgentScript" Source="$(sys.SOURCEFILEDIR)..\scripts\bootstrap-agent.ps1" KeyPath="yes" />
       </Component>
     </ComponentGroup>
 
