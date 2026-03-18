@@ -24,6 +24,10 @@ Turn AdagioAgent from an engineer-operated tool into a supportable product by se
 - [x] Add SECURITY policy with reporting and vulnerability handling expectations.
 - [x] Add SUPPORT policy with boundaries, required diagnostics, and response model.
 - [x] Add CONTRIBUTING guide with branch, PR, and test expectations.
+- [x] Add CI checks for changelog presence on versioned release tags.
+- [x] Add CI validation for governance document presence.
+- [x] Add release preflight script for backend/extension/installer version consistency.
+- [x] Document release preflight workflow and tag gates in release checklist.
 
 ### Phase 0: Product Definition And Support Boundaries
 
@@ -220,7 +224,16 @@ The next implementation slice should focus on release trust and governance basic
 
 The next implementation slice should focus on release automation trust checks:
 
-1. Add CI checks that fail if `CHANGELOG.md` is missing updates for versioned release commits.
-2. Add CI validation that release-governance docs (`SECURITY.md`, `SUPPORT.md`) are present.
-3. Add a release-preflight script to validate version consistency across backend, extension, and installer.
-4. Document the preflight script workflow in `docs/RELEASING.md`.
+1. [x] Add CI checks that fail if `CHANGELOG.md` is missing updates for versioned release commits.
+2. [x] Add CI validation that release-governance docs (`SECURITY.md`, `SUPPORT.md`) are present.
+3. [x] Add a release-preflight script to validate version consistency across backend, extension, and installer.
+4. [x] Document the preflight script workflow in `docs/RELEASING.md`.
+
+## Next Active Slice (Current)
+
+The next implementation slice should focus on pilot-readiness operations:
+
+1. Add a support bundle command/script that collects sanitized diagnostics payloads and recent logs.
+2. Add a documented rollback checklist for installer upgrades.
+3. Add an upgrade-validation checklist for adjacent-version upgrades.
+4. Add a pilot runbook section in docs with incident response flow.

@@ -64,14 +64,34 @@ Set-Location ..
 
 All tests must pass before proceeding.
 
-### 5 - Commit the version bump
+### 4.5 - Run release preflight checks
+
+Run the release preflight script from repository root:
+
+```powershell
+.\scripts\release-preflight.ps1
+```
+
+The script validates:
+
+- backend and extension version parity
+- installer version derivation consistency
+- required governance docs presence (`CHANGELOG.md`, `SECURITY.md`, `SUPPORT.md`)
+- tag and changelog consistency when running on a tagged release build
+
+### 5 - Update changelog for the release
+
+Add a dedicated section in `CHANGELOG.md` for `NEW` including date and notable
+changes.
+
+### 6 - Commit the version bump
 
 ```powershell
 git add machine-agent/AdagioMachineAgent.csproj controller-extension/package.json
 git commit -m "chore: release vNEW"
 ```
 
-### 6 - Create a release tag
+### 7 - Create a release tag
 
 ```powershell
 git tag -a vNEW -m "Release vNEW"
@@ -81,7 +101,11 @@ git push origin main --tags
 AppVeyor will automatically build the tagged commit and produce the MSI
 installer artifact.
 
-### 7 - Publish artifacts
+Tagged builds are gated by release preflight checks: the tag version must match
+backend/extension versions and `CHANGELOG.md` must contain a corresponding
+section header.
+
+### 8 - Publish artifacts
 
 Download the `AdagioMachineAgentSetup` artifact from AppVeyor and attach it
 to a GitHub release for the tag created in step 6.
