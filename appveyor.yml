@@ -24,6 +24,17 @@ build_script:
   - dotnet restore machine-agent\AdagioMachineAgent.csproj
   - dotnet build machine-agent\AdagioMachineAgent.csproj -c Release --no-restore
 
+  # 1b. Smoke-check that the installer version resolves from machine-agent/<Version>
+  - ps: |
+      [xml]$agentProject = Get-Content machine-agent\AdagioMachineAgent.csproj
+      $expectedInstallerVersion = "$($agentProject.Project.PropertyGroup.Version).0"
+      $versionOutput = dotnet msbuild installer\AdagioMachineAgent.Setup.wixproj -target:PrintVersionInfo
+      if ($LASTEXITCODE -ne 0) { throw "Failed to evaluate installer version." }
+      $actualInstallerVersion = ($versionOutput | Select-String 'AgentWixVersion=').ToString().Split('=')[-1].Trim()
+      if ($actualInstallerVersion -ne $expectedInstallerVersion) {
+        throw "Installer version mismatch. Expected $expectedInstallerVersion but got $actualInstallerVersion."
+      }
+
   # 2. Install Node dependencies and compile the VS Code extension
   - cd controller-extension
   - npm ci

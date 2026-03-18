@@ -106,6 +106,20 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
         Assert.Equal(versionedPayload.Error, legacyPayload.Error);
     }
 
+    [Fact]
+    public async Task VersionedAndLegacyRoute_ProcessStatus_ReturnIdenticalNotFoundErrors()
+    {
+        var versionedResponse = await _client.GetAsync("/api/v1/process-status?pid=999999");
+        var legacyResponse = await _client.GetAsync("/process-status?pid=999999");
+
+        Assert.Equal(HttpStatusCode.NotFound, versionedResponse.StatusCode);
+        Assert.Equal(versionedResponse.StatusCode, legacyResponse.StatusCode);
+
+        var versionedPayload = await ReadJson<ErrorResponse>(versionedResponse);
+        var legacyPayload = await ReadJson<ErrorResponse>(legacyResponse);
+        Assert.Equal(versionedPayload.Error, legacyPayload.Error);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────
 
     private static async Task<T> ReadJson<T>(HttpResponseMessage response)

@@ -301,6 +301,27 @@ describe("AgentClient", () => {
     });
   });
 
+  it("createAgentClient defaults requests to the versioned api base path", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ status: "healthy", version: "1.0.0", apiVersion: 1 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    getConfigurationMock.mockReturnValueOnce({
+      get: vi.fn().mockReturnValue(undefined),
+    });
+
+    const client = createAgentClient();
+    await client.health();
+
+    expect(fetchMock).toHaveBeenCalledWith("https://127.0.0.1:5443/api/v1/health", {
+      headers: {},
+    });
+  });
+
   it("calls process lifecycle endpoints with expected paths and payloads", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock

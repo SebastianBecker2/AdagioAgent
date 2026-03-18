@@ -41,15 +41,7 @@
       Override with -p:PublishDir=<path> when calling msbuild/dotnet build.
     -->
     <PublishDir Condition="'$(PublishDir)'==''">$(MSBuildThisFileDirectory)publish\</PublishDir>
-    <!--
-      Read <Version> from the machine-agent csproj at evaluation time so the
-      installer version always tracks the agent release.  WiX requires a
-      4-part version (major.minor.patch.build) so ".0" is appended to the
-      3-part SemVer.
-    -->
-    <_MachineAgentCsproj>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj'))</_MachineAgentCsproj>
-    <AgentSemVer>$([System.Xml.Linq.XDocument]::Load('$(_MachineAgentCsproj)').Descendants('Version').First().Value)</AgentSemVer>
-    <AgentWixVersion>$(AgentSemVer).0</AgentWixVersion>
+    <_MachineAgentCsproj>$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj</_MachineAgentCsproj>
     <!--
       Forward PublishDir and AgentVersion to the WiX preprocessor so that
       Package.wxs can reference them via $(var.PublishDir) and
@@ -73,6 +65,26 @@
   -->
   <Target Name="PublishMachineAgent" BeforeTargets="BeforeBuild">
     <Exec Command="dotnet publish &quot;$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj&quot; -r win-x64 -c Release --self-contained -o &quot;$(PublishDir.TrimEnd('\'))&quot; --nologo" />
+  </Target>
+
+  <Target Name="ResolveMachineAgentVersion" BeforeTargets="BeforeBuild">
+    <XmlPeek XmlInputPath="$(_MachineAgentCsproj)"
+             Query="/Project/PropertyGroup/Version/text()">
+      <Output TaskParameter="Result" PropertyName="AgentSemVer" />
+    </XmlPeek>
+
+    <PropertyGroup>
+      <AgentWixVersion>$(AgentSemVer).0</AgentWixVersion>
+      <DefineConstants>$(DefineConstants);AgentVersion=$(AgentWixVersion)</DefineConstants>
+    </PropertyGroup>
+
+    <Message Importance="High"
+             Text="Resolved machine-agent version $(AgentSemVer) -> installer version $(AgentWixVersion)" />
+  </Target>
+
+  <Target Name="PrintVersionInfo" DependsOnTargets="ResolveMachineAgentVersion">
+    <Message Importance="High" Text="AgentSemVer=$(AgentSemVer)" />
+    <Message Importance="High" Text="AgentWixVersion=$(AgentWixVersion)" />
   </Target>
 
   <!--
