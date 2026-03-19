@@ -34,27 +34,53 @@ function Invoke-Step {
     }
 }
 
+function Invoke-NativeStep {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [Parameter(Mandatory = $true)]
+        [string]$Command,
+        [string[]]$Arguments = @()
+    )
+
+    Write-Host "==> $Name"
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        # Native tools (npm/node) may write warnings to stderr. In Windows PowerShell,
+        # stderr can become non-terminating errors when ErrorActionPreference=Stop.
+        # We intentionally evaluate pass/fail by exit code for native commands.
+        $ErrorActionPreference = "Continue"
+        & $Command @Arguments
+        $nativeExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($nativeExitCode -ne 0) {
+        throw "$Name failed with exit code $nativeExitCode."
+    }
+}
+
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $extensionRoot = Join-Path $repoRoot "controller-extension"
 
 Push-Location $extensionRoot
 try {
-    Invoke-Step -Name "node --version" -Action { node --version }
-    Invoke-Step -Name "npm --version" -Action { npm --version }
+    Invoke-NativeStep -Name "node --version" -Command "node" -Arguments @("--version")
+    Invoke-NativeStep -Name "npm --version" -Command "npm" -Arguments @("--version")
 
     if ($InstallDeps) {
-        Invoke-Step -Name "npm ci" -Action { npm ci }
-        Invoke-Step -Name "npm i --no-save @rolldown/binding-win32-x64-msvc" -Action {
-            npm i --no-save @rolldown/binding-win32-x64-msvc
-        }
+        Invoke-NativeStep -Name "npm ci" -Command "npm" -Arguments @("ci")
+        Invoke-NativeStep -Name "npm i --no-save @rolldown/binding-win32-x64-msvc" -Command "npm" -Arguments @("i", "--no-save", "@rolldown/binding-win32-x64-msvc")
     }
 
     if ($Compile) {
-        Invoke-Step -Name "npm run compile" -Action { npm run compile }
+        Invoke-NativeStep -Name "npm run compile" -Command "npm" -Arguments @("run", "compile")
     }
 
     if ($PackageVsix) {
-        Invoke-Step -Name "npm run package:vsix" -Action { npm run package:vsix }
+        Invoke-NativeStep -Name "npm run package:vsix" -Command "npm" -Arguments @("run", "package:vsix")
     }
 
     if ($RunTests) {
@@ -62,7 +88,7 @@ try {
             New-Item -ItemType Directory -Path ".\test-results" | Out-Null
         }
 
-        Invoke-Step -Name "npm run test:ci" -Action { npm run test:ci }
+        Invoke-NativeStep -Name "npm run test:ci" -Command "npm" -Arguments @("run", "test:ci")
     }
 }
 finally {
