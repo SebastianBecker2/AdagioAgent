@@ -4,6 +4,8 @@ param(
     [switch]$WriteToAppSettings,
     [string]$AppSettingsPath = "machine-agent\appsettings.json",
     [switch]$ForceRegenerate,
+    [switch]$WriteSecretHandoff,
+    [string]$SecretHandoffPath = "C:\ProgramData\AdagioMachineAgent\bootstrap-secrets.json",
     [switch]$SuppressSecretOutput,
     [string]$LogPath = ""
 )
@@ -80,6 +82,31 @@ function Get-FailureMetadata {
     }
 }
 
+function Protect-SecretHandoffFile {
+    param(
+        [string]$Path
+    )
+
+    $acl = New-Object System.Security.AccessControl.FileSecurity
+    $acl.SetAccessRuleProtection($true, $false)
+
+    $rights = [System.Security.AccessControl.FileSystemRights]::FullControl
+    $inheritance = [System.Security.AccessControl.InheritanceFlags]::None
+    $propagation = [System.Security.AccessControl.PropagationFlags]::None
+    $accessType = [System.Security.AccessControl.AccessControlType]::Allow
+
+    $adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule("BUILTIN\Administrators", $rights, $inheritance, $propagation, $accessType)
+        $adminSid = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid, $null)
+        $systemSid = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::LocalSystemSid, $null)
+
+        $adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule($adminSid, $rights, $inheritance, $propagation, $accessType)
+        $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule($systemSid, $rights, $inheritance, $propagation, $accessType)
+    $acl.AddAccessRule($adminRule)
+    $acl.AddAccessRule($systemRule)
+
+    Set-Acl -LiteralPath $Path -AclObject $acl
+}
+
 $certDirectory = Split-Path -Parent $CertificatePath
 if (-not (Test-Path -LiteralPath $certDirectory)) {
     New-Item -ItemType Directory -Path $certDirectory -Force | Out-Null
@@ -153,11 +180,32 @@ if ($WriteToAppSettings.IsPresent) {
     Set-Content -LiteralPath $AppSettingsPath -Value $json -Encoding UTF8
 }
 
+if ($WriteSecretHandoff.IsPresent) {
+    $secretHandoffDirectory = Split-Path -Parent $SecretHandoffPath
+    if (-not [string]::IsNullOrWhiteSpace($secretHandoffDirectory) -and -not (Test-Path -LiteralPath $secretHandoffDirectory)) {
+        New-Item -ItemType Directory -Path $secretHandoffDirectory -Force | Out-Null
+    }
+
+    $handoffPayload = [pscustomobject]@{
+        generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u')
+        apiKey = $apiKey
+        httpsCertificatePassword = $certificatePassword
+        httpsCertificatePath = $CertificatePath
+    }
+
+    $handoffPayload | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $SecretHandoffPath -Encoding UTF8
+    Protect-SecretHandoffFile -Path $SecretHandoffPath
+}
+
 Write-Host "Bootstrap completed."
 Write-Host "Certificate path: $CertificatePath"
 Write-Host "API key generated (hidden)."
 Write-Host "Persisted to user environment: $($PersistToEnvironment.IsPresent)"
 Write-Host "Written to appsettings: $($WriteToAppSettings.IsPresent)"
+Write-Host "Secret handoff file written: $($WriteSecretHandoff.IsPresent)"
+if ($WriteSecretHandoff.IsPresent) {
+    Write-Host "Secret handoff path: $SecretHandoffPath"
+}
 
 if (-not $SuppressSecretOutput.IsPresent) {
     Write-Host ""
@@ -182,6 +230,7 @@ catch {
             scriptPath = $PSCommandPath
             appSettingsPath = $AppSettingsPath
             certificatePath = $CertificatePath
+            secretHandoffPath = $SecretHandoffPath
             logPath = $LogPath
             errorCode = $metadata.errorCode
             suggestedAction = $metadata.suggestedAction

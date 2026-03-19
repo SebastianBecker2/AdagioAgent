@@ -133,9 +133,21 @@ If raw JSON editing is added, include validation safeguards before applying chan
 4. Collect user feedback from pilot usage.
 5. Prioritize v1.5 manual mode or v2 advanced editing based on support signals.
 
-## Open Decisions
+## Decisions Status
 
-1. Preferred secure handoff for generated API key to operator.
-2. Canonical startup diagnostics sink for installer-readable errors.
-3. Upgrade-time config ownership policy.
-4. Whether v2 advanced mode starts with structured fields or raw JSON editor.
+1. Secure handoff for generated bootstrap secrets: resolved.
+- Installer bootstrap writes `%ProgramData%\AdagioMachineAgent\bootstrap-secrets.json`.
+- File ACL is restricted to `SYSTEM` and local `Administrators`.
+- Operator should transfer secrets into approved secret storage, then delete handoff file.
+
+2. Canonical startup diagnostics sink: resolved.
+- Bootstrap diagnostics: `%ProgramData%\AdagioMachineAgent\bootstrap.log` and `bootstrap-failure.json`.
+- Preflight diagnostics: `%ProgramData%\AdagioMachineAgent\bootstrap-preflight.log` and `bootstrap-preflight-failure.json`.
+- Runtime startup diagnostics: `%ProgramData%\AdagioMachineAgent\startup-failure.json`.
+
+3. Upgrade-time config ownership policy: resolved.
+- MSI preserves existing `appsettings.json` across major upgrades (`NeverOverwrite="yes"` component behavior).
+- Bootstrap provisioning and preflight custom actions run on first install only (`NOT Installed AND NOT WIX_UPGRADE_DETECTED`).
+
+4. Advanced mode UX for v2: open.
+- Decide whether v2 starts with structured fields or raw JSON editor.

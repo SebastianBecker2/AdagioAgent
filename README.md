@@ -342,6 +342,8 @@ On first install, MSI runs `bootstrap-agent.ps1` automatically (elevated) to:
 - generate a self-signed certificate at `C:\ProgramData\AdagioMachineAgent\tls\agent.pfx`
 - generate a random API key
 - write startup-critical values into `%ProgramFiles%\AdagioMachineAgent\appsettings.json`
+- write bootstrap handoff secrets to `%ProgramData%\AdagioMachineAgent\bootstrap-secrets.json`
+  with restricted ACLs (`SYSTEM` and `Administrators` only)
 
 MSI then attempts to start `AdagioMachineAgent`. If startup validation fails,
 installation fails (error 1920) and rolls back.
@@ -358,6 +360,14 @@ When startup fails, inspect:
 Failure JSON files include a `suggestedAction` field with a first remediation
 step tailored to the detected error, and an `errorCode` field for fast support
 triage.
+
+Bootstrap secret handoff guidance:
+
+- `%ProgramData%\AdagioMachineAgent\bootstrap-secrets.json` contains the generated
+  API key and certificate password for initial operator handoff.
+- The file is ACL-restricted to `SYSTEM` and local `Administrators`.
+- After securely transferring secrets to the target operator secret store,
+  delete the handoff file.
 
 **Installer Error Code Reference:**
 
