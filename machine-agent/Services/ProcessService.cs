@@ -33,6 +33,14 @@ public sealed class ProcessService : IDisposable
     /// </exception>
     public TrackedProcess Start(string command, string? arguments, string? workingDirectory)
     {
+        return Start(command, arguments, workingDirectory, SessionService.LegacyDefaultSessionId);
+    }
+
+    /// <summary>
+    /// Start an executable process within a logical agent session.
+    /// </summary>
+    public TrackedProcess Start(string command, string? arguments, string? workingDirectory, string sessionId)
+    {
         EnforceWhitelist(command);
         EnforceConcurrencyLimit();
 
@@ -57,7 +65,7 @@ public sealed class ProcessService : IDisposable
         var startedAt = DateTimeOffset.UtcNow;
         process.Start();
 
-        var tracked = new TrackedProcess(process, startedAt);
+        var tracked = new TrackedProcess(process, startedAt, sessionId);
         _processes[process.Id] = tracked;
 
         // Schedule automatic kill after timeout (cast to long to avoid int overflow)
@@ -80,6 +88,15 @@ public sealed class ProcessService : IDisposable
     /// <summary>Retrieve a tracked process by PID.</summary>
     public TrackedProcess? Get(int pid) =>
         _processes.TryGetValue(pid, out var tp) ? tp : null;
+
+    /// <summary>Retrieve a tracked process by PID within a specific session.</summary>
+    public TrackedProcess? Get(int pid, string sessionId)
+    {
+        var tracked = Get(pid);
+        return tracked is not null && string.Equals(tracked.SessionId, sessionId, StringComparison.Ordinal)
+            ? tracked
+            : null;
+    }
 
     /// <summary>Count of currently tracked process entries.</summary>
     public int TrackedProcessCount => _processes.Count;
@@ -187,7 +204,7 @@ public sealed class ProcessService : IDisposable
 }
 
 /// <summary>A process together with its start time and metadata.</summary>
-public sealed record TrackedProcess(Process Process, DateTimeOffset StartedAt)
+public sealed record TrackedProcess(Process Process, DateTimeOffset StartedAt, string SessionId)
 {
     public string Status => Process.HasExited ? "exited" : "running";
 }

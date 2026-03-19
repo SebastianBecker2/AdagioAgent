@@ -118,10 +118,19 @@ public sealed record SelectOptionRequest(
     string? OptionText = null,
     int? OptionIndex = null);
 
+/// <summary>Request to create a new agent session.</summary>
+public sealed record ConnectSessionRequest(string? ClientName = null);
+
 // ─── Responses ────────────────────────────────────────────────────────────────
 
 /// <summary>Result of starting a process.</summary>
 public sealed record RunResponse(int Pid, string Status, DateTimeOffset StartedAt);
+
+/// <summary>Result of creating a new agent session.</summary>
+public sealed record ConnectSessionResponse(
+    string SessionId,
+    DateTimeOffset CreatedAtUtc,
+    string SessionHeaderName);
 
 /// <summary>Current state of a tracked process.</summary>
 public sealed record ProcessStatusResponse(
@@ -240,6 +249,9 @@ public static class AgentErrorCodes
 
     /// <summary>The requested PID is not tracked by the agent.</summary>
     public const string ProcessNotFound = "PROCESS_NOT_FOUND";
+
+    /// <summary>The supplied session token does not match an active agent session.</summary>
+    public const string SessionNotFound = "SESSION_NOT_FOUND";
 
     /// <summary>The requested UI element or window was not found.</summary>
     public const string ElementNotFound = "ELEMENT_NOT_FOUND";

@@ -51,6 +51,30 @@ public sealed class ProcessServiceTests
     }
 
     [Fact]
+    public void Start_TracksProcessWithinSessionScope()
+    {
+        var commandInfo = ResolveLongRunningCommand();
+        using var sut = CreateService(new global::AgentOptions
+        {
+            AllowedExecutablePaths = [Path.GetDirectoryName(commandInfo.Command)!],
+            MaxConcurrentProcesses = 2,
+            ProcessTimeoutSeconds = 60,
+        });
+
+        TrackedProcess tracked = sut.Start(commandInfo.Command, commandInfo.Arguments, null, "session-a");
+        try
+        {
+            Assert.NotNull(sut.Get(tracked.Process.Id, "session-a"));
+            Assert.Null(sut.Get(tracked.Process.Id, "session-b"));
+            Assert.Equal("session-a", tracked.SessionId);
+        }
+        finally
+        {
+            KillIfRunning(tracked.Process);
+        }
+    }
+
+    [Fact]
     public void Start_EnforcesConcurrencyLimit()
     {
         var commandInfo = ResolveLongRunningCommand();

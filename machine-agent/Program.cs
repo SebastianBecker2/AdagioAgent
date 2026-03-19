@@ -55,6 +55,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 builder.Services.AddSingleton<ProcessService>();
+builder.Services.AddSingleton<SessionService>();
 
 // Register the correct UI-automation backend for the host platform.
 #if WINDOWS

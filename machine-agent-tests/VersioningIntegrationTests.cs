@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using AdagioMachineAgent.Models;
+using AdagioMachineAgent.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -127,6 +128,85 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
         Assert.Equal(versionedPayload.ErrorCode, legacyPayload.ErrorCode);
         Assert.False(string.IsNullOrWhiteSpace(versionedPayload.RemediationHint));
         Assert.False(string.IsNullOrWhiteSpace(legacyPayload.RemediationHint));
+    }
+
+    [Fact]
+    public async Task SessionConnect_VersionedRoute_ReturnsSameContractAsDirectRoute()
+    {
+        using var directBody = new StringContent("{}", Encoding.UTF8, "application/json");
+        using var versionedBody = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        var direct = await _client.PostAsync("/session/connect", directBody);
+        var versioned = await _client.PostAsync("/api/v1/session/connect", versionedBody);
+
+        Assert.Equal(HttpStatusCode.OK, direct.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, versioned.StatusCode);
+
+        var directPayload = await ReadJson<ConnectSessionResponse>(direct);
+        var versionedPayload = await ReadJson<ConnectSessionResponse>(versioned);
+
+        Assert.False(string.IsNullOrWhiteSpace(directPayload.SessionId));
+        Assert.False(string.IsNullOrWhiteSpace(versionedPayload.SessionId));
+        Assert.Equal(SessionService.SessionHeaderName, directPayload.SessionHeaderName);
+        Assert.Equal(directPayload.SessionHeaderName, versionedPayload.SessionHeaderName);
+    }
+
+    [Fact]
+    public async Task ProcessStatus_ReturnsSessionNotFoundForUnknownExplicitSession()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/process-status?pid=999999");
+        request.Headers.Add(SessionService.SessionHeaderName, "missing-session");
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var payload = await ReadJson<ErrorResponse>(response);
+        Assert.Equal(AgentErrorCodes.SessionNotFound, payload.ErrorCode);
+        Assert.Contains("missing-session", payload.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ProcessStatus_IsScopedToOwningSessionAcrossVersionedAndLegacyRoutes()
+    {
+        var commandInfo = ResolveLongRunningCommand();
+        var sessionA = await ConnectSession("/session/connect");
+        var sessionB = await ConnectSession("/api/v1/session/connect");
+
+        var runPayload = await StartTrackedProcess(commandInfo, sessionA.SessionId, "/run");
+
+        try
+        {
+            using var ownerRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/process-status?pid={runPayload.Pid}");
+            ownerRequest.Headers.Add(SessionService.SessionHeaderName, sessionA.SessionId);
+
+            var ownerResponse = await _client.SendAsync(ownerRequest);
+
+            Assert.Equal(HttpStatusCode.OK, ownerResponse.StatusCode);
+            var ownerPayload = await ReadJson<ProcessStatusResponse>(ownerResponse);
+            Assert.Equal(runPayload.Pid, ownerPayload.Pid);
+
+            using var otherSessionRequest = new HttpRequestMessage(HttpMethod.Get, $"/process-status?pid={runPayload.Pid}");
+            otherSessionRequest.Headers.Add(SessionService.SessionHeaderName, sessionB.SessionId);
+
+            var otherSessionResponse = await _client.SendAsync(otherSessionRequest);
+
+            Assert.Equal(HttpStatusCode.NotFound, otherSessionResponse.StatusCode);
+            var otherSessionPayload = await ReadJson<ErrorResponse>(otherSessionResponse);
+            Assert.Equal(AgentErrorCodes.ProcessNotFound, otherSessionPayload.ErrorCode);
+        }
+        finally
+        {
+            using var terminateBody = new StringContent(
+                JsonSerializer.Serialize(new { pid = runPayload.Pid }),
+                Encoding.UTF8,
+                "application/json");
+            using var terminateRequest = new HttpRequestMessage(HttpMethod.Post, "/terminate")
+            {
+                Content = terminateBody,
+            };
+            terminateRequest.Headers.Add(SessionService.SessionHeaderName, sessionA.SessionId);
+            await _client.SendAsync(terminateRequest);
+        }
     }
 
     [Fact]
@@ -505,6 +585,48 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
         Assert.False(string.IsNullOrWhiteSpace(legacyPayload.RemediationHint));
     }
 
+    private async Task<ConnectSessionResponse> ConnectSession(string route)
+    {
+        using var body = new StringContent("{}", Encoding.UTF8, "application/json");
+        var response = await _client.PostAsync(route, body);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return await ReadJson<ConnectSessionResponse>(response);
+    }
+
+    private async Task<RunResponse> StartTrackedProcess(
+        (string Command, string? Arguments) commandInfo,
+        string sessionId,
+        string route)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, route)
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(new
+                {
+                    command = commandInfo.Command,
+                    arguments = commandInfo.Arguments,
+                }),
+                Encoding.UTF8,
+                "application/json"),
+        };
+        request.Headers.Add(SessionService.SessionHeaderName, sessionId);
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return await ReadJson<RunResponse>(response);
+    }
+
+    private static (string Command, string? Arguments) ResolveLongRunningCommand()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            var command = Path.Combine(Environment.SystemDirectory, "ping.exe");
+            return (command, "127.0.0.1 -n 20");
+        }
+
+        return ("/bin/sleep", "20");
+    }
+
     // ── test factory ──────────────────────────────────────────────────────
 
     public sealed class AgentFactory : WebApplicationFactory<Program>
@@ -520,11 +642,22 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
             // accept paths under the system temp directory during tests.
             builder.ConfigureAppConfiguration((_, config) =>
             {
+                var allowedExecutableRoots = new List<string> { Path.GetTempPath() };
+                if (OperatingSystem.IsWindows())
+                {
+                    allowedExecutableRoots.Add(Environment.SystemDirectory);
+                }
+                else
+                {
+                    allowedExecutableRoots.Add("/bin");
+                }
+
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Urls"] = "http://127.0.0.1:5000",
                     ["SecurityOptions:RequireHttps"] = "false",
-                    ["AgentOptions:AllowedExecutablePaths:0"] = Path.GetTempPath(),
+                    ["AgentOptions:AllowedExecutablePaths:0"] = allowedExecutableRoots[0],
+                    ["AgentOptions:AllowedExecutablePaths:1"] = allowedExecutableRoots.Count > 1 ? allowedExecutableRoots[1] : null,
                     ["AgentOptions:AllowedWritablePaths:0"] = Path.GetTempPath(),
                     ["AgentOptions:AllowedReadablePaths:0"] = Path.GetTempPath(),
                 });

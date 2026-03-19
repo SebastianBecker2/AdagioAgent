@@ -14,6 +14,7 @@ namespace AdagioMachineAgent.Controllers;
 public sealed class AutomationController : ControllerBase
 {
     private readonly ProcessService _processService;
+    private readonly SessionService _sessionService;
     private readonly IUiAutomationService _uiService;
     private readonly ILogger<AutomationController> _logger;
 
@@ -22,10 +23,12 @@ public sealed class AutomationController : ControllerBase
 
     public AutomationController(
         ProcessService processService,
+        SessionService sessionService,
         IUiAutomationService uiService,
         ILogger<AutomationController> logger)
     {
         _processService = processService;
+        _sessionService = sessionService;
         _uiService = uiService;
         _logger = logger;
     }
@@ -56,7 +59,36 @@ public sealed class AutomationController : ControllerBase
                 RemediationHint: remediationHint));
     }
 
+    private string? ResolveSessionId(out IActionResult? errorResult)
+    {
+        var requestedSessionId = HttpContext?.Request.Headers[SessionService.SessionHeaderName].ToString();
+        var session = _sessionService.Resolve(requestedSessionId);
+
+        if (session is null)
+        {
+            errorResult = NotFound(new ErrorResponse(
+                $"Session '{requestedSessionId}' was not found.",
+                ErrorCode: AgentErrorCodes.SessionNotFound,
+                RemediationHint: "Create a new session via /session/connect and retry with the returned session header."));
+            return null;
+        }
+
+        errorResult = null;
+        return session.SessionId;
+    }
+
     // ── GET /health ──────────────────────────────────────────────────────────
+
+    [HttpPost("/session/connect")]
+    [ProducesResponseType(typeof(ConnectSessionResponse), StatusCodes.Status200OK)]
+    public IActionResult ConnectSession([FromBody] ConnectSessionRequest? request = null)
+    {
+        var session = _sessionService.Connect(request?.ClientName);
+        return Ok(new ConnectSessionResponse(
+            session.SessionId,
+            session.CreatedAtUtc,
+            SessionService.SessionHeaderName));
+    }
 
     [HttpGet("/health")]
     [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status200OK)]
@@ -250,12 +282,19 @@ public sealed class AutomationController : ControllerBase
             return ValidationError("Command is required.", "Provide the executable path or command name in the request.");
         }
 
+        var sessionId = ResolveSessionId(out var sessionError);
+        if (sessionError is not null)
+        {
+            return sessionError;
+        }
+
         try
         {
             var tracked = _processService.Start(
                 request.Command,
                 request.Arguments,
-                request.WorkingDirectory);
+                request.WorkingDirectory,
+                sessionId!);
 
             return Ok(new RunResponse(
                 tracked.Process.Id,
@@ -311,12 +350,19 @@ public sealed class AutomationController : ControllerBase
             return ValidationError("eventEntryCount must be a positive integer.", "Set eventEntryCount to a value greater than zero.");
         }
 
+        var sessionId = ResolveSessionId(out var sessionError);
+        if (sessionError is not null)
+        {
+            return sessionError;
+        }
+
         try
         {
             var tracked = _processService.Start(
                 request.Command,
                 request.Arguments,
-                request.WorkingDirectory);
+                request.WorkingDirectory,
+                sessionId!);
 
             var artifacts = CollectArtifactsForTrackedProcess(
                 tracked,
@@ -394,12 +440,19 @@ public sealed class AutomationController : ControllerBase
             return ValidationError("logPath is required when logMustContainText is provided.", "Set logPath when using logMustContainText assertions.");
         }
 
+        var sessionId = ResolveSessionId(out var sessionError);
+        if (sessionError is not null)
+        {
+            return sessionError;
+        }
+
         try
         {
             var tracked = _processService.Start(
                 request.Command,
                 request.Arguments,
-                request.WorkingDirectory);
+                request.WorkingDirectory,
+                sessionId!);
 
             var artifacts = CollectArtifactsForTrackedProcess(
                 tracked,
@@ -474,7 +527,13 @@ public sealed class AutomationController : ControllerBase
             return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
-        var tracked = _processService.Get(pid);
+        var sessionId = ResolveSessionId(out var sessionError);
+        if (sessionError is not null)
+        {
+            return sessionError;
+        }
+
+        var tracked = _processService.Get(pid, sessionId!);
         if (tracked is null)
         {
             return NotFound(new ErrorResponse(
@@ -505,7 +564,13 @@ public sealed class AutomationController : ControllerBase
             return ValidationError("timeoutMilliseconds must be a positive integer.", "Set timeoutMilliseconds to a value greater than zero.");
         }
 
-        var tracked = _processService.Get(request.Pid);
+        var sessionId = ResolveSessionId(out var sessionError);
+        if (sessionError is not null)
+        {
+            return sessionError;
+        }
+
+        var tracked = _processService.Get(request.Pid, sessionId!);
         if (tracked is null)
         {
             return NotFound(new ErrorResponse(
@@ -579,7 +644,13 @@ public sealed class AutomationController : ControllerBase
             return ValidationError("eventEntryCount must be a positive integer.", "Set eventEntryCount to a value greater than zero.");
         }
 
-        var tracked = _processService.Get(request.Pid);
+        var sessionId = ResolveSessionId(out var sessionError);
+        if (sessionError is not null)
+        {
+            return sessionError;
+        }
+
+        var tracked = _processService.Get(request.Pid, sessionId!);
         if (tracked is null)
         {
             return NotFound(new ErrorResponse(
@@ -636,7 +707,13 @@ public sealed class AutomationController : ControllerBase
             return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
-        var tracked = _processService.Get(request.Pid);
+        var sessionId = ResolveSessionId(out var sessionError);
+        if (sessionError is not null)
+        {
+            return sessionError;
+        }
+
+        var tracked = _processService.Get(request.Pid, sessionId!);
         if (tracked is null)
         {
             return NotFound(new ErrorResponse(
@@ -1495,7 +1572,13 @@ public sealed class AutomationController : ControllerBase
             return ValidationError("timeoutMilliseconds must be a positive integer.", "Set timeoutMilliseconds to a value greater than zero.");
         }
 
-        var tracked = _processService.Get(request.Pid);
+        var sessionId = ResolveSessionId(out var sessionError);
+        if (sessionError is not null)
+        {
+            return sessionError;
+        }
+
+        var tracked = _processService.Get(request.Pid, sessionId!);
         if (tracked is null)
         {
             return NotFound(new ErrorResponse(

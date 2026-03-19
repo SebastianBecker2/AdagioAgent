@@ -12,6 +12,22 @@ namespace AdagioMachineAgent.Tests;
 public sealed class AutomationControllerTests
 {
     [Fact]
+    public void ConnectSession_ReturnsSessionMetadata()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var sessionService = new SessionService();
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object, sessionService: sessionService);
+
+        var result = sut.ConnectSession(new ConnectSessionRequest("test-client"));
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<ConnectSessionResponse>(ok.Value);
+        Assert.False(string.IsNullOrWhiteSpace(payload.SessionId));
+        Assert.Equal(SessionService.SessionHeaderName, payload.SessionHeaderName);
+    }
+
+    [Fact]
     public void Health_ReturnsOkWithHealthyStatus()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
@@ -262,6 +278,21 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void GetProcessStatus_ReturnsSessionNotFoundWhenExplicitSessionIsUnknown()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object, sessionId: "missing-session");
+
+        var result = sut.GetProcessStatus(999999);
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result);
+        var payload = Assert.IsType<ErrorResponse>(notFound.Value);
+        Assert.Equal(AgentErrorCodes.SessionNotFound, payload.ErrorCode);
+        Assert.Contains("missing-session", payload.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void GetProcessStatus_ReturnsRunningForTrackedProcess()
     {
         var commandInfo = ResolveLongRunningCommand();
@@ -282,6 +313,45 @@ public sealed class AutomationControllerTests
             Assert.Equal(runPayload.Pid, payload.Pid);
             Assert.Equal("running", payload.Status);
             Assert.Null(payload.ExitCode);
+        }
+        finally
+        {
+            processService.Get(runPayload.Pid)?.Process.Kill(entireProcessTree: true);
+        }
+    }
+
+    [Fact]
+    public void GetProcessStatus_ReturnsNotFoundWhenProcessBelongsToDifferentSession()
+    {
+        var commandInfo = ResolveLongRunningCommand();
+        using var processService = CreateProcessService(
+            allowedExecutablePaths: [Path.GetDirectoryName(commandInfo.Command)!]);
+        var sessionService = new SessionService();
+        var sessionA = sessionService.Connect("session-a");
+        var sessionB = sessionService.Connect("session-b");
+        var uiService = new Mock<IUiAutomationService>();
+
+        var runController = CreateController(
+            processService,
+            uiService.Object,
+            sessionService: sessionService,
+            sessionId: sessionA.SessionId);
+        var statusController = CreateController(
+            processService,
+            uiService.Object,
+            sessionService: sessionService,
+            sessionId: sessionB.SessionId);
+
+        var runResult = Assert.IsType<OkObjectResult>(
+            runController.Run(new RunRequest(commandInfo.Command, commandInfo.Arguments, null)));
+        var runPayload = Assert.IsType<RunResponse>(runResult.Value);
+
+        try
+        {
+            var statusResult = statusController.GetProcessStatus(runPayload.Pid);
+            var notFound = Assert.IsType<NotFoundObjectResult>(statusResult);
+            var payload = Assert.IsType<ErrorResponse>(notFound.Value);
+            Assert.Equal(AgentErrorCodes.ProcessNotFound, payload.ErrorCode);
         }
         finally
         {
@@ -1256,10 +1326,15 @@ public sealed class AutomationControllerTests
         IUiAutomationService uiService,
         IOptions<AgentOptions>? options = null,
         IOptions<global::SecurityOptions>? securityOptions = null,
+        SessionService? sessionService = null,
+        string? sessionId = null,
         CancellationToken requestAborted = default)
     {
+        sessionService ??= new SessionService();
+
         var controller = new AutomationController(
             processService,
+            sessionService,
             uiService,
             NullLogger<AutomationController>.Instance);
 
@@ -1279,7 +1354,6 @@ public sealed class AutomationControllerTests
             RequireApiKey = false,
         });
 
-        var httpContextMock = new Mock<HttpContext>();
         var serviceProviderMock = new Mock<IServiceProvider>();
         serviceProviderMock
             .Setup(x => x.GetService(typeof(IOptions<AgentOptions>)))
@@ -1287,12 +1361,22 @@ public sealed class AutomationControllerTests
         serviceProviderMock
             .Setup(x => x.GetService(typeof(IOptions<global::SecurityOptions>)))
             .Returns(securityOptions);
+        serviceProviderMock
+            .Setup(x => x.GetService(typeof(SessionService)))
+            .Returns(sessionService);
 
-        httpContextMock.Setup(x => x.RequestServices).Returns(serviceProviderMock.Object);
-        httpContextMock.Setup(x => x.RequestAborted).Returns(requestAborted);
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = serviceProviderMock.Object,
+        };
+        httpContext.RequestAborted = requestAborted;
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            httpContext.Request.Headers[SessionService.SessionHeaderName] = sessionId;
+        }
         controller.ControllerContext = new ControllerContext
         {
-            HttpContext = httpContextMock.Object,
+            HttpContext = httpContext,
         };
 
         return controller;
