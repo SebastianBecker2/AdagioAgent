@@ -6,6 +6,8 @@ The format is inspired by Keep a Changelog and this project uses SemVer.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-19
+
 ### Added
 
 - OpenAPI/Swagger discoverability for machine-agent API.
