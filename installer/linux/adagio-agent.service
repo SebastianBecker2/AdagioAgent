@@ -1,0 +1,40 @@
+[Unit]
+Description=Adagio Machine Agent
+Documentation=https://github.com/SebastianBecker2/AdagioAgent
+# Remain available for the AT-SPI2 accessibility stack which the agent uses
+# to automate GUI applications.  The service must start after the session D-Bus
+# bus and the AT-SPI2 registry daemon are ready.
+After=network.target
+
+[Service]
+Type=notify
+User=adagio-agent
+Group=adagio-agent
+WorkingDirectory=/opt/adagio-machine-agent
+ExecStart=/opt/adagio-machine-agent/AdagioMachineAgent
+Restart=on-failure
+RestartSec=10s
+TimeoutStopSec=30s
+
+# Expose the user-session D-Bus to the service so it can reach AT-SPI2.
+# Replace 1000 with the UID of the graphical-session user if different.
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+
+# ASP.NET runtime settings — override in
+# /etc/adagio-machine-agent/appsettings.json as needed.
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_ROOT=/usr/share/dotnet
+
+# Restrict filesystem access to what the agent legitimately needs.
+ReadWritePaths=/etc/adagio-machine-agent /var/log/adagio-machine-agent
+ReadOnlyPaths=/opt/adagio-machine-agent
+
+# Harden the service process.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+# Enable as a system service: sudo systemctl enable adagio-agent
+WantedBy=multi-user.target

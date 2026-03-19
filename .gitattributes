@@ -1,0 +1,25 @@
+# Default: normalize line endings to LF in the repository
+* text=auto eol=lf
+
+# Windows-specific script files use CRLF
+*.ps1  text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+
+# Shell scripts always use LF regardless of OS
+*.sh   text eol=lf
+
+# YAML / JSON / Markdown — LF
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+
+# Binary files — no line ending normalization
+*.msi  binary
+*.pfx  binary
+*.png  binary
+*.jpg  binary
+*.gif  binary

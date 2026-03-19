@@ -1,0 +1,92 @@
+# Linux CI — Adagio Machine Agent
+#
+# Builds and tests the machine-agent on Ubuntu (linux-x64 / net8.0).
+# This complements the Windows AppVeyor CI leg which covers the MSI
+# installer, FlaUI-dependent tests, and WiX toolchain.
+#
+# What this job validates:
+#   • The machine-agent compiles on Linux (net8.0 target, Tmds.DBus.Protocol)
+#   • Unit and integration tests pass on Linux (cross-platform test commands)
+#   • The .deb packaging script runs without error
+#   • The TypeScript extension tests pass (Node 22)
+
+name: Linux CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  linux-build-test:
+    name: Build & test (Ubuntu / net8.0)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # ── machine-agent ────────────────────────────────────────────────────
+      - name: Restore machine-agent
+        run: dotnet restore machine-agent/AdagioMachineAgent.csproj
+
+      - name: Build machine-agent (Release, linux-x64)
+        run: >
+          dotnet build machine-agent/AdagioMachineAgent.csproj
+          --configuration Release
+          --no-restore
+
+      # ── machine-agent tests ──────────────────────────────────────────────
+      - name: Restore machine-agent tests
+        run: dotnet restore machine-agent-tests/AdagioMachineAgent.Tests.csproj
+
+      - name: Run machine-agent tests (Release)
+        run: >
+          dotnet test machine-agent-tests/AdagioMachineAgent.Tests.csproj
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=linux-tests.trx"
+          --results-directory ./TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-test-results
+          path: TestResults/*.trx
+
+      # ── .deb packaging ───────────────────────────────────────────────────
+      - name: Install dpkg-dev
+        run: sudo apt-get install -y dpkg
+
+      - name: Build .deb package
+        run: bash scripts/build-linux-deb.sh --output-dir ./artifacts/linux
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adagio-machine-agent-deb
+          path: artifacts/linux/*.deb
+
+      # ── controller-extension ─────────────────────────────────────────────
+      - name: Install extension dependencies
+        working-directory: controller-extension
+        run: npm ci
+
+      - name: Build extension
+        working-directory: controller-extension
+        run: npm run compile
+
+      - name: Run extension tests
+        working-directory: controller-extension
+        run: npm test -- --run
