@@ -1,6 +1,13 @@
 import * as vscode from "vscode";
 
 function toErrorMessage(error: unknown): string {
+  if (typeof error === "object" && error !== null) {
+    const candidate = error as { message?: unknown };
+    if (typeof candidate.message === "string" && candidate.message.length > 0) {
+      return candidate.message;
+    }
+  }
+
   if (error instanceof Error && error.message) {
     return error.message;
   }
