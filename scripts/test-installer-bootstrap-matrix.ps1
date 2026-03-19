@@ -47,7 +47,29 @@ function Test-IsAdministrator {
 
 function Initialize-CertificateBypass {
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
-    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+
+    # Use a compiled .NET delegate rather than a PowerShell scriptblock.
+    # HttpWebRequest invokes the validation callback on a thread-pool thread that
+    # carries no PowerShell runspace; a scriptblock delegate throws in that context
+    # and causes the TLS handshake to abort with "connection was closed: unexpected
+    # error on send".  A pure C# anonymous method avoids that runspace dependency.
+    if (-not ([System.Management.Automation.PSTypeName]'AdagioTrustAllCerts').Type) {
+        Add-Type -TypeDefinition @"
+using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
+public class AdagioTrustAllCerts {
+    public static void Apply() {
+        ServicePointManager.ServerCertificateValidationCallback =
+            new RemoteCertificateValidationCallback(
+                delegate(object s, X509Certificate c, X509Chain ch, SslPolicyErrors e) {
+                    return true;
+                });
+    }
+}
+"@
+    }
+    [AdagioTrustAllCerts]::Apply()
 }
 
 function Convert-IdentityToSid {
@@ -86,13 +108,27 @@ function Invoke-AgentRequest {
     param(
         [string]$RelativePath,
         [string]$ApiKey,
-        [string]$ApiKeyHeaderName = 'X-API-Key'
+        [string]$ApiKeyHeaderName = 'X-API-Key',
+        [int]$MaxAttempts = 6,
+        [int]$RetryDelaySeconds = 5
     )
 
     Initialize-CertificateBypass
 
     $uri = '{0}{1}' -f $BaseUrl.TrimEnd('/'), $RelativePath
-    return Invoke-RestMethod -Uri $uri -Headers @{ $ApiKeyHeaderName = $ApiKey } -Method Get -TimeoutSec 20 -UseBasicParsing
+    $lastError = $null
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            return Invoke-RestMethod -Uri $uri -Headers @{ $ApiKeyHeaderName = $ApiKey } -Method Get -TimeoutSec 20 -UseBasicParsing
+        }
+        catch {
+            $lastError = $_
+            if ($attempt -lt $MaxAttempts) {
+                Start-Sleep -Seconds $RetryDelaySeconds
+            }
+        }
+    }
+    throw $lastError.Exception
 }
 
 function Invoke-Msiexec {
