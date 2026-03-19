@@ -283,6 +283,8 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
+                    ["Urls"] = "http://127.0.0.1:5000",
+                    ["SecurityOptions:RequireHttps"] = "false",
                     ["AgentOptions:AllowedExecutablePaths:0"] = Path.GetTempPath(),
                     ["AgentOptions:AllowedWritablePaths:0"] = Path.GetTempPath(),
                     ["AgentOptions:AllowedReadablePaths:0"] = Path.GetTempPath(),
