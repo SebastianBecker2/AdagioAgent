@@ -31,16 +31,38 @@ be easy to install, easy to trust, and easy to audit.
 | Core process execution | Stable | run, run-and-collect, run-and-assert workflows |
 | File operations | Stable | copy, read, tail, list, exists, assert |
 | UI automation — Windows | Beta | FlaUI/UIA3; interactive session constraint documented |
-| UI automation — Linux | Preview | AT-SPI2/X11; parity incomplete |
+| UI automation — Linux | Preview | AT-SPI2/X11 available; parity still incomplete |
 | Screenshot / visual inspection | Beta | base64 PNG capture, no OCR |
 | Security model | Stable | HTTPS + API key, path allowlist, SecurityPolicy |
-| Installer | Stable | WiX v6 MSI, Windows service registration |
-| CI/CD pipeline | Stable | AppVeyor; tag-gated release-ops gates; Pester + xUnit |
+| Installer | Stable | WiX v6 MSI with bootstrap + preflight diagnostics and fail-fast service validation |
+| CI/CD pipeline | Stable | AppVeyor + GitHub Actions (Linux CI and tag-based release workflow) |
 | Release governance | Stable | Sign-off, evidence index, promotion gate |
-| Linux packaging | Not started | no .deb/.rpm or systemd unit |
-| VS Code Marketplace publish | Not started | extension not published |
+| Linux packaging | In progress | `.deb` build script, Linux service unit, install/uninstall scripts, and release artifacts |
+| VS Code Marketplace publish | In progress | VSIX release artifact workflow in place; Marketplace publication pending |
+| Quick-start onboarding | Stable | `docs/QUICKSTART.md` added for Windows and Linux first-run flow |
 | Multi-agent / multi-session | Not started | single connection model only |
 | Plugin / extension model | Not started | all commands compiled-in |
+
+---
+
+## Implementation Snapshot (March 2026)
+
+This snapshot tracks meaningful roadmap execution without converting the
+roadmap into a sprint backlog.
+
+| Phase | Progress | Notes |
+|---|---|---|
+| Phase 1 — Core Reliability | In progress | Structured diagnostics and installer reliability hardening are in place; remaining work is broader runtime error-model standardization and cancellation semantics |
+| Phase 2 — Linux Parity | In progress (substantial) | Linux HTTPS setup docs, systemd unit/install scripts, `.deb` packaging script, and Linux CI/release legs implemented; UI parity and operating-model promotion to Linux Beta still pending |
+| Phase 3 — Distribution | In progress | GitHub Release draft workflow with MSI/VSIX/.deb artifacts and quick-start guide implemented; Marketplace publication and final README distribution/dev split still pending |
+| Phase 4+ | Not started | Session model, security maturity expansion, extensibility model, and GA commitments remain planned work |
+
+Recent phase-aligned completions:
+
+1. Linux CI workflow added for build/test/package validation on Ubuntu.
+2. Release workflow added to attach MSI, VSIX, and `.deb` artifacts to tagged releases.
+3. Linux packaging assets added (`installer/linux/*.service`, install/uninstall scripts, `.deb` build script).
+4. Quick-start guide added for first-run setup on Windows and Linux.
 
 ---
 
