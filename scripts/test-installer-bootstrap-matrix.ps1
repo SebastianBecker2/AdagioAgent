@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$MsiPath = "installer\bin\x64\Release\AdagioMachineAgentSetup.msi",
+    [string]$PreviousMsiPath = "",
     [string]$OutputDir = "artifacts\installer-validation",
     [string[]]$ScenarioNames = @("FreshSilentInstall"),
     [string]$InstallDirectory = "${env:ProgramFiles}\AdagioMachineAgent",
@@ -16,15 +17,25 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 
-if (-not [System.IO.Path]::IsPathRooted($MsiPath)) {
-    $MsiPath = Join-Path $repoRoot $MsiPath
+function Resolve-RepoRelativePath {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $Path
+    }
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+
+    return Join-Path $repoRoot $Path
 }
 
-if (-not [System.IO.Path]::IsPathRooted($OutputDir)) {
-    $OutputDir = Join-Path $repoRoot $OutputDir
-}
+$MsiPath = Resolve-RepoRelativePath -Path $MsiPath
+$PreviousMsiPath = Resolve-RepoRelativePath -Path $PreviousMsiPath
+$OutputDir = Resolve-RepoRelativePath -Path $OutputDir
 
-$supportedScenarios = @('FreshSilentInstall')
+$supportedScenarios = @('FreshSilentInstall', 'AdjacentUpgrade')
 $diagnosticsRoot = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::CommonApplicationData)) 'AdagioMachineAgent'
 $handoffPath = Join-Path $diagnosticsRoot 'bootstrap-secrets.json'
 
@@ -51,6 +62,23 @@ function Convert-IdentityToSid {
     }
     catch {
         return $IdentityReference.Value
+    }
+}
+
+function Get-TextHash {
+    param([string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return ''
+    }
+
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($Value)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return [Convert]::ToHexString($sha.ComputeHash($bytes))
+    }
+    finally {
+        $sha.Dispose()
     }
 }
 
@@ -165,6 +193,187 @@ function Copy-ArtifactIfFresh {
     return $snapshot
 }
 
+function Get-MsiPropertyValue {
+    param(
+        [string]$PackagePath,
+        [string]$PropertyName
+    )
+
+    $installer = $null
+    $database = $null
+    $view = $null
+    $record = $null
+
+    try {
+        $installer = New-Object -ComObject WindowsInstaller.Installer
+        $database = $installer.GetType().InvokeMember('OpenDatabase', [System.Reflection.BindingFlags]::InvokeMethod, $null, $installer, @($PackagePath, 0))
+        $query = "SELECT `Value` FROM `Property` WHERE `Property`='$PropertyName'"
+        $view = $database.GetType().InvokeMember('OpenView', [System.Reflection.BindingFlags]::InvokeMethod, $null, $database, @($query))
+        $view.GetType().InvokeMember('Execute', [System.Reflection.BindingFlags]::InvokeMethod, $null, $view, $null) | Out-Null
+        $record = $view.GetType().InvokeMember('Fetch', [System.Reflection.BindingFlags]::InvokeMethod, $null, $view, $null)
+        if (-not $record) {
+            return ''
+        }
+
+        return [string]$record.StringData(1)
+    }
+    finally {
+        foreach ($comObject in @($record, $view, $database, $installer)) {
+            if ($comObject) {
+                [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($comObject)
+            }
+        }
+    }
+}
+
+function Get-MsiProductVersion {
+    param([string]$PackagePath)
+
+    return Get-MsiPropertyValue -PackagePath $PackagePath -PropertyName 'ProductVersion'
+}
+
+function Assert-CleanMachine {
+    if ((Get-ServiceState -Name $ServiceName) -ne 'Absent') {
+        throw "Service '$ServiceName' is already installed. Refusing to modify a non-clean machine."
+    }
+
+    if (Test-Path -LiteralPath $InstallDirectory -PathType Container) {
+        throw "Install directory '$InstallDirectory' already exists. Refusing to modify a non-clean machine."
+    }
+}
+
+function Get-InstalledAgentSnapshot {
+    param(
+        [string]$InstalledAppSettingsPath,
+        [string]$ExpectedApiKey = ''
+    )
+
+    if (-not (Test-Path -LiteralPath $InstalledAppSettingsPath -PathType Leaf)) {
+        throw "Installed appsettings.json not found at '$InstalledAppSettingsPath'."
+    }
+
+    $appSettings = Get-Content -LiteralPath $InstalledAppSettingsPath -Raw | ConvertFrom-Json
+    $securityOptions = $appSettings.SecurityOptions
+    if (-not $securityOptions) {
+        throw 'Installed appsettings.json is missing the SecurityOptions section.'
+    }
+
+    $appSettingsApiKey = [string]$securityOptions.ApiKey
+    $appSettingsCertificatePassword = [string]$securityOptions.HttpsCertificatePassword
+    $certificatePath = [string]$securityOptions.HttpsCertificatePath
+
+    $apiKeyConfigured = -not [string]::IsNullOrWhiteSpace($appSettingsApiKey) -and $appSettingsApiKey -ne 'CHANGE_ME'
+    $certificatePasswordConfigured = -not [string]::IsNullOrWhiteSpace($appSettingsCertificatePassword) -and $appSettingsCertificatePassword -ne 'CHANGE_ME_CERT_PASSWORD'
+    $certificateExists = -not [string]::IsNullOrWhiteSpace($certificatePath) -and (Test-Path -LiteralPath $certificatePath -PathType Leaf)
+
+    if (-not $apiKeyConfigured) {
+        throw 'Installed appsettings.json still contains a placeholder or empty API key.'
+    }
+
+    if (-not $certificatePasswordConfigured) {
+        throw 'Installed appsettings.json still contains a placeholder or empty certificate password.'
+    }
+
+    if (-not $certificateExists) {
+        throw "Configured certificate file '$certificatePath' does not exist after install."
+    }
+
+    if (-not (Test-Path -LiteralPath $handoffPath -PathType Leaf)) {
+        throw "Bootstrap secret handoff file was not created at '$handoffPath'."
+    }
+
+    $handoff = Get-Content -LiteralPath $handoffPath -Raw | ConvertFrom-Json
+    $handoffApiKey = [string]$handoff.apiKey
+    $handoffCertificatePassword = [string]$handoff.httpsCertificatePassword
+    $handoffAcl = Get-Acl -LiteralPath $handoffPath
+    $handoffSidValues = @($handoffAcl.Access | ForEach-Object { Convert-IdentityToSid -IdentityReference $_.IdentityReference } | Sort-Object -Unique)
+    $expectedHandoffSids = @('S-1-5-18', 'S-1-5-32-544')
+
+    if ([string]::IsNullOrWhiteSpace($handoffApiKey)) {
+        throw 'Bootstrap secret handoff file did not contain an API key.'
+    }
+
+    if ([string]::IsNullOrWhiteSpace($handoffCertificatePassword)) {
+        throw 'Bootstrap secret handoff file did not contain a certificate password.'
+    }
+
+    if ([string]$handoff.httpsCertificatePath -ne $certificatePath) {
+        throw 'Bootstrap secret handoff certificate path does not match installed appsettings.json.'
+    }
+
+    if (-not $handoffAcl.AreAccessRulesProtected) {
+        throw 'Bootstrap secret handoff file ACL is not protected.'
+    }
+
+    if (@($handoffSidValues | Where-Object { $expectedHandoffSids -notcontains $_ }).Count -ne 0 -or @($expectedHandoffSids | Where-Object { $handoffSidValues -notcontains $_ }).Count -ne 0) {
+        throw 'Bootstrap secret handoff file ACL does not match the expected SYSTEM and Administrators-only access.'
+    }
+
+    $apiKeyForProbe = if (-not [string]::IsNullOrWhiteSpace($ExpectedApiKey)) { $ExpectedApiKey } else { $handoffApiKey }
+    $health = Invoke-AgentRequest -RelativePath '/health' -ApiKey $apiKeyForProbe
+    $ready = Invoke-AgentRequest -RelativePath '/ready' -ApiKey $apiKeyForProbe
+    $diagnostics = Invoke-AgentRequest -RelativePath '/diagnostics/status' -ApiKey $apiKeyForProbe
+    $exportMetadata = Invoke-AgentRequest -RelativePath '/diagnostics/export-metadata' -ApiKey $apiKeyForProbe
+
+    if ([string]$health.status -ne 'healthy') {
+        throw "Health endpoint returned unexpected status '$($health.status)'."
+    }
+
+    if ([int]$health.apiVersion -ne 1 -or [int]$ready.apiVersion -ne 1 -or [int]$diagnostics.apiVersion -ne 1) {
+        throw 'One or more installer validation endpoint probes returned an unexpected API version.'
+    }
+
+    if ([string]$exportMetadata.apiKeyHeaderName -ne 'X-API-Key') {
+        throw 'Diagnostics export metadata reported an unexpected API key header name.'
+    }
+
+    if (-not [bool]$exportMetadata.httpsRequired -or -not [bool]$exportMetadata.apiKeyRequired) {
+        throw 'Diagnostics export metadata reported unexpected transport security settings.'
+    }
+
+    return [pscustomobject]@{
+        publicAppSettings = [pscustomobject]@{
+            exists = $true
+            path = $InstalledAppSettingsPath
+            apiKeyConfigured = $apiKeyConfigured
+            certificatePasswordConfigured = $certificatePasswordConfigured
+            certificatePath = $certificatePath
+            certificateExists = $certificateExists
+        }
+        publicHandoff = [pscustomobject]@{
+            exists = $true
+            path = $handoffPath
+            apiKeyPresent = $true
+            certificatePasswordPresent = $true
+            certificatePathMatchesAppSettings = $true
+            aclProtected = $handoffAcl.AreAccessRulesProtected
+            allowedSidValues = $handoffSidValues
+        }
+        publicDiagnostics = [pscustomobject]@{
+            healthApiVersion = $health.apiVersion
+            readyApiVersion = $ready.apiVersion
+            diagnosticsApiVersion = $diagnostics.apiVersion
+            healthVersion = [string]$health.version
+            readyVersion = [string]$ready.version
+            diagnosticsVersion = [string]$diagnostics.version
+            exportMetadataApiKeyHeaderName = [string]$exportMetadata.apiKeyHeaderName
+            exportMetadataHttpsRequired = [bool]$exportMetadata.httpsRequired
+            exportMetadataApiKeyRequired = [bool]$exportMetadata.apiKeyRequired
+            readinessIssueCount = @($ready.issues).Count
+        }
+        healthStatus = [string]$health.status
+        readinessStatus = [string]$ready.status
+        diagnosticsStatus = [string]$diagnostics.status
+        internal = [pscustomobject]@{
+            probeApiKey = $apiKeyForProbe
+            appSettingsApiKeyHash = Get-TextHash -Value $appSettingsApiKey
+            appSettingsCertificatePasswordHash = Get-TextHash -Value $appSettingsCertificatePassword
+            handoffApiKeyHash = Get-TextHash -Value $handoffApiKey
+            handoffCertificatePasswordHash = Get-TextHash -Value $handoffCertificatePassword
+        }
+    }
+}
+
 function Write-SummaryArtifacts {
     param(
         [pscustomobject]$Summary,
@@ -176,7 +385,7 @@ function Write-SummaryArtifacts {
     $jsonPath = Join-Path $DestinationDirectory 'installer-validation-summary.json'
     $markdownPath = Join-Path $DestinationDirectory 'installer-validation-summary.md'
 
-    $Summary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $jsonPath -Encoding UTF8
+    $Summary | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $jsonPath -Encoding UTF8
 
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('# Installer Validation Summary')
@@ -192,13 +401,22 @@ function Write-SummaryArtifacts {
         $lines.Add('')
         $lines.Add("- Status: $($scenario.status)")
         $lines.Add("- Message: $($scenario.message)")
+        $lines.Add("- Baseline install exit code: $($scenario.baselineInstallExitCode)")
         $lines.Add("- Install exit code: $($scenario.installExitCode)")
         $lines.Add("- Uninstall exit code: $($scenario.uninstallExitCode)")
+        $lines.Add("- Source MSI version: $($scenario.sourceMsiVersion)")
+        $lines.Add("- Target MSI version: $($scenario.targetMsiVersion)")
         $lines.Add("- Service after install: $($scenario.serviceStatusAfterInstall)")
         $lines.Add("- Service removed after uninstall: $($scenario.serviceRemovedAfterUninstall)")
         $lines.Add("- Health status: $($scenario.healthStatus)")
         $lines.Add("- Readiness status: $($scenario.readinessStatus)")
         $lines.Add("- Diagnostics status: $($scenario.diagnosticsStatus)")
+        if ($scenario.upgradePreservation) {
+            $lines.Add("- Upgrade preserved API key: $($scenario.upgradePreservation.apiKey)")
+            $lines.Add("- Upgrade preserved certificate password: $($scenario.upgradePreservation.certificatePassword)")
+            $lines.Add("- Upgrade preserved certificate path: $($scenario.upgradePreservation.certificatePath)")
+            $lines.Add("- Upgrade preserved handoff secrets: $($scenario.upgradePreservation.handoffSecrets)")
+        }
         $lines.Add('')
     }
 
@@ -229,6 +447,11 @@ foreach ($scenarioName in $ScenarioNames) {
         finishedAtUtc = $null
         status = 'failed'
         message = ''
+        sourceMsiPath = $PreviousMsiPath
+        sourceMsiVersion = ''
+        targetMsiPath = $MsiPath
+        targetMsiVersion = ''
+        baselineInstallExitCode = $null
         installExitCode = $null
         uninstallExitCode = $null
         serviceStatusAfterInstall = 'Absent'
@@ -239,9 +462,12 @@ foreach ($scenarioName in $ScenarioNames) {
         appSettings = $null
         handoff = $null
         diagnostics = $null
+        baselineDiagnostics = $null
+        upgradePreservation = $null
         artifacts = [ordered]@{
             installLog = Join-Path $scenarioOutputDir 'install.log'
             uninstallLog = Join-Path $scenarioOutputDir 'uninstall.log'
+            baselineInstallLog = Join-Path $scenarioOutputDir 'baseline-install.log'
             bootstrapLog = $null
             bootstrapFailure = $null
             bootstrapPreflightLog = $null
@@ -261,143 +487,123 @@ foreach ($scenarioName in $ScenarioNames) {
             throw "MSI not found at '$MsiPath'. Build the installer before running installer validation."
         }
 
+        if ($scenarioName -eq 'AdjacentUpgrade') {
+            if ([string]::IsNullOrWhiteSpace($PreviousMsiPath)) {
+                throw 'AdjacentUpgrade requires -PreviousMsiPath to point to a baseline MSI.'
+            }
+
+            if (-not (Test-Path -LiteralPath $PreviousMsiPath -PathType Leaf)) {
+                throw "Baseline MSI not found at '$PreviousMsiPath'."
+            }
+        }
+
         if (-not $summary.isAdministrator) {
             throw 'Installer validation requires an elevated PowerShell session.'
         }
 
-        if ((Get-ServiceState -Name $ServiceName) -ne 'Absent') {
-            throw "Service '$ServiceName' is already installed. Refusing to modify a non-clean machine."
+        $scenario.targetMsiVersion = Get-MsiProductVersion -PackagePath $MsiPath
+
+        if ($scenarioName -eq 'AdjacentUpgrade') {
+            $scenario.sourceMsiPath = $PreviousMsiPath
+            $scenario.sourceMsiVersion = Get-MsiProductVersion -PackagePath $PreviousMsiPath
+
+            if (-not [string]::IsNullOrWhiteSpace($scenario.sourceMsiVersion) -and -not [string]::IsNullOrWhiteSpace($scenario.targetMsiVersion) -and $scenario.sourceMsiVersion -eq $scenario.targetMsiVersion) {
+                throw "AdjacentUpgrade requires different MSI product versions, but both packages report '$($scenario.targetMsiVersion)'."
+            }
         }
 
-        if (Test-Path -LiteralPath $InstallDirectory -PathType Container) {
-            throw "Install directory '$InstallDirectory' already exists. Refusing to modify a non-clean machine."
-        }
-
-        $installAttempted = $true
-        $scenario.installExitCode = Invoke-Msiexec -Mode install -PackagePath $MsiPath -LogPath $scenario.artifacts.installLog
-        if ($scenario.installExitCode -ne 0) {
-            throw "msiexec install returned exit code $($scenario.installExitCode)."
-        }
-
-        if (-not (Wait-ForServiceStatus -Name $ServiceName -DesiredStatus Running -TimeoutSeconds $ServiceStartTimeoutSeconds)) {
-            throw "Service '$ServiceName' did not reach Running within $ServiceStartTimeoutSeconds seconds."
-        }
-
-        $scenario.serviceStatusAfterInstall = Get-ServiceState -Name $ServiceName
+        Assert-CleanMachine
 
         $installedAppSettingsPath = Join-Path $InstallDirectory 'appsettings.json'
-        if (-not (Test-Path -LiteralPath $installedAppSettingsPath -PathType Leaf)) {
-            throw "Installed appsettings.json not found at '$installedAppSettingsPath'."
-        }
 
-        $appSettings = Get-Content -LiteralPath $installedAppSettingsPath -Raw | ConvertFrom-Json
-        $securityOptions = $appSettings.SecurityOptions
-        if (-not $securityOptions) {
-            throw 'Installed appsettings.json is missing the SecurityOptions section.'
-        }
+        switch ($scenarioName) {
+            'FreshSilentInstall' {
+                $installAttempted = $true
+                $scenario.installExitCode = Invoke-Msiexec -Mode install -PackagePath $MsiPath -LogPath $scenario.artifacts.installLog
+                if ($scenario.installExitCode -ne 0) {
+                    throw "msiexec install returned exit code $($scenario.installExitCode)."
+                }
 
-        $apiKeyConfigured = -not [string]::IsNullOrWhiteSpace([string]$securityOptions.ApiKey) -and [string]$securityOptions.ApiKey -ne 'CHANGE_ME'
-        $certificatePasswordConfigured = -not [string]::IsNullOrWhiteSpace([string]$securityOptions.HttpsCertificatePassword) -and [string]$securityOptions.HttpsCertificatePassword -ne 'CHANGE_ME_CERT_PASSWORD'
-        $certificatePath = [string]$securityOptions.HttpsCertificatePath
-        $certificateExists = -not [string]::IsNullOrWhiteSpace($certificatePath) -and (Test-Path -LiteralPath $certificatePath -PathType Leaf)
+                if (-not (Wait-ForServiceStatus -Name $ServiceName -DesiredStatus Running -TimeoutSeconds $ServiceStartTimeoutSeconds)) {
+                    throw "Service '$ServiceName' did not reach Running within $ServiceStartTimeoutSeconds seconds."
+                }
 
-        $scenario.appSettings = [pscustomobject]@{
-            exists = $true
-            path = $installedAppSettingsPath
-            apiKeyConfigured = $apiKeyConfigured
-            certificatePasswordConfigured = $certificatePasswordConfigured
-            certificatePath = $certificatePath
-            certificateExists = $certificateExists
-        }
+                $snapshot = Get-InstalledAgentSnapshot -InstalledAppSettingsPath $installedAppSettingsPath
+                $scenario.serviceStatusAfterInstall = Get-ServiceState -Name $ServiceName
+                $scenario.appSettings = $snapshot.publicAppSettings
+                $scenario.handoff = $snapshot.publicHandoff
+                $scenario.diagnostics = $snapshot.publicDiagnostics
+                $scenario.healthStatus = $snapshot.healthStatus
+                $scenario.readinessStatus = $snapshot.readinessStatus
+                $scenario.diagnosticsStatus = $snapshot.diagnosticsStatus
+                $scenario.message = 'Fresh silent install validation passed.'
+            }
 
-        if (-not $apiKeyConfigured) {
-            throw 'Installed appsettings.json still contains a placeholder or empty API key.'
-        }
+            'AdjacentUpgrade' {
+                $installAttempted = $true
+                $scenario.baselineInstallExitCode = Invoke-Msiexec -Mode install -PackagePath $PreviousMsiPath -LogPath $scenario.artifacts.baselineInstallLog
+                if ($scenario.baselineInstallExitCode -ne 0) {
+                    throw "Baseline msiexec install returned exit code $($scenario.baselineInstallExitCode)."
+                }
 
-        if (-not $certificatePasswordConfigured) {
-            throw 'Installed appsettings.json still contains a placeholder or empty certificate password.'
-        }
+                if (-not (Wait-ForServiceStatus -Name $ServiceName -DesiredStatus Running -TimeoutSeconds $ServiceStartTimeoutSeconds)) {
+                    throw "Service '$ServiceName' did not reach Running after baseline install within $ServiceStartTimeoutSeconds seconds."
+                }
 
-        if (-not $certificateExists) {
-            throw "Configured certificate file '$certificatePath' does not exist after install."
-        }
+                $baselineSnapshot = Get-InstalledAgentSnapshot -InstalledAppSettingsPath $installedAppSettingsPath
+                $scenario.baselineDiagnostics = $baselineSnapshot.publicDiagnostics
 
-        if (-not (Test-Path -LiteralPath $handoffPath -PathType Leaf)) {
-            throw "Bootstrap secret handoff file was not created at '$handoffPath'."
-        }
+                $scenario.installExitCode = Invoke-Msiexec -Mode install -PackagePath $MsiPath -LogPath $scenario.artifacts.installLog
+                if ($scenario.installExitCode -ne 0) {
+                    throw "Upgrade msiexec install returned exit code $($scenario.installExitCode)."
+                }
 
-        $handoff = Get-Content -LiteralPath $handoffPath -Raw | ConvertFrom-Json
-        $handoffAcl = Get-Acl -LiteralPath $handoffPath
-        $handoffSidValues = @($handoffAcl.Access | ForEach-Object { Convert-IdentityToSid -IdentityReference $_.IdentityReference } | Sort-Object -Unique)
-        $expectedHandoffSids = @('S-1-5-18', 'S-1-5-32-544')
+                if (-not (Wait-ForServiceStatus -Name $ServiceName -DesiredStatus Running -TimeoutSeconds $ServiceStartTimeoutSeconds)) {
+                    throw "Service '$ServiceName' did not reach Running after upgrade within $ServiceStartTimeoutSeconds seconds."
+                }
 
-        $scenario.handoff = [pscustomobject]@{
-            exists = $true
-            path = $handoffPath
-            apiKeyPresent = -not [string]::IsNullOrWhiteSpace([string]$handoff.apiKey)
-            certificatePasswordPresent = -not [string]::IsNullOrWhiteSpace([string]$handoff.httpsCertificatePassword)
-            certificatePathMatchesAppSettings = [string]$handoff.httpsCertificatePath -eq $certificatePath
-            aclProtected = $handoffAcl.AreAccessRulesProtected
-            allowedSidValues = $handoffSidValues
-        }
+                $postUpgradeSnapshot = Get-InstalledAgentSnapshot -InstalledAppSettingsPath $installedAppSettingsPath -ExpectedApiKey $baselineSnapshot.internal.probeApiKey
+                $scenario.serviceStatusAfterInstall = Get-ServiceState -Name $ServiceName
+                $scenario.appSettings = $postUpgradeSnapshot.publicAppSettings
+                $scenario.handoff = $postUpgradeSnapshot.publicHandoff
+                $scenario.diagnostics = $postUpgradeSnapshot.publicDiagnostics
+                $scenario.healthStatus = $postUpgradeSnapshot.healthStatus
+                $scenario.readinessStatus = $postUpgradeSnapshot.readinessStatus
+                $scenario.diagnosticsStatus = $postUpgradeSnapshot.diagnosticsStatus
 
-        if (-not $scenario.handoff.apiKeyPresent) {
-            throw 'Bootstrap secret handoff file did not contain an API key.'
-        }
+                $apiKeyPreserved = $baselineSnapshot.internal.appSettingsApiKeyHash -eq $postUpgradeSnapshot.internal.appSettingsApiKeyHash
+                $certificatePasswordPreserved = $baselineSnapshot.internal.appSettingsCertificatePasswordHash -eq $postUpgradeSnapshot.internal.appSettingsCertificatePasswordHash
+                $certificatePathPreserved = $baselineSnapshot.publicAppSettings.certificatePath -eq $postUpgradeSnapshot.publicAppSettings.certificatePath
+                $handoffSecretsPreserved = $baselineSnapshot.internal.handoffApiKeyHash -eq $postUpgradeSnapshot.internal.handoffApiKeyHash -and $baselineSnapshot.internal.handoffCertificatePasswordHash -eq $postUpgradeSnapshot.internal.handoffCertificatePasswordHash
 
-        if (-not $scenario.handoff.certificatePasswordPresent) {
-            throw 'Bootstrap secret handoff file did not contain a certificate password.'
-        }
+                $scenario.upgradePreservation = [pscustomobject]@{
+                    apiKey = $apiKeyPreserved
+                    certificatePassword = $certificatePasswordPreserved
+                    certificatePath = $certificatePathPreserved
+                    handoffSecrets = $handoffSecretsPreserved
+                }
 
-        if (-not $scenario.handoff.certificatePathMatchesAppSettings) {
-            throw 'Bootstrap secret handoff certificate path does not match installed appsettings.json.'
-        }
+                if (-not $apiKeyPreserved) {
+                    throw 'Upgrade changed SecurityOptions.ApiKey unexpectedly.'
+                }
 
-        if (-not $scenario.handoff.aclProtected) {
-            throw 'Bootstrap secret handoff file ACL is not protected.'
-        }
+                if (-not $certificatePasswordPreserved) {
+                    throw 'Upgrade changed SecurityOptions.HttpsCertificatePassword unexpectedly.'
+                }
 
-        if (@($handoffSidValues | Where-Object { $expectedHandoffSids -notcontains $_ }).Count -ne 0 -or @($expectedHandoffSids | Where-Object { $handoffSidValues -notcontains $_ }).Count -ne 0) {
-            throw 'Bootstrap secret handoff file ACL does not match the expected SYSTEM and Administrators-only access.'
-        }
+                if (-not $certificatePathPreserved) {
+                    throw 'Upgrade changed SecurityOptions.HttpsCertificatePath unexpectedly.'
+                }
 
-        $apiKey = [string]$handoff.apiKey
-        $health = Invoke-AgentRequest -RelativePath '/health' -ApiKey $apiKey
-        $ready = Invoke-AgentRequest -RelativePath '/ready' -ApiKey $apiKey
-        $diagnostics = Invoke-AgentRequest -RelativePath '/diagnostics/status' -ApiKey $apiKey
-        $exportMetadata = Invoke-AgentRequest -RelativePath '/diagnostics/export-metadata' -ApiKey $apiKey
+                if (-not $handoffSecretsPreserved) {
+                    throw 'Upgrade changed bootstrap secret handoff contents unexpectedly.'
+                }
 
-        $scenario.healthStatus = [string]$health.status
-        $scenario.readinessStatus = [string]$ready.status
-        $scenario.diagnosticsStatus = [string]$diagnostics.status
-        $scenario.diagnostics = [pscustomobject]@{
-            healthApiVersion = $health.apiVersion
-            readyApiVersion = $ready.apiVersion
-            diagnosticsApiVersion = $diagnostics.apiVersion
-            exportMetadataApiKeyHeaderName = [string]$exportMetadata.apiKeyHeaderName
-            exportMetadataHttpsRequired = [bool]$exportMetadata.httpsRequired
-            exportMetadataApiKeyRequired = [bool]$exportMetadata.apiKeyRequired
-            readinessIssueCount = @($ready.issues).Count
-        }
-
-        if ([string]$health.status -ne 'healthy') {
-            throw "Health endpoint returned unexpected status '$($health.status)'."
-        }
-
-        if ([int]$health.apiVersion -ne 1 -or [int]$ready.apiVersion -ne 1 -or [int]$diagnostics.apiVersion -ne 1) {
-            throw 'One or more installer validation endpoint probes returned an unexpected API version.'
-        }
-
-        if ([string]$exportMetadata.apiKeyHeaderName -ne 'X-API-Key') {
-            throw 'Diagnostics export metadata reported an unexpected API key header name.'
-        }
-
-        if (-not [bool]$exportMetadata.httpsRequired -or -not [bool]$exportMetadata.apiKeyRequired) {
-            throw 'Diagnostics export metadata reported unexpected transport security settings.'
+                $scenario.message = 'Adjacent upgrade validation passed.'
+            }
         }
 
         $scenario.status = 'passed'
-        $scenario.message = 'Fresh silent install validation passed.'
     }
     catch {
         $scenario.status = 'failed'

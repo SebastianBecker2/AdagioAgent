@@ -139,7 +139,8 @@ If raw JSON editing is added, include validation safeguards before applying chan
 2. CI bootstrap validation automation: in place via AppVeyor Pester execution of bootstrap script tests.
 3. Fresh silent installer validation automation: in place via `scripts/test-installer-bootstrap-matrix.ps1`.
 4. CI fresh silent installer validation: in place via AppVeyor execution of the installer validation matrix script on the built MSI.
-5. Upgrade path validation remains pending for adjacent-version MSI coverage in a dedicated environment.
+5. Upgrade path validation automation: in place via the `AdjacentUpgrade` scenario in `scripts/test-installer-bootstrap-matrix.ps1` when a baseline MSI is provided.
+6. Continuous adjacent-version CI coverage remains pending until a reproducible baseline MSI artifact source is wired into the dedicated environment.
 
 ## Decisions Status
 

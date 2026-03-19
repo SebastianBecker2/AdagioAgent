@@ -256,6 +256,18 @@ build_script:
   # 3.1 Validate the fresh silent installer path on the ephemeral CI worker
   - ps: .\scripts\test-installer-bootstrap-matrix.ps1 -MsiPath .\installer\bin\x64\Release\AdagioMachineAgentSetup.msi -FailOnScenarioFailure
 
+  # 3.2 When a baseline MSI is supplied, validate adjacent-version upgrade preservation
+  - ps: |
+      if ([string]::IsNullOrWhiteSpace($env:ADAGIO_UPGRADE_BASELINE_MSI)) {
+        Write-Host 'Adjacent upgrade installer validation skipped because ADAGIO_UPGRADE_BASELINE_MSI is not set.'
+      }
+      elseif (-not (Test-Path -LiteralPath $env:ADAGIO_UPGRADE_BASELINE_MSI -PathType Leaf)) {
+        throw "Adjacent upgrade installer validation baseline MSI not found at '$env:ADAGIO_UPGRADE_BASELINE_MSI'."
+      }
+      else {
+        .\scripts\test-installer-bootstrap-matrix.ps1 -ScenarioNames AdjacentUpgrade -PreviousMsiPath $env:ADAGIO_UPGRADE_BASELINE_MSI -MsiPath .\installer\bin\x64\Release\AdagioMachineAgentSetup.msi -FailOnScenarioFailure
+      }
+
 # ── Tests ────────────────────────────────────────────────────────────────────
 test_script:
   # 1. Run .NET unit tests (machine-agent-tests project is part of the solution)

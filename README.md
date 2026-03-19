@@ -42,6 +42,8 @@ Bootstrap script regression tests: `Invoke-Pester -Path .\scripts\tests\Bootstra
 
 Installer validation matrix: `powershell -ExecutionPolicy Bypass -File .\scripts\test-installer-bootstrap-matrix.ps1 -MsiPath .\installer\bin\x64\Release\AdagioMachineAgentSetup.msi -FailOnScenarioFailure`.
 
+Adjacent upgrade validation matrix: `powershell -ExecutionPolicy Bypass -File .\scripts\test-installer-bootstrap-matrix.ps1 -ScenarioNames AdjacentUpgrade -PreviousMsiPath C:\path\to\AdagioMachineAgentSetup-previous.msi -MsiPath .\installer\bin\x64\Release\AdagioMachineAgentSetup.msi -FailOnScenarioFailure`.
+
 Support bundle helper script: `scripts/collect-support-bundle.ps1`
 (sanitized diagnostics and operational evidence collection).
 
@@ -376,8 +378,9 @@ Bootstrap secret handoff guidance:
 Installer validation automation:
 
 - `scripts/test-installer-bootstrap-matrix.ps1` runs a guarded fresh silent MSI install validation on a clean elevated Windows machine.
+- The same harness supports `AdjacentUpgrade` when a baseline MSI is supplied, and verifies that appsettings values and bootstrap handoff secrets are preserved across the upgrade.
 - The script verifies service startup, bootstrap diagnostics, handoff ACLs, installed appsettings wiring, and authenticated health/diagnostics endpoint probes.
-- AppVeyor runs this validation after building the MSI and publishes the summary/log artifacts from `artifacts/installer-validation/`.
+- AppVeyor runs fresh-install validation automatically after building the MSI and can run adjacent-upgrade validation when `ADAGIO_UPGRADE_BASELINE_MSI` is supplied in the build environment. Summary and log artifacts are published from `artifacts/installer-validation/`.
 
 **Installer Error Code Reference:**
 

@@ -44,4 +44,21 @@ Describe 'Installer validation matrix script' {
         $summary.scenarios[0].status | Should Be 'failed'
         $summary.scenarios[0].message | Should Match 'Unsupported scenario'
     }
+
+    It 'requires a baseline MSI path for adjacent upgrade scenarios' {
+        $targetMsiPath = Join-Path $script:testRoot 'target.msi'
+        Set-Content -LiteralPath $targetMsiPath -Value 'fixture' -Encoding ASCII
+
+        { & $installerMatrixScript -ScenarioNames 'AdjacentUpgrade' -MsiPath $targetMsiPath -OutputDir $script:outputDir -FailOnScenarioFailure } | Should Throw
+
+        $summaryJsonPath = Join-Path $script:outputDir 'installer-validation-summary.json'
+        (Test-Path -LiteralPath $summaryJsonPath -PathType Leaf) | Should Be $true
+
+        $summary = Get-Content -LiteralPath $summaryJsonPath -Raw | ConvertFrom-Json
+        $summary.success | Should Be $false
+        @($summary.scenarios).Count | Should Be 1
+        $summary.scenarios[0].name | Should Be 'AdjacentUpgrade'
+        $summary.scenarios[0].status | Should Be 'failed'
+        $summary.scenarios[0].message | Should Match 'AdjacentUpgrade requires -PreviousMsiPath'
+    }
 }
