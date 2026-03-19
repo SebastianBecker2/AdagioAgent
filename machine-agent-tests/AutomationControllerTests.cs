@@ -628,7 +628,11 @@ public sealed class AutomationControllerTests
         var uiService = new Mock<IUiAutomationService>();
         var sut = CreateController(processService, uiService.Object);
 
-        var result = sut.CopyFile(new CopyFileRequest("C:\\Windows\\System32\\test.txt", "SGVsbG8=", false));
+        var outsidePath = OperatingSystem.IsWindows()
+            ? "C:\\Windows\\System32\\test.txt"
+            : "/etc/test.txt";
+
+        var result = sut.CopyFile(new CopyFileRequest(outsidePath, "SGVsbG8=", false));
 
         var bad = Assert.IsType<BadRequestObjectResult>(result);
         var payload = Assert.IsType<ErrorResponse>(bad.Value);
