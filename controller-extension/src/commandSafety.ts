@@ -23,13 +23,15 @@ function toErrorMessage(error: unknown): string {
  * Wrap a command handler to ensure consistent user-facing error reporting.
  */
 export function wrapCommand<TArgs extends unknown[]>(
-  handler: (...args: TArgs) => Promise<void> | void
+  handler: (...args: TArgs) => Promise<void> | void,
+  reportError?: (message: string) => void
 ): (...args: TArgs) => Promise<void> {
   return async (...args: TArgs): Promise<void> => {
     try {
       await handler(...args);
     } catch (error) {
-      vscode.window.showErrorMessage(`Adagio Agent command failed: ${toErrorMessage(error)}`);
+      const reporter = reportError ?? vscode.window.showErrorMessage;
+      reporter(`Adagio Agent command failed: ${toErrorMessage(error)}`);
     }
   };
 }

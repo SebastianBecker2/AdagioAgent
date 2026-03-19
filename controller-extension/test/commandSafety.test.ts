@@ -1,21 +1,23 @@
-import { describe, expect, it, vi } from "vitest";
-
-const { showErrorMessageMock } = vi.hoisted(() => ({
-  showErrorMessageMock: vi.fn(),
-}));
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("vscode", () => ({
   window: {
-    showErrorMessage: showErrorMessageMock,
+    showErrorMessage: vi.fn(),
   },
 }));
 
 import { wrapCommand } from "../src/commandSafety";
 
 describe("wrapCommand", () => {
+  const showErrorMessageMock = vi.fn();
+
+  beforeEach(() => {
+    showErrorMessageMock.mockReset();
+  });
+
   it("executes wrapped command successfully", async () => {
     const handler = vi.fn(async () => undefined);
-    const wrapped = wrapCommand(handler);
+    const wrapped = wrapCommand(handler, showErrorMessageMock);
 
     await wrapped();
 
@@ -26,7 +28,7 @@ describe("wrapCommand", () => {
   it("shows user-friendly error message when command throws", async () => {
     const wrapped = wrapCommand(async () => {
       throw new Error("broken config");
-    });
+    }, showErrorMessageMock);
 
     await wrapped();
 
@@ -38,7 +40,7 @@ describe("wrapCommand", () => {
   it("handles non-Error throw values", async () => {
     const wrapped = wrapCommand(async () => {
       throw "plain string";
-    });
+    }, showErrorMessageMock);
 
     await wrapped();
 
