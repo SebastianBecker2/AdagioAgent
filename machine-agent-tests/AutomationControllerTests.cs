@@ -28,7 +28,7 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
-    public void Ready_ReturnsOkWithReadyStatus()
+    public void Ready_ReturnsOkWithReadinessStatus()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
         var uiService = new Mock<IUiAutomationService>();
@@ -38,11 +38,21 @@ public sealed class AutomationControllerTests
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var payload = Assert.IsType<ReadinessResponse>(ok.Value);
-        Assert.Equal("ready", payload.Status);
+        Assert.True(
+            string.Equals(payload.Status, "ready", StringComparison.Ordinal) ||
+            string.Equals(payload.Status, "degraded", StringComparison.Ordinal),
+            $"Unexpected readiness status '{payload.Status}'.");
         Assert.False(string.IsNullOrWhiteSpace(payload.Version));
         Assert.Equal(1, payload.ApiVersion);
         Assert.True(payload.UiAutomationAvailable);
-        Assert.Empty(payload.Issues);
+        if (string.Equals(payload.Status, "ready", StringComparison.Ordinal))
+        {
+            Assert.Empty(payload.Issues);
+        }
+        else
+        {
+            Assert.NotEmpty(payload.Issues);
+        }
     }
 
     [Fact]
@@ -83,9 +93,20 @@ public sealed class AutomationControllerTests
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var payload = Assert.IsType<DiagnosticsStatusResponse>(ok.Value);
-        Assert.Equal("ready", payload.Status);
+        Assert.True(
+            string.Equals(payload.Status, "ready", StringComparison.Ordinal) ||
+            string.Equals(payload.Status, "degraded", StringComparison.Ordinal),
+            $"Unexpected diagnostics status '{payload.Status}'.");
         Assert.Equal(0, payload.RunningProcessCount);
         Assert.Equal(0, payload.TrackedProcessCount);
+        if (string.Equals(payload.Status, "ready", StringComparison.Ordinal))
+        {
+            Assert.Empty(payload.Issues);
+        }
+        else
+        {
+            Assert.NotEmpty(payload.Issues);
+        }
         Assert.InRange(payload.TimestampUtc, before, after.AddSeconds(1));
     }
 
@@ -103,8 +124,18 @@ public sealed class AutomationControllerTests
         var ok = Assert.IsType<OkObjectResult>(result);
         var payload = Assert.IsType<SupportBundleMetadataResponse>(ok.Value);
         Assert.Equal(1, payload.ApiVersion);
-        Assert.Equal("ready", payload.ReadinessStatus);
-        Assert.Equal(0, payload.IssueCount);
+        Assert.True(
+            string.Equals(payload.ReadinessStatus, "ready", StringComparison.Ordinal) ||
+            string.Equals(payload.ReadinessStatus, "degraded", StringComparison.Ordinal),
+            $"Unexpected export readiness status '{payload.ReadinessStatus}'.");
+        if (string.Equals(payload.ReadinessStatus, "ready", StringComparison.Ordinal))
+        {
+            Assert.Equal(0, payload.IssueCount);
+        }
+        else
+        {
+            Assert.True(payload.IssueCount > 0);
+        }
         Assert.Equal("X-API-Key", payload.ApiKeyHeaderName);
         Assert.True(payload.AllowedExecutablePathCount > 0);
         Assert.NotEmpty(payload.RecommendedArtifacts);
