@@ -9,19 +9,53 @@ extension) to a UI-automation agent running inside a Windows or Linux VM.
 
 ---
 
-## For operators / users
+## Choose your path
 
-**New here?** → Follow the [Quick-start guide](docs/QUICKSTART.md) to go from zero to your first Copilot automation command in under 10 minutes.
-
-**Install:**
-- **Windows VM (agent host):** Download `AdagioMachineAgentSetup.msi` from [GitHub Releases](https://github.com/SebastianBecker2/AdagioAgent/releases) and run `msiexec /i AdagioMachineAgentSetup.msi /quiet`.
-- **VS Code (developer workstation):** Install the **Adagio Agent Controller** extension from the Marketplace or from a `.vsix` via `Extensions: Install from VSIX…`.
-
-**Configure** the extension with your VM's URL and API key (see [docs/QUICKSTART.md](docs/QUICKSTART.md) Step 3).
+| I want to... | Start here |
+|---|---|
+| Use AdagioAgent on a VM | [docs/QUICKSTART.md](docs/QUICKSTART.md) |
+| Install the VS Code extension from release artifacts | [docs/QUICKSTART.md](docs/QUICKSTART.md#step-2--install-the-vs-code-extension) |
+| Troubleshoot readiness, bootstrap, or support bundles | [docs/DIAGNOSTICS_TROUBLESHOOTING.md](docs/DIAGNOSTICS_TROUBLESHOOTING.md) |
+| Understand product direction | [docs/PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md) |
+| Develop or modify the codebase | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 ---
 
-## For developers / contributors
+## I want to use AdagioAgent
+
+**New here?** → Follow the [Quick-start guide](docs/QUICKSTART.md) to go from zero to your first Copilot automation command in under 10 minutes.
+
+### What you install
+
+- **Machine agent on the target VM:**
+  - Windows: install `AdagioMachineAgentSetup.msi` from [GitHub Releases](https://github.com/SebastianBecker2/AdagioAgent/releases)
+  - Linux: install `adagio-machine-agent_*.deb` from [GitHub Releases](https://github.com/SebastianBecker2/AdagioAgent/releases)
+- **VS Code extension on your workstation:** install **Adagio Agent Controller** from the Marketplace when available, or from a `.vsix` release asset today.
+
+### Fast path
+
+1. Install the machine agent on the VM.
+2. Install the VS Code extension.
+3. Set `adagioAgent.vmAgentUrl` and `adagioAgent.vmAgentApiKey` in VS Code.
+4. Run **Adagio Agent: Run Startup Diagnostics**.
+5. Use Copilot Chat to invoke Adagio tools.
+
+**Configure** the extension with your VM's URL and API key (see [docs/QUICKSTART.md](docs/QUICKSTART.md) Step 3).
+
+### Operator docs
+
+- [docs/QUICKSTART.md](docs/QUICKSTART.md)
+- [docs/PILOT_RUNBOOK.md](docs/PILOT_RUNBOOK.md)
+- [docs/ROLLBACK_CHECKLIST.md](docs/ROLLBACK_CHECKLIST.md)
+- [docs/UPGRADE_VALIDATION_CHECKLIST.md](docs/UPGRADE_VALIDATION_CHECKLIST.md)
+- [docs/RELEASE_SUPPORT_QUICKSTART.md](docs/RELEASE_SUPPORT_QUICKSTART.md)
+- [docs/SUPPORT_BUNDLE_SCHEMA.md](docs/SUPPORT_BUNDLE_SCHEMA.md)
+- [docs/OPERATIONS_SIGNOFF_TEMPLATE.md](docs/OPERATIONS_SIGNOFF_TEMPLATE.md)
+- [docs/release-ops/README.md](docs/release-ops/README.md)
+
+---
+
+## I want to develop AdagioAgent
 
 Current product posture: Windows-first, admin-managed deployment for controlled
 environments. See [docs/OPERATING_MODEL.md](docs/OPERATING_MODEL.md) for the
@@ -34,14 +68,14 @@ Project direction:
 
 - [docs/PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
 
-Governance and support docs:
+### Governance and support
 
 - [CHANGELOG.md](CHANGELOG.md)
 - [SECURITY.md](SECURITY.md)
 - [SUPPORT.md](SUPPORT.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 
-Pilot-readiness docs:
+### Delivery and readiness docs
 
 - [docs/PILOT_RUNBOOK.md](docs/PILOT_RUNBOOK.md)
 - [docs/ROLLBACK_CHECKLIST.md](docs/ROLLBACK_CHECKLIST.md)
@@ -51,9 +85,11 @@ Pilot-readiness docs:
 - [docs/OPERATIONS_SIGNOFF_TEMPLATE.md](docs/OPERATIONS_SIGNOFF_TEMPLATE.md)
 - [docs/release-ops/README.md](docs/release-ops/README.md)
 
-Observability docs:
+### Observability docs
 
 - [docs/OBSERVABILITY_FIELDS.md](docs/OBSERVABILITY_FIELDS.md)
+
+### Common developer commands
 
 Bootstrap helper script: `scripts/bootstrap-agent.ps1` (certificate + API key
 generation for controlled environments).
@@ -167,7 +203,7 @@ npm run compile
 
 | Setting | Default | Description |
 |---|---|---|
-| `adagioAgent.vmAgentUrl` | `https://127.0.0.1:5443` | VM agent base URL |
+| `adagioAgent.vmAgentUrl` | `https://127.0.0.1:5443/api/v1` | VM agent base URL |
 | `adagioAgent.vmAgentApiKey` | `""` | API key sent in `X-API-Key` header |
 | `adagioAgent.requireHttps` | `true` | Reject non-HTTPS `vmAgentUrl` values |
 | `adagioAgent.allowedExecutablePaths` | `["C:\\Apps"]` | Command whitelist |
@@ -231,16 +267,22 @@ Error responses use a consistent JSON shape:
 | Field | Type | Description |
 |---|---|---|
 | `error` | string | High-level failure message |
+| `message` | string | Alias of `error` for clients expecting a message field |
 | `detail` | string? | Optional diagnostic detail |
 | `correlationId` | string? | Correlation token that maps user-visible errors to backend request logs |
+| `errorCode` | string? | Machine-readable failure category |
+| `remediationHint` | string? | Action the caller/operator should take next |
 
 Example:
 
 ```json
 {
   "error": "Missing required header 'X-API-Key'.",
+  "message": "Missing required header 'X-API-Key'.",
   "detail": null,
-  "correlationId": "0HNK4PIRJOR0P"
+  "correlationId": "0HNK4PIRJOR0P",
+  "errorCode": "UNAUTHORIZED",
+  "remediationHint": "Set the configured API key in the request header and retry."
 }
 ```
 

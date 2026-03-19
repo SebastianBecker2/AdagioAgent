@@ -54,7 +54,7 @@ roadmap into a sprint backlog.
 |---|---|---|
 | Phase 1 — Core Reliability | In progress | Structured diagnostics, controller-level 4xx/5xx contract normalization, and expanded error-path regression coverage are in place; remaining work is deeper cancellation semantics and final edge-case hardening |
 | Phase 2 — Linux Parity | In progress (substantial) | Linux HTTPS setup docs, systemd unit/install scripts, `.deb` packaging script, Linux CI/release legs, Linux `send-keys`/`press-hotkey` support, and parity evidence matrix implemented; operating-model promotion to Linux Beta still pending |
-| Phase 3 — Distribution | In progress | GitHub Release draft workflow with MSI/VSIX/.deb artifacts and quick-start guide implemented; Marketplace publication and final README distribution/dev split still pending |
+| Phase 3 — Distribution | In progress | GitHub Release draft workflow with MSI/VSIX/.deb artifacts, quick-start guide, and explicit README use-vs-develop split are implemented; Marketplace publication remains pending |
 | Phase 4+ | Not started | Session model, security maturity expansion, extensibility model, and GA commitments remain planned work |
 
 Recent phase-aligned completions:
@@ -70,6 +70,7 @@ Recent phase-aligned completions:
 9. Installer artifact workflows (`/collect-install-artifacts`, `/run-installer-and-collect-artifacts`, `/run-installer-and-assert`) now honor request cancellation and return structured `REQUEST_CANCELLED` responses, with regression tests covering the cancellation paths.
 10. Versioned and legacy HTTP routes now have integration parity coverage for installer and artifact workflow validation and not-found error contracts, reducing regression risk in `/api/v1` routing.
 11. File and assertion endpoints now also have versioned/legacy integration parity coverage for structured validation, path-not-found, and process-not-found error contracts.
+12. README now separates operator/user and developer entry points more explicitly, aligning the distribution surface with the quick-start and current API error contract.
 
 ---
 
