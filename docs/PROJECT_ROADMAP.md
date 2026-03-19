@@ -63,6 +63,7 @@ Recent phase-aligned completions:
 2. Release workflow added to attach MSI, VSIX, and `.deb` artifacts to tagged releases.
 3. Linux packaging assets added (`installer/linux/*.service`, install/uninstall scripts, `.deb` build script).
 4. Quick-start guide added for first-run setup on Windows and Linux.
+5. Controller extension now surfaces machine-agent `errorCode` and `remediationHint` details in client-side error output to improve LLM/operator troubleshooting.
 
 ---
 

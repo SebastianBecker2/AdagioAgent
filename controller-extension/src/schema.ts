@@ -250,6 +250,7 @@ export interface DiagnosticsStatusResponse {
 
 export interface AgentError {
   error: string;
+  message?: string;
   detail?: string;
   correlationId?: string;
   /** Machine-readable error code (e.g. ELEMENT_NOT_FOUND, PROCESS_NOT_FOUND). */

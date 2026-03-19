@@ -259,6 +259,48 @@ describe("AgentClient", () => {
     );
   });
 
+  it("includes errorCode and remediation hint from structured error payload", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: "bad",
+          detail: "path is outside allowlist",
+          errorCode: "COMMAND_REJECTED",
+          remediationHint: "Use an executable path listed in AgentOptions.AllowedExecutablePaths.",
+        }),
+        {
+          status: 400,
+          statusText: "Bad Request",
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+
+    const client = new AgentClient("http://localhost:5000");
+
+    await expect(client.health()).rejects.toThrow(
+      "VM agent responded with 400 [COMMAND_REJECTED]: path is outside allowlist Remediation: Use an executable path listed in AgentOptions.AllowedExecutablePaths."
+    );
+  });
+
+  it("falls back to message field when detail is omitted", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ error: "bad", message: "request payload failed schema validation" }), {
+        status: 400,
+        statusText: "Bad Request",
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const client = new AgentClient("http://localhost:5000");
+
+    await expect(client.health()).rejects.toThrow(
+      "VM agent responded with 400: request payload failed schema validation"
+    );
+  });
+
   it("falls back to X-Correlation-ID response header when body omits correlation ID", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock.mockResolvedValue(

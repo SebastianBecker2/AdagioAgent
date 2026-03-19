@@ -68,8 +68,12 @@ export class AgentClientError extends Error {
     errorCode?: string,
     remediationHint?: string
   ) {
-    const suffix = correlationId ? ` (Correlation ID: ${correlationId})` : "";
-    super(`VM agent responded with ${status}: ${detail ?? "Unexpected error"}${suffix}`);
+    const errorCodeSuffix = errorCode ? ` [${errorCode}]` : "";
+    const remediationSuffix = remediationHint ? ` Remediation: ${remediationHint}` : "";
+    const correlationSuffix = correlationId ? ` (Correlation ID: ${correlationId})` : "";
+    super(
+      `VM agent responded with ${status}${errorCodeSuffix}: ${detail ?? "Unexpected error"}${remediationSuffix}${correlationSuffix}`
+    );
     this.name = "AgentClientError";
     this.status = status;
     this.detail = detail;
@@ -408,7 +412,7 @@ export class AgentClient {
       let remediationHint: string | undefined;
       try {
         const err = (await response.clone().json()) as AgentError;
-        detail = err.detail ?? err.error;
+        detail = err.detail ?? err.message ?? err.error;
         correlationId = err.correlationId;
         errorCode = err.errorCode;
         remediationHint = err.remediationHint;
