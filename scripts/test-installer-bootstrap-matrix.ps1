@@ -97,7 +97,8 @@ function Get-TextHash {
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($Value)
     $sha = [System.Security.Cryptography.SHA256]::Create()
     try {
-        return [Convert]::ToHexString($sha.ComputeHash($bytes))
+        $hashBytes = $sha.ComputeHash($bytes)
+        return [System.BitConverter]::ToString($hashBytes).Replace('-', '')
     }
     finally {
         $sha.Dispose()
