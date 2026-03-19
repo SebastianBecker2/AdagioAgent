@@ -339,6 +339,37 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public async Task WaitForExit_Returns499WhenRequestIsCancelled()
+    {
+        var commandInfo = ResolveLongRunningCommand();
+        using var processService = CreateProcessService(
+            allowedExecutablePaths: [Path.GetDirectoryName(commandInfo.Command)!]);
+        var uiService = new Mock<IUiAutomationService>();
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var sut = CreateController(processService, uiService.Object, requestAborted: cts.Token);
+
+        var runResult = Assert.IsType<OkObjectResult>(
+            sut.Run(new RunRequest(commandInfo.Command, commandInfo.Arguments, null)));
+        var runPayload = Assert.IsType<RunResponse>(runResult.Value);
+
+        try
+        {
+            var waitResult = await sut.WaitForExit(new WaitForExitRequest(runPayload.Pid, 5000));
+            var objectResult = Assert.IsType<ObjectResult>(waitResult);
+            Assert.Equal(499, objectResult.StatusCode);
+
+            var payload = Assert.IsType<ErrorResponse>(objectResult.Value);
+            Assert.Equal(AgentErrorCodes.RequestCancelled, payload.ErrorCode);
+            Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
+        }
+        finally
+        {
+            processService.Get(runPayload.Pid)?.Process.Kill(entireProcessTree: true);
+        }
+    }
+
+    [Fact]
     public void Terminate_ReturnsOkForTrackedRunningProcess()
     {
         var commandInfo = ResolveLongRunningCommand();
@@ -494,6 +525,28 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public async Task WaitForElement_Returns499WhenRequestIsCancelled()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        uiService
+            .Setup(x => x.WaitForElement(99, "button-never", It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Throws(new OperationCanceledException());
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var sut = CreateController(processService, uiService.Object, requestAborted: cts.Token);
+
+        var result = await sut.WaitForElement(new WaitForElementRequest(99, "button-never", 1000, 50));
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(499, objectResult.StatusCode);
+
+        var payload = Assert.IsType<ErrorResponse>(objectResult.Value);
+        Assert.Equal(AgentErrorCodes.RequestCancelled, payload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
+    }
+
+    [Fact]
     public void SetFocus_ValidatesInputsAndReturnsOk()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
@@ -526,6 +579,9 @@ public sealed class AutomationControllerTests
         var result = sut.SendKeys(new SendKeysRequest(42, "abc"));
         var objectResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status501NotImplemented, objectResult.StatusCode);
+        var payload = Assert.IsType<ErrorResponse>(objectResult.Value);
+        Assert.Equal(AgentErrorCodes.PlatformNotSupported, payload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
     }
 
     [Fact]
@@ -1137,7 +1193,8 @@ public sealed class AutomationControllerTests
         ProcessService processService,
         IUiAutomationService uiService,
         IOptions<AgentOptions>? options = null,
-        IOptions<global::SecurityOptions>? securityOptions = null)
+        IOptions<global::SecurityOptions>? securityOptions = null,
+        CancellationToken requestAborted = default)
     {
         var controller = new AutomationController(
             processService,
@@ -1170,7 +1227,7 @@ public sealed class AutomationControllerTests
             .Returns(securityOptions);
 
         httpContextMock.Setup(x => x.RequestServices).Returns(serviceProviderMock.Object);
-        httpContextMock.Setup(x => x.RequestAborted).Returns(CancellationToken.None);
+        httpContextMock.Setup(x => x.RequestAborted).Returns(requestAborted);
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = httpContextMock.Object,

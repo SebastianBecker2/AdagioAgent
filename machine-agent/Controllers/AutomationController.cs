@@ -668,7 +668,8 @@ public sealed class AutomationController : ControllerBase
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported,
+                    RemediationHint: "Run this endpoint on a supported platform with UI automation prerequisites configured."));
         }
         catch (Exception ex)
         {
@@ -712,7 +713,8 @@ public sealed class AutomationController : ControllerBase
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported,
+                    RemediationHint: "Run this endpoint on a supported platform with UI automation prerequisites configured."));
         }
         catch (Exception ex)
         {
@@ -780,7 +782,8 @@ public sealed class AutomationController : ControllerBase
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported,
+                    RemediationHint: "Run this endpoint on a supported platform with UI automation prerequisites configured."));
         }
         catch (Exception ex)
         {
@@ -825,7 +828,8 @@ public sealed class AutomationController : ControllerBase
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported,
+                    RemediationHint: "Run this endpoint on a supported platform with UI automation prerequisites configured."));
         }
         catch (Exception ex)
         {
@@ -869,7 +873,8 @@ public sealed class AutomationController : ControllerBase
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported,
+                    RemediationHint: "Run this endpoint on a supported platform with UI automation prerequisites configured."));
         }
         catch (Exception ex)
         {
@@ -913,7 +918,8 @@ public sealed class AutomationController : ControllerBase
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported,
+                    RemediationHint: "Run this endpoint on a supported platform with UI automation prerequisites configured."));
         }
         catch (Exception ex)
         {
@@ -958,7 +964,8 @@ public sealed class AutomationController : ControllerBase
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported,
+                    RemediationHint: "Run this endpoint on a supported platform with UI automation prerequisites configured."));
         }
         catch (Exception ex)
         {
@@ -1008,7 +1015,8 @@ public sealed class AutomationController : ControllerBase
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported,
+                    RemediationHint: "Run this endpoint on a supported platform with UI automation prerequisites configured."));
         }
         catch (Exception ex)
         {
@@ -1048,7 +1056,8 @@ public sealed class AutomationController : ControllerBase
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported,
+                    RemediationHint: "Run this endpoint on a supported platform with UI automation prerequisites configured."));
         }
         catch (Exception ex)
         {
@@ -1093,7 +1102,8 @@ public sealed class AutomationController : ControllerBase
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported,
+                    RemediationHint: "Run this endpoint on a supported platform with UI automation prerequisites configured."));
         }
         catch (Exception ex)
         {
@@ -1143,7 +1153,8 @@ public sealed class AutomationController : ControllerBase
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported,
+                    RemediationHint: "Run this endpoint on a supported platform with UI automation prerequisites configured."));
         }
         catch (Exception ex)
         {
@@ -1851,5 +1862,6 @@ public sealed class AutomationController : ControllerBase
     }
 #endif
 }
+
 
 

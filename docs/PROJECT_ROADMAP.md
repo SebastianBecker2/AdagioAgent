@@ -66,6 +66,7 @@ Recent phase-aligned completions:
 5. Controller extension now surfaces machine-agent `errorCode` and `remediationHint` details in client-side error output to improve LLM/operator troubleshooting.
 6. Automation controller validation failures now return standardized structured payloads with `VALIDATION_FAILED`/`PATH_NOT_ALLOWED` codes and actionable remediation hints across process, UI, and file endpoints.
 7. Missing file/directory 404 responses now emit `PATH_NOT_FOUND`, and integration tests now assert structured parity for versioned/legacy route errors and path-not-found responses.
+8. Platform-not-supported 501 responses now include remediation hints, and controller tests now assert standardized `REQUEST_CANCELLED` payloads for aborted wait operations.
 
 ---
 
