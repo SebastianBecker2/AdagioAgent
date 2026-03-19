@@ -67,6 +67,7 @@ Recent phase-aligned completions:
 6. Automation controller validation failures now return standardized structured payloads with `VALIDATION_FAILED`/`PATH_NOT_ALLOWED` codes and actionable remediation hints across process, UI, and file endpoints.
 7. Missing file/directory 404 responses now emit `PATH_NOT_FOUND`, and integration tests now assert structured parity for versioned/legacy route errors and path-not-found responses.
 8. Platform-not-supported 501 responses now include remediation hints, and controller tests now assert standardized `REQUEST_CANCELLED` payloads for aborted wait operations.
+9. Installer artifact workflows (`/collect-install-artifacts`, `/run-installer-and-collect-artifacts`, `/run-installer-and-assert`) now honor request cancellation and return structured `REQUEST_CANCELLED` responses, with regression tests covering the cancellation paths.
 
 ---
 

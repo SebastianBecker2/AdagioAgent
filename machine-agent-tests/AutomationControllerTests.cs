@@ -1046,6 +1046,42 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void CollectInstallArtifacts_Returns499WhenRequestIsCancelled()
+    {
+        var commandInfo = ResolveLongRunningCommand();
+        using var processService = CreateProcessService(
+            allowedExecutablePaths: [Path.GetDirectoryName(commandInfo.Command)!]);
+        var uiService = new Mock<IUiAutomationService>();
+
+        var runController = CreateController(processService, uiService.Object);
+        var runResult = Assert.IsType<OkObjectResult>(
+            runController.Run(new RunRequest(commandInfo.Command, commandInfo.Arguments, null)));
+        var runPayload = Assert.IsType<RunResponse>(runResult.Value);
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var sut = CreateController(processService, uiService.Object, requestAborted: cts.Token);
+
+        try
+        {
+            var result = sut.CollectInstallArtifacts(new CollectInstallArtifactsRequest(
+                Pid: runPayload.Pid,
+                TimeoutMilliseconds: 5000,
+                IncludeMsiEvents: false));
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(499, objectResult.StatusCode);
+            var payload = Assert.IsType<ErrorResponse>(objectResult.Value);
+            Assert.Equal(AgentErrorCodes.RequestCancelled, payload.ErrorCode);
+            Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
+        }
+        finally
+        {
+            processService.Get(runPayload.Pid)?.Process.Kill(entireProcessTree: true);
+        }
+    }
+
+    [Fact]
     public void RunInstallerAndAssert_ValidatesInputs()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
@@ -1057,6 +1093,32 @@ public sealed class AutomationControllerTests
         Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", TailLines: 0)));
         Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", EventEntryCount: 0)));
         Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", LogMustContainText: "done")));
+    }
+
+    [Fact]
+    public void RunInstallerAndCollectArtifacts_Returns499WhenRequestIsCancelled()
+    {
+        var commandInfo = ResolveLongRunningCommand();
+        using var processService = CreateProcessService(
+            allowedExecutablePaths: [Path.GetDirectoryName(commandInfo.Command)!]);
+        var uiService = new Mock<IUiAutomationService>();
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var sut = CreateController(processService, uiService.Object, requestAborted: cts.Token);
+
+        var result = sut.RunInstallerAndCollectArtifacts(new RunInstallerAndCollectArtifactsRequest(
+            Command: commandInfo.Command,
+            Arguments: commandInfo.Arguments,
+            TimeoutMilliseconds: 5000,
+            IncludeMsiEvents: false));
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(499, objectResult.StatusCode);
+        var payload = Assert.IsType<ErrorResponse>(objectResult.Value);
+        Assert.Equal(AgentErrorCodes.RequestCancelled, payload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
+
+        processService.TerminateAllRunningProcesses("test-cleanup");
     }
 
     [Fact]

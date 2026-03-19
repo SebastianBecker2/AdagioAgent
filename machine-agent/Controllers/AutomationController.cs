@@ -1,5 +1,6 @@
 using AdagioMachineAgent.Models;
 using AdagioMachineAgent.Services;
+using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -323,7 +324,8 @@ public sealed class AutomationController : ControllerBase
                 request.LogPath,
                 request.TailLines,
                 request.IncludeMsiEvents,
-                request.EventEntryCount);
+                request.EventEntryCount,
+                HttpContext.RequestAborted);
 
             return Ok(new RunInstallerAndCollectArtifactsResponse(
                 tracked.Process.Id,
@@ -337,6 +339,13 @@ public sealed class AutomationController : ControllerBase
                 ex.Message,
                 "Verify installer command path policy and active process concurrency limits.",
                 AgentErrorCodes.CommandRejected);
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            return StatusCode(499,
+                new ErrorResponse("Request was cancelled.",
+                    ErrorCode: AgentErrorCodes.RequestCancelled,
+                    RemediationHint: "Retry the request and keep the HTTP connection open until completion."));
         }
         catch (Exception ex)
         {
@@ -398,7 +407,8 @@ public sealed class AutomationController : ControllerBase
                 request.LogPath,
                 request.TailLines,
                 request.IncludeMsiEvents,
-                request.EventEntryCount);
+                request.EventEntryCount,
+                HttpContext.RequestAborted);
 
             var assertions = new List<AssertionResponse>
             {
@@ -432,6 +442,13 @@ public sealed class AutomationController : ControllerBase
                 ex.Message,
                 "Verify installer command path policy and active process concurrency limits.",
                 AgentErrorCodes.CommandRejected);
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            return StatusCode(499,
+                new ErrorResponse("Request was cancelled.",
+                    ErrorCode: AgentErrorCodes.RequestCancelled,
+                    RemediationHint: "Retry the request and keep the HTTP connection open until completion."));
         }
         catch (Exception ex)
         {
@@ -579,13 +596,21 @@ public sealed class AutomationController : ControllerBase
                 request.LogPath,
                 request.TailLines,
                 request.IncludeMsiEvents,
-                request.EventEntryCount));
+                request.EventEntryCount,
+                HttpContext.RequestAborted));
         }
         catch (InvalidOperationException ex)
         {
             return ValidationError(
                 ex.Message,
                 "Review artifact collection inputs, including optional log path and line limits.");
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            return StatusCode(499,
+                new ErrorResponse("Request was cancelled.",
+                    ErrorCode: AgentErrorCodes.RequestCancelled,
+                    RemediationHint: "Retry the request and keep the HTTP connection open until completion."));
         }
         catch (Exception ex)
         {
@@ -1742,9 +1767,10 @@ public sealed class AutomationController : ControllerBase
         string? logPath,
         int tailLines,
         bool includeMsiEvents,
-        int eventEntryCount)
+        int eventEntryCount,
+        CancellationToken cancellationToken)
     {
-        var exited = tracked.Process.WaitForExit(timeoutMilliseconds);
+        var exited = WaitForExitWithCancellation(tracked.Process, timeoutMilliseconds, cancellationToken);
         var process = ToProcessStatus(tracked);
         var warnings = new List<string>();
         TailFileResponse? logTail = null;
@@ -1775,6 +1801,28 @@ public sealed class AutomationController : ControllerBase
         }
 
         return new CollectInstallArtifactsResponse(exited, process, logTail, msiEvents, warnings);
+    }
+
+    private static bool WaitForExitWithCancellation(Process process, int timeoutMilliseconds, CancellationToken cancellationToken)
+    {
+        const int waitSliceMilliseconds = 100;
+        var remainingMilliseconds = timeoutMilliseconds;
+
+        while (remainingMilliseconds > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var waitMilliseconds = Math.Min(waitSliceMilliseconds, remainingMilliseconds);
+            if (process.WaitForExit(waitMilliseconds))
+            {
+                return true;
+            }
+
+            remainingMilliseconds -= waitMilliseconds;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return process.HasExited;
     }
 
     private string ValidateReadablePath(string requestedPath)
