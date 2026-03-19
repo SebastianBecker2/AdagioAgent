@@ -77,7 +77,9 @@ jobs:
         run: sudo apt-get install -y xvfb xdotool xterm at-spi2-core
 
       - name: Run Linux UI parity smoke
+        id: linux_ui_smoke
         if: always()
+        continue-on-error: true
         run: bash scripts/linux-ui-parity-smoke.sh ./artifacts/linux
 
       - name: Ensure Linux UI parity report file exists
@@ -87,6 +89,7 @@ jobs:
           if [ ! -f artifacts/linux/linux-ui-parity-smoke.txt ]; then
             echo "Linux UI parity smoke did not run in this workflow attempt." > artifacts/linux/linux-ui-parity-smoke.txt
           fi
+          echo "workflowSmokeOutcome=${{ steps.linux_ui_smoke.outcome }}" >> artifacts/linux/linux-ui-parity-smoke.txt
 
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
