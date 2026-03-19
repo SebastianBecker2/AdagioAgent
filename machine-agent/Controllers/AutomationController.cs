@@ -46,6 +46,10 @@ public sealed class AutomationController : ControllerBase
     [ProducesResponseType(typeof(ReadinessResponse), StatusCodes.Status200OK)]
     public IActionResult Ready()
     {
+        // Prune stale process entries on every readiness check so the tracked
+        // process count stays accurate and the concurrency check stays fast.
+        _processService.PruneExitedProcesses();
+
         var issues = new List<string>();
         var platform = OperatingSystem.IsWindows()
             ? "windows"
@@ -231,13 +235,16 @@ public sealed class AutomationController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Run rejected: {Message}", ex.Message);
-            return BadRequest(new ErrorResponse(ex.Message));
+            return BadRequest(new ErrorResponse(
+                ex.Message,
+                ErrorCode: AgentErrorCodes.CommandRejected,
+                RemediationHint: "Verify the command is within an allowed executable path and the concurrency limit has not been reached."));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to start process.");
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to start process.", ex.Message));
+                new ErrorResponse("Failed to start process.", ex.Message, ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -413,7 +420,10 @@ public sealed class AutomationController : ControllerBase
         var tracked = _processService.Get(pid);
         if (tracked is null)
         {
-            return NotFound(new ErrorResponse($"Process {pid} is not tracked."));
+            return NotFound(new ErrorResponse(
+                $"Process {pid} is not tracked.",
+                ErrorCode: AgentErrorCodes.ProcessNotFound,
+                RemediationHint: "Confirm the PID was returned by a previous /run response in this session."));
         }
 
         return Ok(ToProcessStatus(tracked));
@@ -426,34 +436,56 @@ public sealed class AutomationController : ControllerBase
     [ProducesResponseType(typeof(WaitForExitResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    public IActionResult WaitForExit([FromBody] WaitForExitRequest request)
+    public async Task<IActionResult> WaitForExit([FromBody] WaitForExitRequest request)
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return BadRequest(new ErrorResponse("pid must be a positive integer.",
+                ErrorCode: AgentErrorCodes.ValidationFailed));
         }
 
         if (request.TimeoutMilliseconds <= 0)
         {
-            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer."));
+            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer.",
+                ErrorCode: AgentErrorCodes.ValidationFailed));
         }
 
         var tracked = _processService.Get(request.Pid);
         if (tracked is null)
         {
-            return NotFound(new ErrorResponse($"Process {request.Pid} is not tracked."));
+            return NotFound(new ErrorResponse(
+                $"Process {request.Pid} is not tracked.",
+                ErrorCode: AgentErrorCodes.ProcessNotFound,
+                RemediationHint: "Confirm the PID was returned by a previous /run response in this session."));
         }
 
         try
         {
-            var exited = tracked.Process.WaitForExit(request.TimeoutMilliseconds);
-            return Ok(new WaitForExitResponse(exited, ToProcessStatus(tracked)));
+            using var timeoutCts = new CancellationTokenSource(request.TimeoutMilliseconds);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                timeoutCts.Token, HttpContext.RequestAborted);
+
+            await tracked.Process.WaitForExitAsync(linkedCts.Token);
+            return Ok(new WaitForExitResponse(true, ToProcessStatus(tracked)));
+        }
+        catch (OperationCanceledException) when (!HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            // The caller-supplied timeout expired before the process exited.
+            return Ok(new WaitForExitResponse(false, ToProcessStatus(tracked)));
+        }
+        catch (OperationCanceledException)
+        {
+            // The HTTP request was cancelled by the client.
+            return StatusCode(499,
+                new ErrorResponse("Request was cancelled.",
+                    ErrorCode: AgentErrorCodes.RequestCancelled));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed while waiting for process {Pid} exit.", request.Pid);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed while waiting for process exit.", ex.Message));
+                new ErrorResponse("Failed while waiting for process exit.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -493,7 +525,10 @@ public sealed class AutomationController : ControllerBase
         var tracked = _processService.Get(request.Pid);
         if (tracked is null)
         {
-            return NotFound(new ErrorResponse($"Process {request.Pid} is not tracked."));
+            return NotFound(new ErrorResponse(
+                $"Process {request.Pid} is not tracked.",
+                ErrorCode: AgentErrorCodes.ProcessNotFound,
+                RemediationHint: "Confirm the PID was returned by a previous /run response in this session."));
         }
 
         try
@@ -508,13 +543,14 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new ErrorResponse(ex.Message));
+            return BadRequest(new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.ValidationFailed));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to collect install artifacts for pid {Pid}.", request.Pid);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to collect install artifacts.", ex.Message));
+                new ErrorResponse("Failed to collect install artifacts.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -535,7 +571,10 @@ public sealed class AutomationController : ControllerBase
         var tracked = _processService.Get(request.Pid);
         if (tracked is null)
         {
-            return NotFound(new ErrorResponse($"Process {request.Pid} is not tracked."));
+            return NotFound(new ErrorResponse(
+                $"Process {request.Pid} is not tracked.",
+                ErrorCode: AgentErrorCodes.ProcessNotFound,
+                RemediationHint: "Confirm the PID was returned by a previous /run response in this session."));
         }
 
         try
@@ -552,7 +591,8 @@ public sealed class AutomationController : ControllerBase
         {
             _logger.LogError(ex, "Failed to terminate process {Pid}.", request.Pid);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to terminate process.", ex.Message));
+                new ErrorResponse("Failed to terminate process.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -577,18 +617,21 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new ErrorResponse(ex.Message));
+            return NotFound(new ErrorResponse(ex.Message,
+                ErrorCode: AgentErrorCodes.ElementNotFound,
+                RemediationHint: "Ensure the process is running and has a visible main window."));
         }
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "GetUiTree failed for pid {Pid}.", pid);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to retrieve UI tree.", ex.Message));
+                new ErrorResponse("Failed to retrieve UI tree.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -617,18 +660,21 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new ErrorResponse(ex.Message));
+            return NotFound(new ErrorResponse(ex.Message,
+                ErrorCode: AgentErrorCodes.ElementNotFound,
+                RemediationHint: "Use /ui-tree to enumerate available elements and verify the element ID."));
         }
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "GetElementState failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to retrieve element state.", ex.Message));
+                new ErrorResponse("Failed to retrieve element state.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -638,46 +684,67 @@ public sealed class AutomationController : ControllerBase
     [HttpPost("/wait-for-element")]
     [ProducesResponseType(typeof(WaitForElementResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    public IActionResult WaitForElement([FromBody] WaitForElementRequest request)
+    public async Task<IActionResult> WaitForElement([FromBody] WaitForElementRequest request)
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return BadRequest(new ErrorResponse("pid must be a positive integer.",
+                ErrorCode: AgentErrorCodes.ValidationFailed));
         }
 
         if (string.IsNullOrWhiteSpace(request.ElementId))
         {
-            return BadRequest(new ErrorResponse("elementId is required."));
+            return BadRequest(new ErrorResponse("elementId is required.",
+                ErrorCode: AgentErrorCodes.ValidationFailed));
         }
 
         if (request.TimeoutMilliseconds <= 0)
         {
-            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer."));
+            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer.",
+                ErrorCode: AgentErrorCodes.ValidationFailed));
         }
 
         if (request.PollIntervalMilliseconds <= 0)
         {
-            return BadRequest(new ErrorResponse("pollIntervalMilliseconds must be a positive integer."));
+            return BadRequest(new ErrorResponse("pollIntervalMilliseconds must be a positive integer.",
+                ErrorCode: AgentErrorCodes.ValidationFailed));
         }
 
         try
         {
-            return Ok(_uiService.WaitForElement(
-                request.Pid,
-                request.ElementId,
-                request.TimeoutMilliseconds,
-                request.PollIntervalMilliseconds));
+            var result = await Task.Run(
+                () => _uiService.WaitForElement(
+                    request.Pid,
+                    request.ElementId,
+                    request.TimeoutMilliseconds,
+                    request.PollIntervalMilliseconds,
+                    HttpContext.RequestAborted),
+                HttpContext.RequestAborted);
+            return Ok(result);
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            return StatusCode(499,
+                new ErrorResponse("Request was cancelled.",
+                    ErrorCode: AgentErrorCodes.RequestCancelled));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new ErrorResponse(ex.Message,
+                ErrorCode: AgentErrorCodes.ElementNotFound,
+                RemediationHint: "Use /ui-tree to enumerate available elements and verify the element ID."));
         }
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "WaitForElement failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed while waiting for element.", ex.Message));
+                new ErrorResponse("Failed while waiting for element.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -707,18 +774,21 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new ErrorResponse(ex.Message));
+            return NotFound(new ErrorResponse(ex.Message,
+                ErrorCode: AgentErrorCodes.ElementNotFound,
+                RemediationHint: "Use /ui-tree to enumerate available elements and verify the element ID."));
         }
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "SetFocus failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to focus element.", ex.Message));
+                new ErrorResponse("Failed to focus element.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -747,18 +817,21 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new ErrorResponse(ex.Message));
+            return NotFound(new ErrorResponse(ex.Message,
+                ErrorCode: AgentErrorCodes.ElementNotFound,
+                RemediationHint: "Ensure the process has a focused main window before sending keys."));
         }
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "SendKeys failed for pid {Pid}.", request.Pid);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to send keys.", ex.Message));
+                new ErrorResponse("Failed to send keys.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -787,18 +860,21 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new ErrorResponse(ex.Message));
+            return NotFound(new ErrorResponse(ex.Message,
+                ErrorCode: AgentErrorCodes.ElementNotFound,
+                RemediationHint: "Ensure the process has a focused main window and all key names are supported."));
         }
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "PressHotkey failed for pid {Pid}.", request.Pid);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to press hotkey.", ex.Message));
+                new ErrorResponse("Failed to press hotkey.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -828,18 +904,21 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new ErrorResponse(ex.Message));
+            return NotFound(new ErrorResponse(ex.Message,
+                ErrorCode: AgentErrorCodes.ElementNotFound,
+                RemediationHint: "Verify the element ID and that the element supports the Toggle pattern."));
         }
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "SetCheckbox failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to set checkbox state.", ex.Message));
+                new ErrorResponse("Failed to set checkbox state.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -874,18 +953,21 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new ErrorResponse(ex.Message));
+            return NotFound(new ErrorResponse(ex.Message,
+                ErrorCode: AgentErrorCodes.ElementNotFound,
+                RemediationHint: "Verify the element ID, option text, and that the option index is within range."));
         }
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "SelectOption failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to select option.", ex.Message));
+                new ErrorResponse("Failed to select option.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -910,18 +992,21 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new ErrorResponse(ex.Message));
+            return NotFound(new ErrorResponse(ex.Message,
+                ErrorCode: AgentErrorCodes.ElementNotFound,
+                RemediationHint: "Ensure the process has a visible main window."));
         }
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Screenshot failed for pid {Pid}.", pid);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to capture screenshot.", ex.Message));
+                new ErrorResponse("Failed to capture screenshot.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -951,18 +1036,21 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new ErrorResponse(ex.Message));
+            return NotFound(new ErrorResponse(ex.Message,
+                ErrorCode: AgentErrorCodes.ElementNotFound,
+                RemediationHint: "Use /ui-tree to enumerate available elements and verify the element ID."));
         }
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Click failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to click element.", ex.Message));
+                new ErrorResponse("Failed to click element.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 
@@ -997,18 +1085,21 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new ErrorResponse(ex.Message));
+            return NotFound(new ErrorResponse(ex.Message,
+                ErrorCode: AgentErrorCodes.ElementNotFound,
+                RemediationHint: "Use /ui-tree to enumerate available elements and verify the element ID."));
         }
         catch (PlatformNotSupportedException ex)
         {
             return StatusCode(StatusCodes.Status501NotImplemented,
-                new ErrorResponse(ex.Message));
+                new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.PlatformNotSupported));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Type failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to type text.", ex.Message));
+                new ErrorResponse("Failed to type text.", ex.Message,
+                    ErrorCode: AgentErrorCodes.InternalError));
         }
     }
 

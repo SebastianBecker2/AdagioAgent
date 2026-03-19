@@ -39,7 +39,8 @@ builder.Services
             return new BadRequestObjectResult(new ErrorResponse(
                 Error: "Request validation failed.",
                 Detail: detailText,
-                CorrelationId: correlationId));
+                CorrelationId: correlationId,
+                ErrorCode: AgentErrorCodes.ValidationFailed));
         };
     });
 builder.Services.AddEndpointsApiExplorer();
@@ -192,7 +193,8 @@ app.Use(async (context, next) =>
             Detail: app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing")
                 ? ex.Message
                 : null,
-            CorrelationId: correlationId));
+            CorrelationId: correlationId,
+            ErrorCode: AgentErrorCodes.InternalError));
     }
 });
 

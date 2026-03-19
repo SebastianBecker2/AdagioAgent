@@ -246,21 +246,40 @@ public sealed class WindowsUiAutomationService : IUiAutomationService
     }
 
     /// <summary>
-    /// Wait for an element to become available until timeout.
+    /// Wait for an element to become available until timeout or cancellation.
     /// </summary>
-    public WaitForElementResponse WaitForElement(int pid, string elementId, int timeoutMilliseconds, int pollIntervalMilliseconds)
+    public WaitForElementResponse WaitForElement(
+        int pid,
+        string elementId,
+        int timeoutMilliseconds,
+        int pollIntervalMilliseconds,
+        CancellationToken cancellationToken = default)
     {
-        var startedAt = DateTime.UtcNow;
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMilliseconds);
 
-        while ((DateTime.UtcNow - startedAt).TotalMilliseconds < timeoutMilliseconds)
+        while (DateTime.UtcNow < deadline)
         {
-            var match = TryFindElement(pid, elementId);
-            if (match is not null)
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
             {
-                return new WaitForElementResponse(true, ToElementState(match));
+                var match = TryFindElement(pid, elementId);
+                if (match is not null)
+                {
+                    return new WaitForElementResponse(true, ToElementState(match));
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Process may have exited or window closed during the poll — surface as a
+                // named error rather than leaking an uncaught FlaUI/COM exception.
+                throw new InvalidOperationException(
+                    $"UI automation error while polling for element '{elementId}': {ex.Message}", ex);
             }
 
-            Thread.Sleep(pollIntervalMilliseconds);
+            var remainingMs = (int)(deadline - DateTime.UtcNow).TotalMilliseconds;
+            if (remainingMs <= 0) break;
+            Thread.Sleep(Math.Min(pollIntervalMilliseconds, remainingMs));
         }
 
         return new WaitForElementResponse(false, null);

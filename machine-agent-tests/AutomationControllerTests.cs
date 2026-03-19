@@ -138,6 +138,7 @@ public sealed class AutomationControllerTests
         var bad = Assert.IsType<BadRequestObjectResult>(result);
         var payload = Assert.IsType<ErrorResponse>(bad.Value);
         Assert.Contains("not in an allowed executable path", payload.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(AgentErrorCodes.CommandRejected, payload.ErrorCode);
     }
 
     [Fact]
@@ -157,6 +158,7 @@ public sealed class AutomationControllerTests
         var payload = Assert.IsType<ErrorResponse>(objectResult.Value);
         Assert.Equal("Failed to start process.", payload.Error);
         Assert.False(string.IsNullOrWhiteSpace(payload.Detail));
+        Assert.Equal(AgentErrorCodes.InternalError, payload.ErrorCode);
     }
 
     [Fact]
@@ -222,6 +224,8 @@ public sealed class AutomationControllerTests
         var notFound = Assert.IsType<NotFoundObjectResult>(result);
         var payload = Assert.IsType<ErrorResponse>(notFound.Value);
         Assert.Contains("not tracked", payload.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(AgentErrorCodes.ProcessNotFound, payload.ErrorCode);
+        Assert.NotNull(payload.RemediationHint);
     }
 
     [Fact]
@@ -253,7 +257,7 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
-    public void WaitForExit_ReturnsExitedTrueForShortLivedProcess()
+    public async Task WaitForExit_ReturnsExitedTrueForShortLivedProcess()
     {
         var commandInfo = ResolveQuickExitCommand();
         using var processService = CreateProcessService(
@@ -265,12 +269,40 @@ public sealed class AutomationControllerTests
             sut.Run(new RunRequest(commandInfo.Command, commandInfo.Arguments, null)));
         var runPayload = Assert.IsType<RunResponse>(runResult.Value);
 
-        var waitResult = sut.WaitForExit(new WaitForExitRequest(runPayload.Pid, 5000));
+        var waitResult = await sut.WaitForExit(new WaitForExitRequest(runPayload.Pid, 5000));
         var ok = Assert.IsType<OkObjectResult>(waitResult);
         var payload = Assert.IsType<WaitForExitResponse>(ok.Value);
 
         Assert.True(payload.Exited);
         Assert.Equal("exited", payload.Process.Status);
+    }
+
+    [Fact]
+    public async Task WaitForExit_ReturnsExitedFalseWhenTimeoutExpires()
+    {
+        var commandInfo = ResolveLongRunningCommand();
+        using var processService = CreateProcessService(
+            allowedExecutablePaths: [Path.GetDirectoryName(commandInfo.Command)!]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var runResult = Assert.IsType<OkObjectResult>(
+            sut.Run(new RunRequest(commandInfo.Command, commandInfo.Arguments, null)));
+        var runPayload = Assert.IsType<RunResponse>(runResult.Value);
+
+        try
+        {
+            // Use a very short timeout — the long-running process should not exit in 50 ms.
+            var waitResult = await sut.WaitForExit(new WaitForExitRequest(runPayload.Pid, 50));
+            var ok = Assert.IsType<OkObjectResult>(waitResult);
+            var payload = Assert.IsType<WaitForExitResponse>(ok.Value);
+
+            Assert.False(payload.Exited);
+        }
+        finally
+        {
+            processService.Get(runPayload.Pid)?.Process.Kill(entireProcessTree: true);
+        }
     }
 
     [Fact]
@@ -321,6 +353,7 @@ public sealed class AutomationControllerTests
             var notFound = Assert.IsType<NotFoundObjectResult>(result);
             var payload = Assert.IsType<ErrorResponse>(notFound.Value);
             Assert.Equal("not found", payload.Error);
+            Assert.Equal(AgentErrorCodes.ElementNotFound, payload.ErrorCode);
         }
 
         {
@@ -330,6 +363,7 @@ public sealed class AutomationControllerTests
             var result = sut.GetUiTree(123);
             var notImplemented = Assert.IsType<ObjectResult>(result);
             Assert.Equal(StatusCodes.Status501NotImplemented, notImplemented.StatusCode);
+            Assert.Equal(AgentErrorCodes.PlatformNotSupported, Assert.IsType<ErrorResponse>(notImplemented.Value).ErrorCode);
         }
 
         {
@@ -339,7 +373,30 @@ public sealed class AutomationControllerTests
             var result = sut.GetUiTree(123);
             var internalError = Assert.IsType<ObjectResult>(result);
             Assert.Equal(StatusCodes.Status500InternalServerError, internalError.StatusCode);
+            Assert.Equal(AgentErrorCodes.InternalError, Assert.IsType<ErrorResponse>(internalError.Value).ErrorCode);
         }
+    }
+
+    [Fact]
+    public void Ready_PrunesExitedProcessEntries()
+    {
+        var commandInfo = ResolveQuickExitCommand();
+        using var processService = CreateProcessService(
+            allowedExecutablePaths: [Path.GetDirectoryName(commandInfo.Command)!]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var runResult = Assert.IsType<OkObjectResult>(
+            sut.Run(new RunRequest(commandInfo.Command, commandInfo.Arguments, null)));
+        var runPayload = Assert.IsType<RunResponse>(runResult.Value);
+
+        // Wait for the quick-exit process to actually terminate before calling Ready.
+        processService.Get(runPayload.Pid)?.Process.WaitForExit(5000);
+        Assert.Equal(1, processService.TrackedProcessCount);
+
+        sut.Ready();
+
+        Assert.Equal(0, processService.TrackedProcessCount);
     }
 
     [Fact]
@@ -364,26 +421,43 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
-    public void WaitForElement_ValidatesInputsAndReturnsResult()
+    public async Task WaitForElement_ValidatesInputsAndReturnsResult()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
         var uiService = new Mock<IUiAutomationService>();
         var sut = CreateController(processService, uiService.Object);
 
-        Assert.IsType<BadRequestObjectResult>(sut.WaitForElement(new WaitForElementRequest(0, "button-ok")));
-        Assert.IsType<BadRequestObjectResult>(sut.WaitForElement(new WaitForElementRequest(1, "", 1000, 100)));
-        Assert.IsType<BadRequestObjectResult>(sut.WaitForElement(new WaitForElementRequest(1, "button-ok", 0, 100)));
-        Assert.IsType<BadRequestObjectResult>(sut.WaitForElement(new WaitForElementRequest(1, "button-ok", 1000, 0)));
+        Assert.IsType<BadRequestObjectResult>(await sut.WaitForElement(new WaitForElementRequest(0, "button-ok")));
+        Assert.IsType<BadRequestObjectResult>(await sut.WaitForElement(new WaitForElementRequest(1, "", 1000, 100)));
+        Assert.IsType<BadRequestObjectResult>(await sut.WaitForElement(new WaitForElementRequest(1, "button-ok", 0, 100)));
+        Assert.IsType<BadRequestObjectResult>(await sut.WaitForElement(new WaitForElementRequest(1, "button-ok", 1000, 0)));
 
         uiService
-            .Setup(x => x.WaitForElement(42, "button-ok", 1000, 100))
+            .Setup(x => x.WaitForElement(42, "button-ok", 1000, 100, It.IsAny<CancellationToken>()))
             .Returns(new WaitForElementResponse(true, new ElementStateResponse("button-ok", "button", "OK", "", null, true)));
 
-        var result = sut.WaitForElement(new WaitForElementRequest(42, "button-ok", 1000, 100));
+        var result = await sut.WaitForElement(new WaitForElementRequest(42, "button-ok", 1000, 100));
         var ok = Assert.IsType<OkObjectResult>(result);
         var payload = Assert.IsType<WaitForElementResponse>(ok.Value);
         Assert.True(payload.Found);
         Assert.NotNull(payload.Element);
+    }
+
+    [Fact]
+    public async Task WaitForElement_ReturnsFoundFalseWhenTimedOut()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        uiService
+            .Setup(x => x.WaitForElement(99, "button-never", It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Returns(new WaitForElementResponse(false, null));
+        var sut = CreateController(processService, uiService.Object);
+
+        var result = await sut.WaitForElement(new WaitForElementRequest(99, "button-never", 100, 10));
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<WaitForElementResponse>(ok.Value);
+        Assert.False(payload.Found);
+        Assert.Null(payload.Element);
     }
 
     [Fact]
@@ -1025,6 +1099,7 @@ public sealed class AutomationControllerTests
             .Returns(securityOptions);
 
         httpContextMock.Setup(x => x.RequestServices).Returns(serviceProviderMock.Object);
+        httpContextMock.Setup(x => x.RequestAborted).Returns(CancellationToken.None);
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = httpContextMock.Object,

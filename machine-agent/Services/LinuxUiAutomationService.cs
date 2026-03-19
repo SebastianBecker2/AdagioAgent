@@ -172,13 +172,20 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
     }
 
     /// <inheritdoc/>
-    public WaitForElementResponse WaitForElement(int pid, string elementId, int timeoutMilliseconds, int pollIntervalMilliseconds)
+    public WaitForElementResponse WaitForElement(
+        int pid,
+        string elementId,
+        int timeoutMilliseconds,
+        int pollIntervalMilliseconds,
+        CancellationToken cancellationToken = default)
     {
         var conn = GetConnection();
-        var startedAt = DateTime.UtcNow;
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMilliseconds);
 
-        while ((DateTime.UtcNow - startedAt).TotalMilliseconds < timeoutMilliseconds)
+        while (DateTime.UtcNow < deadline)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var match = TryFindElementByPidAndId(conn, pid, elementId);
             if (match is not null)
             {
@@ -186,7 +193,9 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
                 return new WaitForElementResponse(true, ToElementState(conn, elBus, elPath));
             }
 
-            Thread.Sleep(pollIntervalMilliseconds);
+            var remainingMs = (int)(deadline - DateTime.UtcNow).TotalMilliseconds;
+            if (remainingMs <= 0) break;
+            Thread.Sleep(Math.Min(pollIntervalMilliseconds, remainingMs));
         }
 
         return new WaitForElementResponse(false, null);

@@ -58,14 +58,24 @@ export class AgentClientError extends Error {
   readonly status: number;
   readonly detail?: string;
   readonly correlationId?: string;
+  readonly errorCode?: string;
+  readonly remediationHint?: string;
 
-  constructor(status: number, detail?: string, correlationId?: string) {
+  constructor(
+    status: number,
+    detail?: string,
+    correlationId?: string,
+    errorCode?: string,
+    remediationHint?: string
+  ) {
     const suffix = correlationId ? ` (Correlation ID: ${correlationId})` : "";
     super(`VM agent responded with ${status}: ${detail ?? "Unexpected error"}${suffix}`);
     this.name = "AgentClientError";
     this.status = status;
     this.detail = detail;
     this.correlationId = correlationId;
+    this.errorCode = errorCode;
+    this.remediationHint = remediationHint;
   }
 }
 
@@ -394,10 +404,14 @@ export class AgentClient {
     if (!response.ok) {
       let detail: string | undefined;
       let correlationId: string | undefined;
+      let errorCode: string | undefined;
+      let remediationHint: string | undefined;
       try {
         const err = (await response.clone().json()) as AgentError;
         detail = err.detail ?? err.error;
         correlationId = err.correlationId;
+        errorCode = err.errorCode;
+        remediationHint = err.remediationHint;
       } catch {
         detail = await response.text();
       }
@@ -409,7 +423,9 @@ export class AgentClient {
       throw new AgentClientError(
         response.status,
         detail ?? response.statusText,
-        correlationId);
+        correlationId,
+        errorCode,
+        remediationHint);
     }
     return response.json() as Promise<T>;
   }

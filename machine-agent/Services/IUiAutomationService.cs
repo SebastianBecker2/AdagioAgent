@@ -39,7 +39,8 @@ public interface IUiAutomationService : IDisposable
         int pid,
         string elementId,
         int timeoutMilliseconds,
-        int pollIntervalMilliseconds);
+        int pollIntervalMilliseconds,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Capture a screenshot of the main window for <paramref name="pid"/> and

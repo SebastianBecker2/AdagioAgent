@@ -209,7 +209,46 @@ public sealed record SupportBundleMetadataResponse(
     List<string> RecommendedArtifacts);
 
 /// <summary>Problem details returned on error (RFC 7807-style).</summary>
-public sealed record ErrorResponse(string Error, string? Detail = null, string? CorrelationId = null);
+public sealed record ErrorResponse(
+    string Error,
+    string? Detail = null,
+    string? CorrelationId = null,
+    string? ErrorCode = null,
+    string? RemediationHint = null);
+
+/// <summary>Machine-readable error code constants for all named error conditions.</summary>
+public static class AgentErrorCodes
+{
+    /// <summary>Request body or query parameters failed validation.</summary>
+    public const string ValidationFailed = "VALIDATION_FAILED";
+
+    /// <summary>The requested command is not in an allowed executable path.</summary>
+    public const string CommandRejected = "COMMAND_REJECTED";
+
+    /// <summary>The destination or source path is not in an allowed directory.</summary>
+    public const string PathNotAllowed = "PATH_NOT_ALLOWED";
+
+    /// <summary>The maximum concurrent process limit has been reached.</summary>
+    public const string ConcurrencyLimitExceeded = "CONCURRENCY_LIMIT_EXCEEDED";
+
+    /// <summary>The requested PID is not tracked by the agent.</summary>
+    public const string ProcessNotFound = "PROCESS_NOT_FOUND";
+
+    /// <summary>The requested UI element or window was not found.</summary>
+    public const string ElementNotFound = "ELEMENT_NOT_FOUND";
+
+    /// <summary>The requested operation is not supported on this platform.</summary>
+    public const string PlatformNotSupported = "PLATFORM_NOT_SUPPORTED";
+
+    /// <summary>The HTTP request was cancelled by the client before completion.</summary>
+    public const string RequestCancelled = "REQUEST_CANCELLED";
+
+    /// <summary>An unexpected internal error occurred.</summary>
+    public const string InternalError = "INTERNAL_ERROR";
+
+    /// <summary>The request was rejected because the API key was missing or invalid.</summary>
+    public const string Unauthorized = "UNAUTHORIZED";
+}
 
 /// <summary>Result of copying a file.</summary>
 public sealed record CopyFileResponse(string DestinationPath, int BytesWritten);
