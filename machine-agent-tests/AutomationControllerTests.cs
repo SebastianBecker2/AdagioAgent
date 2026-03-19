@@ -115,6 +115,8 @@ public sealed class AutomationControllerTests
             $"Unexpected diagnostics status '{payload.Status}'.");
         Assert.Equal(0, payload.RunningProcessCount);
         Assert.Equal(0, payload.TrackedProcessCount);
+        Assert.True(payload.ActiveSessionCount >= 1); // at minimum the legacy default session
+        Assert.Null(payload.OldestSessionAgeSeconds);  // no non-legacy sessions were created
         if (string.Equals(payload.Status, "ready", StringComparison.Ordinal))
         {
             Assert.Empty(payload.Issues);

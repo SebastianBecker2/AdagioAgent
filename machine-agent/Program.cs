@@ -56,6 +56,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 builder.Services.AddSingleton<ProcessService>();
 builder.Services.AddSingleton<SessionService>();
+builder.Services.AddHostedService<SessionExpiryService>();
 
 // Register the correct UI-automation backend for the host platform.
 #if WINDOWS
@@ -380,6 +381,9 @@ public sealed class AgentOptions
 
     /// <summary>Maximum number of non-legacy concurrent sessions.</summary>
     public int MaxConcurrentSessions { get; set; } = 5;
+
+    /// <summary>Seconds of inactivity before a non-legacy session is automatically expired.</summary>
+    public int SessionIdleTimeoutSeconds { get; set; } = 3600;
 }
 
 /// <summary>Transport and authentication settings for the REST API.</summary>

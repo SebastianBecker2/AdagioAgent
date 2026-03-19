@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 
 namespace AdagioMachineAgent.Services;
@@ -15,15 +15,17 @@ public sealed class SessionService
 
     private readonly ConcurrentDictionary<string, AgentSession> _sessions = new();
     private readonly int _maxConcurrentSessions;
+    private readonly int _idleTimeoutSeconds;
 
     public SessionService(IOptions<global::AgentOptions>? options = null)
     {
         _maxConcurrentSessions = options?.Value.MaxConcurrentSessions ?? 5;
+        _idleTimeoutSeconds = options?.Value.SessionIdleTimeoutSeconds ?? 3600;
         EnsureLegacyDefaultSession();
     }
 
     /// <summary>
-    /// Create a new non-legacy session. Throws <see cref="InvalidOperationException"/> when
+    /// Create a new non-legacy session. Throws <see cref=""InvalidOperationException""/> when
     /// the configured <c>MaxConcurrentSessions</c> cap would be exceeded.
     /// </summary>
     public AgentSession Connect(string? clientName = null)
@@ -68,7 +70,48 @@ public sealed class SessionService
         return null;
     }
 
+    /// <summary>
+    /// Evict non-legacy sessions idle longer than <c>SessionIdleTimeoutSeconds</c>.
+    /// Returns the IDs of removed sessions.
+    /// </summary>
+    public IReadOnlyList<string> PruneExpiredSessions()
+    {
+        var cutoff = DateTimeOffset.UtcNow.AddSeconds(-_idleTimeoutSeconds);
+        var expired = new List<string>();
+
+        foreach (var pair in _sessions)
+        {
+            if (!pair.Value.IsLegacyDefault && pair.Value.LastSeenAtUtc < cutoff)
+            {
+                if (_sessions.TryRemove(pair.Key, out _))
+                {
+                    expired.Add(pair.Key);
+                }
+            }
+        }
+
+        return expired;
+    }
+
+    /// <summary>Number of tracked sessions (includes the legacy default session).</summary>
     public int ActiveSessionCount => _sessions.Count;
+
+    /// <summary>
+    /// Age in seconds of the oldest non-legacy session, or <c>null</c> when there are none.
+    /// </summary>
+    public double? OldestNonLegacySessionAgeSeconds
+    {
+        get
+        {
+            var oldest = _sessions.Values
+                .Where(s => !s.IsLegacyDefault)
+                .OrderBy(s => s.CreatedAtUtc)
+                .FirstOrDefault();
+            return oldest is null
+                ? null
+                : (DateTimeOffset.UtcNow - oldest.CreatedAtUtc).TotalSeconds;
+        }
+    }
 }
 
 /// <summary>Metadata for an active logical agent session.</summary>

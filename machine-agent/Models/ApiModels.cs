@@ -197,6 +197,8 @@ public sealed record DiagnosticsStatusResponse(
     List<string> Issues,
     int RunningProcessCount,
     int TrackedProcessCount,
+    int ActiveSessionCount,
+    double? OldestSessionAgeSeconds,
     DateTimeOffset TimestampUtc);
 
 /// <summary>Non-sensitive metadata for troubleshooting exports/support bundles.</summary>
@@ -255,6 +257,9 @@ public static class AgentErrorCodes
 
     /// <summary>The session limit has been reached; the agent cannot accept new connections.</summary>
     public const string AgentBusy = "AGENT_BUSY";
+
+    /// <summary>The supplied session was valid but has since expired due to inactivity.</summary>
+    public const string SessionExpired = "SESSION_EXPIRED";
 
     /// <summary>The requested UI element or window was not found.</summary>
     public const string ElementNotFound = "ELEMENT_NOT_FOUND";

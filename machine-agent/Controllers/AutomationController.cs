@@ -193,6 +193,8 @@ public sealed class AutomationController : ControllerBase
             Issues: readyPayload.Issues,
             RunningProcessCount: _processService.RunningProcessCount,
             TrackedProcessCount: _processService.TrackedProcessCount,
+            ActiveSessionCount: _sessionService.ActiveSessionCount,
+            OldestSessionAgeSeconds: _sessionService.OldestNonLegacySessionAgeSeconds,
             TimestampUtc: DateTimeOffset.UtcNow));
     }
 

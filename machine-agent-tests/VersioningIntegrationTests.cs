@@ -488,6 +488,18 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
     }
 
     [Fact]
+    public async Task DiagnosticsStatus_IncludesSessionFields()
+    {
+        var response = await _client.GetAsync("/diagnostics/status");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var payload = await ReadJson<DiagnosticsStatusResponse>(response);
+        Assert.True(payload.ActiveSessionCount >= 1);
+        // No non-legacy sessions created by other tests => oldest age is null.
+        // The JSON deserializer will set it to null if the field is absent or null.
+    }
+
+    [Fact]
     public async Task DiagnosticsExportMetadata_VersionedRoute_ReturnsSameResponseAsDirectRoute()
     {
         var direct = await _client.GetAsync("/diagnostics/export-metadata");
