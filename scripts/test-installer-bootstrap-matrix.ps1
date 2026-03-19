@@ -643,6 +643,14 @@ foreach ($scenarioName in $ScenarioNames) {
 
         $scenario.finishedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
         $summary.scenarios.Add([pscustomobject]$scenario)
+
+        Write-Host "Installer scenario '$($scenario.name)' completed with status '$($scenario.status)': $($scenario.message)"
+        if ($scenario.installExitCode -ne $null) {
+            Write-Host "Installer scenario '$($scenario.name)' install exit code: $($scenario.installExitCode)"
+        }
+        if ($scenario.uninstallExitCode -ne $null) {
+            Write-Host "Installer scenario '$($scenario.name)' uninstall exit code: $($scenario.uninstallExitCode)"
+        }
     }
 }
 
