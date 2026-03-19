@@ -985,6 +985,7 @@
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
     "test": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile=.\\test-results\\vitest-junit.xml",
     "package:vsix": "vsce package --allow-missing-repository --skip-license"
   },
   "devDependencies": {

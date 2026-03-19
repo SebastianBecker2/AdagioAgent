@@ -254,12 +254,7 @@ build_script:
   - dotnet build machine-agent\AdagioMachineAgent.csproj -c Release --no-restore
 
   # 2. Install Node dependencies and compile the VS Code extension
-  - cd controller-extension
-  - npm ci
-  - npm i --no-save @rolldown/binding-win32-x64-msvc
-  - npm run compile
-  - npm run package:vsix
-  - cd ..
+  - ps: .\scripts\ci-verify-extension.ps1 -InstallDeps -Compile -PackageVsix
 
   # 3. Build the WiX MSI installer (also publishes the machine-agent internally)
   - dotnet build installer/AdagioMachineAgent.Setup.wixproj -p:Configuration=Release
@@ -285,10 +280,7 @@ test_script:
   - dotnet test AdagioAgent.sln -c Release --logger "trx;LogFileName=dotnet-tests.trx" --results-directory .\TestResults
 
   # 2. Run VS Code extension unit tests
-  - cd controller-extension
-  - if not exist test-results mkdir test-results
-  - npm test -- --reporter=default --reporter=junit --outputFile=.\test-results\vitest-junit.xml
-  - cd ..
+  - ps: .\scripts\ci-verify-extension.ps1 -RunTests
 
 # ── Artifacts ────────────────────────────────────────────────────────────────
 artifacts:
