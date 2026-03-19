@@ -253,6 +253,9 @@ public static class AgentErrorCodes
     /// <summary>The supplied session token does not match an active agent session.</summary>
     public const string SessionNotFound = "SESSION_NOT_FOUND";
 
+    /// <summary>The session limit has been reached; the agent cannot accept new connections.</summary>
+    public const string AgentBusy = "AGENT_BUSY";
+
     /// <summary>The requested UI element or window was not found.</summary>
     public const string ElementNotFound = "ELEMENT_NOT_FOUND";
 

@@ -81,9 +81,23 @@ public sealed class AutomationController : ControllerBase
 
     [HttpPost("/session/connect")]
     [ProducesResponseType(typeof(ConnectSessionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status503ServiceUnavailable)]
     public IActionResult ConnectSession([FromBody] ConnectSessionRequest? request = null)
     {
-        var session = _sessionService.Connect(request?.ClientName);
+        AgentSession session;
+        try
+        {
+            session = _sessionService.Connect(request?.ClientName);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new ErrorResponse(
+                    ex.Message,
+                    ErrorCode: AgentErrorCodes.AgentBusy,
+                    RemediationHint: "Disconnect an existing session or increase MaxConcurrentSessions in appsettings.json."));
+        }
+
         return Ok(new ConnectSessionResponse(
             session.SessionId,
             session.CreatedAtUtc,

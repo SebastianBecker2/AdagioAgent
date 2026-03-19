@@ -152,6 +152,41 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
     }
 
     [Fact]
+    public async Task SessionConnect_Returns503WhenSessionLimitIsReached()
+    {
+        using var factory = new AgentFactory().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["SecurityOptions:RequireHttps"] = "false",
+                    ["AgentOptions:MaxConcurrentSessions"] = "2",
+                });
+            });
+        });
+
+        using var client = factory.CreateClient();
+
+        // Fill the session cap.
+        for (var i = 0; i < 2; i++)
+        {
+            using var body = new StringContent("{}", Encoding.UTF8, "application/json");
+            var ok = await client.PostAsync("/session/connect", body);
+            Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        }
+
+        // One more should be refused.
+        using var extraBody = new StringContent("{}", Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/api/v1/session/connect", extraBody);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        var payload = await ReadJson<ErrorResponse>(response);
+        Assert.Equal(AgentErrorCodes.AgentBusy, payload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
+    }
+
+    [Fact]
     public async Task ProcessStatus_ReturnsSessionNotFoundForUnknownExplicitSession()
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "/process-status?pid=999999");

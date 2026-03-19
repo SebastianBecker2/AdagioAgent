@@ -293,6 +293,34 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
+    public void ConnectSession_Returns503WhenSessionLimitIsReached()
+    {
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var options = Options.Create(new global::AgentOptions
+        {
+            AllowedExecutablePaths = [Path.GetTempPath()],
+            MaxConcurrentSessions = 2,
+        });
+        var sessionService = new SessionService(options);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object, sessionService: sessionService);
+
+        // Fill up the cap.
+        Assert.IsType<OkObjectResult>(sut.ConnectSession(new ConnectSessionRequest("client-1")));
+        Assert.IsType<OkObjectResult>(sut.ConnectSession(new ConnectSessionRequest("client-2")));
+
+        // One more should be rejected.
+        var result = sut.ConnectSession(new ConnectSessionRequest("client-3"));
+
+        var serviceUnavailable = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, serviceUnavailable.StatusCode);
+        var payload = Assert.IsType<ErrorResponse>(serviceUnavailable.Value);
+        Assert.Equal(AgentErrorCodes.AgentBusy, payload.ErrorCode);
+        Assert.Contains("2", payload.Error);
+        Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
+    }
+
+    [Fact]
     public void GetProcessStatus_ReturnsRunningForTrackedProcess()
     {
         var commandInfo = ResolveLongRunningCommand();

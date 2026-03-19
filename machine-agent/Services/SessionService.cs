@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Options;
 
 namespace AdagioMachineAgent.Services;
 
@@ -13,14 +14,28 @@ public sealed class SessionService
     public const string LegacyDefaultSessionId = "legacy-default";
 
     private readonly ConcurrentDictionary<string, AgentSession> _sessions = new();
+    private readonly int _maxConcurrentSessions;
 
-    public SessionService()
+    public SessionService(IOptions<global::AgentOptions>? options = null)
     {
+        _maxConcurrentSessions = options?.Value.MaxConcurrentSessions ?? 5;
         EnsureLegacyDefaultSession();
     }
 
+    /// <summary>
+    /// Create a new non-legacy session. Throws <see cref="InvalidOperationException"/> when
+    /// the configured <c>MaxConcurrentSessions</c> cap would be exceeded.
+    /// </summary>
     public AgentSession Connect(string? clientName = null)
     {
+        var nonLegacyCount = _sessions.Values.Count(s => !s.IsLegacyDefault);
+        if (nonLegacyCount >= _maxConcurrentSessions)
+        {
+            throw new InvalidOperationException(
+                $"Maximum concurrent session limit ({_maxConcurrentSessions}) has been reached. " +
+                "Disconnect an existing session or increase MaxConcurrentSessions in appsettings.json.");
+        }
+
         var session = new AgentSession(
             Guid.NewGuid().ToString("n"),
             DateTimeOffset.UtcNow,

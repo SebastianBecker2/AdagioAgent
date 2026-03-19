@@ -377,6 +377,9 @@ public sealed class AgentOptions
 
     /// <summary>Maximum number of simultaneously tracked processes.</summary>
     public int MaxConcurrentProcesses { get; set; } = 5;
+
+    /// <summary>Maximum number of non-legacy concurrent sessions.</summary>
+    public int MaxConcurrentSessions { get; set; } = 5;
 }
 
 /// <summary>Transport and authentication settings for the REST API.</summary>
