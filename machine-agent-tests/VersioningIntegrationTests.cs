@@ -156,6 +156,94 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
         var versionedPayload = await ReadJson<ErrorResponse>(versionedResponse);
         var legacyPayload = await ReadJson<ErrorResponse>(legacyResponse);
         Assert.Equal(versionedPayload.Error, legacyPayload.Error);
+        Assert.Equal(AgentErrorCodes.ProcessNotFound, versionedPayload.ErrorCode);
+        Assert.Equal(versionedPayload.ErrorCode, legacyPayload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(versionedPayload.RemediationHint));
+        Assert.False(string.IsNullOrWhiteSpace(legacyPayload.RemediationHint));
+    }
+
+    [Fact]
+    public async Task VersionedAndLegacyRoute_CollectInstallArtifacts_ReturnIdenticalValidationErrors()
+    {
+        using var versionedBody = new StringContent("{\"pid\":0,\"timeoutMilliseconds\":5000}", Encoding.UTF8, "application/json");
+        using var legacyBody = new StringContent("{\"pid\":0,\"timeoutMilliseconds\":5000}", Encoding.UTF8, "application/json");
+
+        var versionedResponse = await _client.PostAsync("/api/v1/collect-install-artifacts", versionedBody);
+        var legacyResponse = await _client.PostAsync("/collect-install-artifacts", legacyBody);
+
+        Assert.Equal(HttpStatusCode.BadRequest, versionedResponse.StatusCode);
+        Assert.Equal(versionedResponse.StatusCode, legacyResponse.StatusCode);
+
+        var versionedPayload = await ReadJson<ErrorResponse>(versionedResponse);
+        var legacyPayload = await ReadJson<ErrorResponse>(legacyResponse);
+        Assert.Equal(versionedPayload.Error, legacyPayload.Error);
+        Assert.Equal(AgentErrorCodes.ValidationFailed, versionedPayload.ErrorCode);
+        Assert.Equal(versionedPayload.ErrorCode, legacyPayload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(versionedPayload.RemediationHint));
+        Assert.False(string.IsNullOrWhiteSpace(legacyPayload.RemediationHint));
+    }
+
+    [Fact]
+    public async Task VersionedAndLegacyRoute_CollectInstallArtifacts_ReturnIdenticalProcessNotFoundErrors()
+    {
+        using var versionedBody = new StringContent("{\"pid\":999999,\"timeoutMilliseconds\":5000}", Encoding.UTF8, "application/json");
+        using var legacyBody = new StringContent("{\"pid\":999999,\"timeoutMilliseconds\":5000}", Encoding.UTF8, "application/json");
+
+        var versionedResponse = await _client.PostAsync("/api/v1/collect-install-artifacts", versionedBody);
+        var legacyResponse = await _client.PostAsync("/collect-install-artifacts", legacyBody);
+
+        Assert.Equal(HttpStatusCode.NotFound, versionedResponse.StatusCode);
+        Assert.Equal(versionedResponse.StatusCode, legacyResponse.StatusCode);
+
+        var versionedPayload = await ReadJson<ErrorResponse>(versionedResponse);
+        var legacyPayload = await ReadJson<ErrorResponse>(legacyResponse);
+        Assert.Equal(versionedPayload.Error, legacyPayload.Error);
+        Assert.Equal(AgentErrorCodes.ProcessNotFound, versionedPayload.ErrorCode);
+        Assert.Equal(versionedPayload.ErrorCode, legacyPayload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(versionedPayload.RemediationHint));
+        Assert.False(string.IsNullOrWhiteSpace(legacyPayload.RemediationHint));
+    }
+
+    [Fact]
+    public async Task VersionedAndLegacyRoute_RunInstallerAndCollectArtifacts_ReturnIdenticalValidationErrors()
+    {
+        using var versionedBody = new StringContent("{\"command\":\"\"}", Encoding.UTF8, "application/json");
+        using var legacyBody = new StringContent("{\"command\":\"\"}", Encoding.UTF8, "application/json");
+
+        var versionedResponse = await _client.PostAsync("/api/v1/run-installer-and-collect-artifacts", versionedBody);
+        var legacyResponse = await _client.PostAsync("/run-installer-and-collect-artifacts", legacyBody);
+
+        Assert.Equal(HttpStatusCode.BadRequest, versionedResponse.StatusCode);
+        Assert.Equal(versionedResponse.StatusCode, legacyResponse.StatusCode);
+
+        var versionedPayload = await ReadJson<ErrorResponse>(versionedResponse);
+        var legacyPayload = await ReadJson<ErrorResponse>(legacyResponse);
+        Assert.Equal(versionedPayload.Error, legacyPayload.Error);
+        Assert.Equal(AgentErrorCodes.ValidationFailed, versionedPayload.ErrorCode);
+        Assert.Equal(versionedPayload.ErrorCode, legacyPayload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(versionedPayload.RemediationHint));
+        Assert.False(string.IsNullOrWhiteSpace(legacyPayload.RemediationHint));
+    }
+
+    [Fact]
+    public async Task VersionedAndLegacyRoute_RunInstallerAndAssert_ReturnIdenticalValidationErrors()
+    {
+        using var versionedBody = new StringContent("{\"command\":\"\"}", Encoding.UTF8, "application/json");
+        using var legacyBody = new StringContent("{\"command\":\"\"}", Encoding.UTF8, "application/json");
+
+        var versionedResponse = await _client.PostAsync("/api/v1/run-installer-and-assert", versionedBody);
+        var legacyResponse = await _client.PostAsync("/run-installer-and-assert", legacyBody);
+
+        Assert.Equal(HttpStatusCode.BadRequest, versionedResponse.StatusCode);
+        Assert.Equal(versionedResponse.StatusCode, legacyResponse.StatusCode);
+
+        var versionedPayload = await ReadJson<ErrorResponse>(versionedResponse);
+        var legacyPayload = await ReadJson<ErrorResponse>(legacyResponse);
+        Assert.Equal(versionedPayload.Error, legacyPayload.Error);
+        Assert.Equal(AgentErrorCodes.ValidationFailed, versionedPayload.ErrorCode);
+        Assert.Equal(versionedPayload.ErrorCode, legacyPayload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(versionedPayload.RemediationHint));
+        Assert.False(string.IsNullOrWhiteSpace(legacyPayload.RemediationHint));
     }
 
     [Fact]
