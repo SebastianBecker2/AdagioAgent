@@ -104,7 +104,26 @@ function Invoke-Msiexec {
     )
 
     $operation = if ($Mode -eq 'install') { '/i' } else { '/x' }
-    $arguments = "$operation `"$PackagePath`" /qn /norestart /l*v `"$LogPath`""
+    if (-not (Test-Path -LiteralPath $PackagePath -PathType Leaf)) {
+        throw "msiexec $Mode package not found at '$PackagePath'."
+    }
+
+    $resolvedPackagePath = (Resolve-Path -LiteralPath $PackagePath).Path
+    $resolvedLogPath = [System.IO.Path]::GetFullPath($LogPath)
+    $logDirectory = Split-Path -Path $resolvedLogPath -Parent
+    if (-not [string]::IsNullOrWhiteSpace($logDirectory)) {
+        New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
+    }
+
+    $arguments = @(
+        $operation,
+        $resolvedPackagePath,
+        '/qn',
+        '/norestart',
+        '/l*v',
+        $resolvedLogPath
+    )
+
     $process = Start-Process -FilePath 'msiexec.exe' -ArgumentList $arguments -PassThru -Wait -NoNewWindow
     return $process.ExitCode
 }
