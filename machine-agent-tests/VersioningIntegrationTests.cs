@@ -247,6 +247,113 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
     }
 
     [Fact]
+    public async Task VersionedAndLegacyRoute_ReadTextFile_ReturnIdenticalPathNotFoundErrors()
+    {
+        var missingPath = Path.Combine(Path.GetTempPath(), $"adagio-missing-read-{Guid.NewGuid():N}.txt");
+        var body = JsonSerializer.Serialize(new { path = missingPath });
+        using var versionedRequest = new StringContent(body, Encoding.UTF8, "application/json");
+        using var legacyRequest = new StringContent(body, Encoding.UTF8, "application/json");
+
+        var versionedResponse = await _client.PostAsync("/api/v1/read-text-file", versionedRequest);
+        var legacyResponse = await _client.PostAsync("/read-text-file", legacyRequest);
+
+        await AssertStructuredErrorParity(
+            versionedResponse,
+            legacyResponse,
+            HttpStatusCode.NotFound,
+            AgentErrorCodes.PathNotFound);
+    }
+
+    [Fact]
+    public async Task VersionedAndLegacyRoute_TailFile_ReturnIdenticalPathNotFoundErrors()
+    {
+        var missingPath = Path.Combine(Path.GetTempPath(), $"adagio-missing-tail-{Guid.NewGuid():N}.log");
+        var body = JsonSerializer.Serialize(new { path = missingPath, lines = 10 });
+        using var versionedRequest = new StringContent(body, Encoding.UTF8, "application/json");
+        using var legacyRequest = new StringContent(body, Encoding.UTF8, "application/json");
+
+        var versionedResponse = await _client.PostAsync("/api/v1/tail-file", versionedRequest);
+        var legacyResponse = await _client.PostAsync("/tail-file", legacyRequest);
+
+        await AssertStructuredErrorParity(
+            versionedResponse,
+            legacyResponse,
+            HttpStatusCode.NotFound,
+            AgentErrorCodes.PathNotFound);
+    }
+
+    [Fact]
+    public async Task VersionedAndLegacyRoute_ListDirectory_ReturnIdenticalPathNotFoundErrors()
+    {
+        var missingPath = Path.Combine(Path.GetTempPath(), $"adagio-missing-dir-{Guid.NewGuid():N}");
+        var body = JsonSerializer.Serialize(new { path = missingPath });
+        using var versionedRequest = new StringContent(body, Encoding.UTF8, "application/json");
+        using var legacyRequest = new StringContent(body, Encoding.UTF8, "application/json");
+
+        var versionedResponse = await _client.PostAsync("/api/v1/list-directory", versionedRequest);
+        var legacyResponse = await _client.PostAsync("/list-directory", legacyRequest);
+
+        await AssertStructuredErrorParity(
+            versionedResponse,
+            legacyResponse,
+            HttpStatusCode.NotFound,
+            AgentErrorCodes.PathNotFound);
+    }
+
+    [Fact]
+    public async Task VersionedAndLegacyRoute_AssertProcessExited_ReturnIdenticalProcessNotFoundErrors()
+    {
+        var body = JsonSerializer.Serialize(new { pid = 999999, timeoutMilliseconds = 5000 });
+        using var versionedRequest = new StringContent(body, Encoding.UTF8, "application/json");
+        using var legacyRequest = new StringContent(body, Encoding.UTF8, "application/json");
+
+        var versionedResponse = await _client.PostAsync("/api/v1/assert-process-exited", versionedRequest);
+        var legacyResponse = await _client.PostAsync("/assert-process-exited", legacyRequest);
+
+        await AssertStructuredErrorParity(
+            versionedResponse,
+            legacyResponse,
+            HttpStatusCode.NotFound,
+            AgentErrorCodes.ProcessNotFound);
+    }
+
+    [Fact]
+    public async Task VersionedAndLegacyRoute_AssertPathExists_ReturnIdenticalValidationErrors()
+    {
+        var missingPath = Path.Combine(Path.GetTempPath(), $"adagio-missing-assert-{Guid.NewGuid():N}");
+        var body = JsonSerializer.Serialize(new { path = missingPath, mustBeDirectory = true });
+        using var versionedRequest = new StringContent(body, Encoding.UTF8, "application/json");
+        using var legacyRequest = new StringContent(body, Encoding.UTF8, "application/json");
+
+        var versionedResponse = await _client.PostAsync("/api/v1/assert-path-exists", versionedRequest);
+        var legacyResponse = await _client.PostAsync("/assert-path-exists", legacyRequest);
+
+        await AssertStructuredErrorParity(
+            versionedResponse,
+            legacyResponse,
+            HttpStatusCode.BadRequest,
+            AgentErrorCodes.ValidationFailed);
+    }
+
+    [Fact]
+    public async Task VersionedAndLegacyRoute_AssertLogContains_ReturnIdenticalPathNotFoundErrors()
+    {
+        var missingPath = Path.Combine(Path.GetTempPath(), $"adagio-missing-log-{Guid.NewGuid():N}.log");
+        var body = JsonSerializer.Serialize(new { path = missingPath, containsText = "done", ignoreCase = true });
+        using var versionedRequest = new StringContent(body, Encoding.UTF8, "application/json");
+        using var legacyRequest = new StringContent(body, Encoding.UTF8, "application/json");
+
+        var versionedResponse = await _client.PostAsync("/api/v1/assert-log-contains", versionedRequest);
+        var legacyResponse = await _client.PostAsync("/assert-log-contains", legacyRequest);
+
+        await AssertStructuredErrorParity(
+            versionedResponse,
+            legacyResponse,
+            HttpStatusCode.NotFound,
+            AgentErrorCodes.PathNotFound);
+    }
+
+    [Fact]
     public async Task DiagnosticsStatus_VersionedRoute_ReturnsSameResponseAsDirectRoute()
     {
         var direct = await _client.GetAsync("/diagnostics/status");
@@ -378,6 +485,24 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
         });
         Assert.NotNull(result);
         return result;
+    }
+
+    private static async Task AssertStructuredErrorParity(
+        HttpResponseMessage versionedResponse,
+        HttpResponseMessage legacyResponse,
+        HttpStatusCode expectedStatusCode,
+        string expectedErrorCode)
+    {
+        Assert.Equal(expectedStatusCode, versionedResponse.StatusCode);
+        Assert.Equal(versionedResponse.StatusCode, legacyResponse.StatusCode);
+
+        var versionedPayload = await ReadJson<ErrorResponse>(versionedResponse);
+        var legacyPayload = await ReadJson<ErrorResponse>(legacyResponse);
+        Assert.Equal(versionedPayload.Error, legacyPayload.Error);
+        Assert.Equal(expectedErrorCode, versionedPayload.ErrorCode);
+        Assert.Equal(versionedPayload.ErrorCode, legacyPayload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(versionedPayload.RemediationHint));
+        Assert.False(string.IsNullOrWhiteSpace(legacyPayload.RemediationHint));
     }
 
     // ── test factory ──────────────────────────────────────────────────────
