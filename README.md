@@ -40,6 +40,8 @@ generation for controlled environments).
 
 Bootstrap script regression tests: `Invoke-Pester -Path .\scripts\tests\BootstrapScripts.Tests.ps1`.
 
+Installer validation matrix: `powershell -ExecutionPolicy Bypass -File .\scripts\test-installer-bootstrap-matrix.ps1 -MsiPath .\installer\bin\x64\Release\AdagioMachineAgentSetup.msi -FailOnScenarioFailure`.
+
 Support bundle helper script: `scripts/collect-support-bundle.ps1`
 (sanitized diagnostics and operational evidence collection).
 
@@ -370,6 +372,12 @@ Bootstrap secret handoff guidance:
 - The file is ACL-restricted to `SYSTEM` and local `Administrators`.
 - After securely transferring secrets to the target operator secret store,
   delete the handoff file.
+
+Installer validation automation:
+
+- `scripts/test-installer-bootstrap-matrix.ps1` runs a guarded fresh silent MSI install validation on a clean elevated Windows machine.
+- The script verifies service startup, bootstrap diagnostics, handoff ACLs, installed appsettings wiring, and authenticated health/diagnostics endpoint probes.
+- AppVeyor runs this validation after building the MSI and publishes the summary/log artifacts from `artifacts/installer-validation/`.
 
 **Installer Error Code Reference:**
 

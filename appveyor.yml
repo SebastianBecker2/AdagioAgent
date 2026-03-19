@@ -139,6 +139,9 @@ build_script:
   # 0.097 Run bootstrap script tests (Pester)
   - ps: Invoke-Pester -Script .\scripts\tests\BootstrapScripts.Tests.ps1 -EnableExit
 
+  # 0.098 Run installer validation harness tests (Pester)
+  - ps: Invoke-Pester -Script .\scripts\tests\InstallerScripts.Tests.ps1 -EnableExit
+
   # 0.10 On non-tag builds, smoke-test dry-run release-ops package generation
   - ps: |
       if ($env:APPVEYOR_REPO_TAG -eq 'true') {
@@ -250,6 +253,9 @@ build_script:
   # 3. Build the WiX MSI installer (also publishes the machine-agent internally)
   - dotnet build installer/AdagioMachineAgent.Setup.wixproj -p:Configuration=Release
 
+  # 3.1 Validate the fresh silent installer path on the ephemeral CI worker
+  - ps: .\scripts\test-installer-bootstrap-matrix.ps1 -MsiPath .\installer\bin\x64\Release\AdagioMachineAgentSetup.msi -FailOnScenarioFailure
+
 # ── Tests ────────────────────────────────────────────────────────────────────
 test_script:
   # 1. Run .NET unit tests (machine-agent-tests project is part of the solution)
@@ -321,3 +327,9 @@ artifacts:
     name: DotNetTestResults
   - path: controller-extension/test-results/*.xml
     name: ExtensionTestResults
+  - path: artifacts/installer-validation/**/*.json
+    name: InstallerValidationJson
+  - path: artifacts/installer-validation/**/*.md
+    name: InstallerValidationMarkdown
+  - path: artifacts/installer-validation/**/*.log
+    name: InstallerValidationLogs
