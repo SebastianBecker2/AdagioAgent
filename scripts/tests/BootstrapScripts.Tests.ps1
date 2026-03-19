@@ -96,8 +96,8 @@ Describe 'Bootstrap provisioning script' {
         $acl.AreAccessRulesProtected | Should Be $true
 
         $sidValues = @($acl.Access | ForEach-Object { Convert-IdentityToSid -IdentityReference $_.IdentityReference })
-        $sidValues | Should Contain 'S-1-5-18'
-        $sidValues | Should Contain 'S-1-5-32-544'
+        ($sidValues -contains 'S-1-5-18') | Should Be $true
+        ($sidValues -contains 'S-1-5-32-544') | Should Be $true
     }
 
     It 'emits AA1002 in bootstrap-failure artifact when appsettings path is missing' {
