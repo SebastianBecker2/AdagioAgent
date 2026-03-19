@@ -61,4 +61,19 @@ Describe 'Installer validation matrix script' {
         $summary.scenarios[0].status | Should Be 'failed'
         $summary.scenarios[0].message | Should Match 'AdjacentUpgrade requires -PreviousMsiPath'
     }
+
+    It 'uses runtime-compatible hash formatting for diagnostic snapshots' {
+        $scriptText = Get-Content -LiteralPath $installerMatrixScript -Raw
+
+        $scriptText | Should Match '\[System\.BitConverter\]::ToString\('
+        $scriptText | Should Not Match 'Convert\]::ToHexString\('
+    }
+
+    It 'uses a compiled TLS validation callback instead of a PowerShell scriptblock' {
+        $scriptText = Get-Content -LiteralPath $installerMatrixScript -Raw
+
+        $scriptText | Should Match 'Add-Type -TypeDefinition'
+        $scriptText | Should Match 'RemoteCertificateValidationCallback'
+        $scriptText | Should Not Match 'ServerCertificateValidationCallback\s*=\s*\{\s*\$true\s*\}'
+    }
 }
