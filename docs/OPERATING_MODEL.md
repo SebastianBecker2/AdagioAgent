@@ -51,14 +51,19 @@ Linux support is **beta** as of v0.4.
   script sets `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/<UID>/bus` in
   the systemd unit automatically)
 - `libdbus-1-3` shared library
+- `xdotool` for `send-keys` and `press-hotkey` keyboard injection on X11
 - `openssl` (for certificate generation during install)
 
 **Known limitations in v0.4 beta:**
-- `send-keys` and `press-hotkey` are not yet implemented on Linux
 - AT-SPI2 requires a live interactive desktop session; headless/VNC is
   possible but requires extra AT-SPI2 configuration
+- `send-keys` and `press-hotkey` currently rely on X11 tooling (`xdotool`) and
+  are not supported on pure Wayland sessions without XWayland compatibility
 - The `.deb` package is unsigned; add to a controlled private repository
   or install with `sudo dpkg -i` directly
+
+Linux UI command parity tracking and CI evidence are documented in
+`docs/LINUX_UI_PARITY_MATRIX.md`.
 
 ---
 

@@ -31,7 +31,7 @@ be easy to install, easy to trust, and easy to audit.
 | Core process execution | Stable | run, run-and-collect, run-and-assert workflows |
 | File operations | Stable | copy, read, tail, list, exists, assert |
 | UI automation — Windows | Beta | FlaUI/UIA3; interactive session constraint documented |
-| UI automation — Linux | Preview | AT-SPI2/X11 available; parity still incomplete |
+| UI automation — Linux | Preview | AT-SPI2/X11 core command set implemented; parity validation and Beta promotion criteria remain |
 | Screenshot / visual inspection | Beta | base64 PNG capture, no OCR |
 | Security model | Stable | HTTPS + API key, path allowlist, SecurityPolicy |
 | Installer | Stable | WiX v6 MSI with bootstrap + preflight diagnostics and fail-fast service validation |
@@ -53,7 +53,7 @@ roadmap into a sprint backlog.
 | Phase | Progress | Notes |
 |---|---|---|
 | Phase 1 — Core Reliability | In progress | Structured diagnostics and installer reliability hardening are in place; remaining work is broader runtime error-model standardization and cancellation semantics |
-| Phase 2 — Linux Parity | In progress (substantial) | Linux HTTPS setup docs, systemd unit/install scripts, `.deb` packaging script, and Linux CI/release legs implemented; UI parity and operating-model promotion to Linux Beta still pending |
+| Phase 2 — Linux Parity | In progress (substantial) | Linux HTTPS setup docs, systemd unit/install scripts, `.deb` packaging script, Linux CI/release legs, Linux `send-keys`/`press-hotkey` support, and parity evidence matrix implemented; operating-model promotion to Linux Beta still pending |
 | Phase 3 — Distribution | In progress | GitHub Release draft workflow with MSI/VSIX/.deb artifacts and quick-start guide implemented; Marketplace publication and final README distribution/dev split still pending |
 | Phase 4+ | Not started | Session model, security maturity expansion, extensibility model, and GA commitments remain planned work |
 

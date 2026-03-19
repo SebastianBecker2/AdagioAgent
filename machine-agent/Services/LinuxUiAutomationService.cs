@@ -1,4 +1,5 @@
 #if LINUX
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using AdagioMachineAgent.Models;
@@ -87,15 +88,22 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
     /// <inheritdoc/>
     public void SendKeys(int pid, string text)
     {
-        throw new PlatformNotSupportedException(
-            "Generic send-keys is not implemented on Linux yet. Use Type on a focused editable element instead.");
+        if (string.IsNullOrWhiteSpace(text))
+            throw new InvalidOperationException("text is required.");
+
+        var windowId = ResolveXdotoolWindowId(pid);
+        RunXdotool("type", "--window", windowId, "--clearmodifiers", "--delay", "1", text);
     }
 
     /// <inheritdoc/>
     public void PressHotkey(int pid, IReadOnlyList<string> keys)
     {
-        throw new PlatformNotSupportedException(
-            "Generic hotkey simulation is not implemented on Linux yet.");
+        if (keys is null || keys.Count == 0)
+            throw new InvalidOperationException("At least one key is required.");
+
+        var chord = NormalizeHotkey(keys);
+        var windowId = ResolveXdotoolWindowId(pid);
+        RunXdotool("key", "--window", windowId, "--clearmodifiers", chord);
     }
 
     /// <inheritdoc/>
@@ -491,6 +499,148 @@ public sealed class LinuxUiAutomationService : IUiAutomationService
     {
         var msg = BuildInt32ArgCall(conn, busName, path, AtSpiSelection, "SelectChild", childIndex);
         conn.CallMethodAsync(msg, ReadBool, null).GetAwaiter().GetResult();
+    }
+
+    // ── Linux key input helpers (xdotool) ──────────────────────────────────
+
+    private static string ResolveXdotoolWindowId(int pid)
+    {
+        EnsureXdotoolInstalled();
+
+        var search = StartXdotool("search", "--onlyvisible", "--pid", pid.ToString());
+        var output = search.StandardOutput.ReadToEnd();
+        var error = search.StandardError.ReadToEnd();
+        search.WaitForExit();
+
+        if (search.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
+        {
+            throw new InvalidOperationException(
+                $"Unable to resolve an active window for pid {pid}. " +
+                "Ensure the target app has a visible X11 window and runs in the active desktop session." +
+                (string.IsNullOrWhiteSpace(error) ? string.Empty : $" xdotool: {error.Trim()}"));
+        }
+
+        var firstLine = output
+            .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(firstLine))
+            throw new InvalidOperationException($"No visible X11 window was found for pid {pid}.");
+
+        return firstLine;
+    }
+
+    private static void RunXdotool(params string[] args)
+    {
+        EnsureXdotoolInstalled();
+
+        var proc = StartXdotool(args);
+        var error = proc.StandardError.ReadToEnd();
+        proc.WaitForExit();
+
+        if (proc.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                "Failed to send keyboard input via xdotool." +
+                (string.IsNullOrWhiteSpace(error) ? string.Empty : $" xdotool: {error.Trim()}"));
+        }
+    }
+
+    private static Process StartXdotool(params string[] args)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "xdotool",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+
+        foreach (var arg in args)
+            startInfo.ArgumentList.Add(arg);
+
+        try
+        {
+            var proc = Process.Start(startInfo);
+            if (proc is null)
+                throw new PlatformNotSupportedException("Failed to start xdotool process.");
+            return proc;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            throw new PlatformNotSupportedException(
+                "Linux key injection requires xdotool. Install it (for example, `sudo apt-get install xdotool`).");
+        }
+    }
+
+    private static void EnsureXdotoolInstalled()
+    {
+        try
+        {
+            var check = new ProcessStartInfo
+            {
+                FileName = "xdotool",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
+            check.ArgumentList.Add("--version");
+
+            using var proc = Process.Start(check);
+            if (proc is null)
+                throw new PlatformNotSupportedException("Failed to start xdotool process.");
+
+            proc.WaitForExit();
+            if (proc.ExitCode != 0)
+            {
+                throw new PlatformNotSupportedException(
+                    "Linux key injection requires xdotool. Install it (for example, `sudo apt-get install xdotool`).");
+            }
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            throw new PlatformNotSupportedException(
+                "Linux key injection requires xdotool. Install it (for example, `sudo apt-get install xdotool`).");
+        }
+    }
+
+    private static string NormalizeHotkey(IReadOnlyList<string> keys)
+    {
+        var normalized = new List<string>(keys.Count);
+
+        foreach (var raw in keys)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                throw new InvalidOperationException("Hotkey keys must not contain empty values.");
+
+            normalized.Add(raw.Trim().ToLowerInvariant() switch
+            {
+                "control" => "ctrl",
+                "ctl" => "ctrl",
+                "command" => "super",
+                "cmd" => "super",
+                "win" => "super",
+                "windows" => "super",
+                "option" => "alt",
+                "return" => "Return",
+                "enter" => "Return",
+                "esc" => "Escape",
+                "space" => "space",
+                "tab" => "Tab",
+                "backspace" => "BackSpace",
+                "delete" => "Delete",
+                "del" => "Delete",
+                var k when k.Length == 1 => k,
+                var k when k.StartsWith("f", StringComparison.Ordinal) &&
+                           int.TryParse(k[1..], out var n) && n >= 1 && n <= 24
+                    => $"F{n}",
+                _ => raw.Trim(),
+            });
+        }
+
+        return string.Join('+', normalized);
     }
 
     // ── D-Bus message builders ────────────────────────────────────────────────

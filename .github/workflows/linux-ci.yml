@@ -72,11 +72,24 @@ jobs:
       - name: Build .deb package
         run: bash scripts/build-linux-deb.sh --output-dir ./artifacts/linux
 
+      - name: Install Linux UI parity smoke dependencies
+        run: sudo apt-get install -y xvfb xdotool xterm at-spi2-core
+
+      - name: Run Linux UI parity smoke
+        run: bash scripts/linux-ui-parity-smoke.sh ./artifacts/linux
+
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
         with:
           name: adagio-machine-agent-deb
           path: artifacts/linux/*.deb
+
+      - name: Upload Linux UI parity smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-ui-parity-smoke
+          path: artifacts/linux/linux-ui-parity-smoke.txt
 
       # ── controller-extension ─────────────────────────────────────────────
       - name: Install extension dependencies

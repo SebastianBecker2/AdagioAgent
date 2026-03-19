@@ -281,14 +281,17 @@ is missing/invalid, or if API key auth is required but the key is unset.
 
 ```bash
 # Debian / Ubuntu
-sudo apt-get install at-spi2-core libx11-6
+sudo apt-get install at-spi2-core libx11-6 xdotool
 
 # Fedora / RHEL
-sudo dnf install at-spi2-core libX11
+sudo dnf install at-spi2-core libX11 xdotool
 ```
 
 Applications must support AT-SPI2 accessibility (all GTK and Qt applications
 do by default; Electron apps require `--force-renderer-accessibility`).
+
+On Linux, `/send-keys` and `/press-hotkey` use `xdotool` and require an active
+X11 window for the target process.
 
 The `DISPLAY` and `DBUS_SESSION_BUS_ADDRESS` environment variables must be set
 (they are automatically when running as a graphical desktop session).
