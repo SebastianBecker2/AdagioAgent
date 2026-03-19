@@ -38,6 +38,8 @@ Observability docs:
 Bootstrap helper script: `scripts/bootstrap-agent.ps1` (certificate + API key
 generation for controlled environments).
 
+Bootstrap script regression tests: `Invoke-Pester -Path .\scripts\tests\BootstrapScripts.Tests.ps1`.
+
 Support bundle helper script: `scripts/collect-support-bundle.ps1`
 (sanitized diagnostics and operational evidence collection).
 

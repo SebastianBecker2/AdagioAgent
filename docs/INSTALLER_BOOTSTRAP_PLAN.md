@@ -133,6 +133,12 @@ If raw JSON editing is added, include validation safeguards before applying chan
 4. Collect user feedback from pilot usage.
 5. Prioritize v1.5 manual mode or v2 advanced editing based on support signals.
 
+### Rollout Progress
+
+1. Local bootstrap validation automation: in place via `scripts/tests/BootstrapScripts.Tests.ps1`.
+2. CI bootstrap validation automation: in place via AppVeyor Pester execution of bootstrap script tests.
+3. Full installer end-to-end matrix (fresh/silent/upgrade) remains pending for dedicated MSI environment coverage.
+
 ## Decisions Status
 
 1. Secure handoff for generated bootstrap secrets: resolved.

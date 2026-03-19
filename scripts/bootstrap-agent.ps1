@@ -95,12 +95,11 @@ function Protect-SecretHandoffFile {
     $propagation = [System.Security.AccessControl.PropagationFlags]::None
     $accessType = [System.Security.AccessControl.AccessControlType]::Allow
 
-    $adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule("BUILTIN\Administrators", $rights, $inheritance, $propagation, $accessType)
-        $adminSid = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid, $null)
-        $systemSid = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::LocalSystemSid, $null)
+    $adminSid = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid, $null)
+    $systemSid = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::LocalSystemSid, $null)
 
-        $adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule($adminSid, $rights, $inheritance, $propagation, $accessType)
-        $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule($systemSid, $rights, $inheritance, $propagation, $accessType)
+    $adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule($adminSid, $rights, $inheritance, $propagation, $accessType)
+    $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule($systemSid, $rights, $inheritance, $propagation, $accessType)
     $acl.AddAccessRule($adminRule)
     $acl.AddAccessRule($systemRule)
 

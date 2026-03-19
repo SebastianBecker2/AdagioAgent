@@ -136,6 +136,9 @@ build_script:
   # 0.095 Run dry-run script tests (Pester)
   - ps: Invoke-Pester -Script .\scripts\tests\DryRunScripts.Tests.ps1 -EnableExit
 
+  # 0.097 Run bootstrap script tests (Pester)
+  - ps: Invoke-Pester -Script .\scripts\tests\BootstrapScripts.Tests.ps1 -EnableExit
+
   # 0.10 On non-tag builds, smoke-test dry-run release-ops package generation
   - ps: |
       if ($env:APPVEYOR_REPO_TAG -eq 'true') {
