@@ -2,6 +2,31 @@
 
 Get from zero to your first Copilot-driven automation command in under 10 minutes.
 
+## Beginner quick start (first successful run)
+
+If this is your first automation project, start here.
+
+### What you are building
+
+- The machine agent runs on your VM (or your own machine for local testing).
+- The VS Code extension sends commands to that agent.
+- Copilot can then launch apps, click UI elements, and collect logs.
+
+### Fastest beginner path (Windows, same machine)
+
+1. Install `AdagioMachineAgentSetup.msi` from GitHub Releases.
+2. Open this file and copy your API key:
+   - `C:\ProgramData\AdagioMachineAgent\bootstrap-secrets.json`
+3. Install the VS Code extension from the `.vsix` file in GitHub Releases.
+4. In VS Code settings, set:
+   - `adagioAgent.vmAgentUrl` = `https://127.0.0.1:5443/api/v1`
+   - `adagioAgent.vmAgentApiKey` = your API key from step 2
+5. Run command palette action: **Adagio Agent: Run Startup Diagnostics**
+6. In Copilot Chat, try:
+   - "Start notepad.exe and tell me the PID"
+
+If that works, continue with the full steps below for Linux, remote VM setup, and troubleshooting.
+
 ## Prerequisites
 
 | Requirement | Notes |
