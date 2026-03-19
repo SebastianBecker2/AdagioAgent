@@ -141,6 +141,16 @@ vi.mock("vscode", () => ({
 vi.mock("../src/agentClient", () => ({
   createAgentClient: createAgentClientMock,
   AgentClient: class AgentClient {},
+  AgentClientError: class AgentClientError extends Error {
+    readonly status: number;
+    readonly errorCode?: string;
+    constructor(status: number, detail?: string, _correlationId?: string, errorCode?: string) {
+      super(detail ?? "Agent error");
+      this.name = "AgentClientError";
+      this.status = status;
+      this.errorCode = errorCode;
+    }
+  },
   getCorrelationIdFromError: (error: unknown) => {
     if (error instanceof Error) {
       const match = error.message.match(/Correlation ID:\s*([^\)\s]+)/i);
@@ -176,7 +186,14 @@ describe("extension activation and commands", () => {
       issues: [],
     });
 
-    createAgentClientMock.mockReturnValue({ ready: readyMock });
+    createAgentClientMock.mockReturnValue({
+      ready: readyMock,
+      connectSession: vi.fn().mockResolvedValue({
+        sessionId: "test-session-id",
+        createdAtUtc: "2026-03-18T00:00:00Z",
+        sessionHeaderName: "X-Adagio-Session-ID",
+      }),
+    });
 
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
@@ -189,7 +206,7 @@ describe("extension activation and commands", () => {
     activate(context as never);
     await Promise.resolve();
 
-    expect(createAgentClientMock).toHaveBeenCalledTimes(1);
+    expect(createAgentClientMock).toHaveBeenCalledTimes(2);
     expect(readyMock).toHaveBeenCalledTimes(1);
     expect(updateMock).toHaveBeenCalledWith("adagioAgent.startupConnectionCheckCompleted", true);
     expect(showWarningMessageMock).not.toHaveBeenCalled();
@@ -329,7 +346,13 @@ describe("extension activation and commands", () => {
         issues: [],
         runningProcessCount: 0,
         trackedProcessCount: 0,
+        activeSessionCount: 1,
         timestampUtc: "2026-03-18T00:00:00Z",
+      }),
+      connectSession: vi.fn().mockResolvedValue({
+        sessionId: "test-session-id",
+        createdAtUtc: "2026-03-18T00:00:00Z",
+        sessionHeaderName: "X-Adagio-Session-ID",
       }),
     });
 
@@ -343,7 +366,7 @@ describe("extension activation and commands", () => {
       "Adagio Agent diagnostics passed (windows, API v1)."
     );
     expect(showInformationMessageMock).toHaveBeenCalledWith(
-      "Adagio Agent diagnostics: status=ready, running=0, tracked=0"
+      "Adagio Agent diagnostics: status=ready, running=0, tracked=0, sessions=1"
     );
   });
 

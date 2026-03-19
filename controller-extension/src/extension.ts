@@ -1,6 +1,6 @@
 ﻿import * as vscode from "vscode";
 import * as os from "os";
-import { AgentClient, createAgentClient, getCorrelationIdFromError } from "./agentClient";
+import { AgentClient, AgentClientError, createAgentClient, getCorrelationIdFromError } from "./agentClient";
 import { wrapCommand } from "./commandSafety";
 import { RunRequest, UiElement } from "./schema";
 
@@ -208,11 +208,13 @@ async function runStartupConnectionCheck(
   }
 
   try {
-    const readiness = await createAgentClient().ready();
+    const readiness = await getClient().ready();
     if (readiness.status === "ready") {
       if (state) {
         await state.update(startupConnectionCheckKey, true);
       }
+
+      void sessionManager.tryConnect();
 
       logAdagio("info", "Startup diagnostics passed", {
         platform: readiness.platform,
@@ -261,6 +263,44 @@ async function runStartupConnectionCheck(
 
 // ─── Telemetry (local, output-channel only) ──────────────────────────────────
 
+// ─── Session lifecycle ────────────────────────────────────────────────────────
+
+class SessionManager {
+  private sessionId?: string;
+
+  getSessionId(): string | undefined {
+    return this.sessionId;
+  }
+
+  async tryConnect(): Promise<void> {
+    if (this.sessionId) {
+      return;
+    }
+    try {
+      const client = createAgentClient();
+      const resp = await client.connectSession({ clientName: "vscode-adagio-agent" });
+      this.sessionId = resp.sessionId;
+      logAdagio("info", "Agent session established", { sessionId: resp.sessionId });
+    } catch (e) {
+      logAdagio("warn", "Could not establish agent session; requests will use legacy default session", {
+        error: errorMessage(e),
+      });
+    }
+  }
+
+  clearSession(): void {
+    this.sessionId = undefined;
+  }
+}
+
+const sessionManager = new SessionManager();
+
+function getClient(): AgentClient {
+  return createAgentClient(sessionManager.getSessionId());
+}
+
+// ─── Telemetry (local, output-channel only) ──────────────────────────────────
+
 function notifyFirstSuccessfulCommand(toolName: string): void {
   const state = extensionContextGlobal?.globalState;
   if (!state) return;
@@ -279,9 +319,22 @@ function telemetryTool<T>(
       opts: vscode.LanguageModelToolInvocationOptions<T>,
       token: vscode.CancellationToken
     ) => {
-      const result = await orig(opts, token);
-      notifyFirstSuccessfulCommand(name);
-      return result;
+      try {
+        const result = await orig(opts, token);
+        notifyFirstSuccessfulCommand(name);
+        return result;
+      } catch (err) {
+        if (err instanceof AgentClientError &&
+            (err.errorCode === "SESSION_NOT_FOUND" || err.errorCode === "SESSION_EXPIRED")) {
+          logAdagio("warn", "Session lost during tool invocation; re-establishing session", {
+            tool: name,
+            errorCode: err.errorCode,
+          });
+          sessionManager.clearSession();
+          void sessionManager.tryConnect();
+        }
+        throw err;
+      }
     },
   };
 }
@@ -413,7 +466,7 @@ async function cmdRunExecutable(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
@@ -432,13 +485,15 @@ async function cmdRunExecutable(): Promise<void> {
 async function cmdRunStartupDiagnostics(): Promise<void> {
   await runStartupConnectionCheck(undefined, { force: true, showSuccess: true });
 
-  const diagnostics = await createAgentClient().diagnosticsStatus();
-  const summary = `status=${diagnostics.status}, running=${diagnostics.runningProcessCount}, tracked=${diagnostics.trackedProcessCount}`;
+  const diagnostics = await getClient().diagnosticsStatus();
+  const summary = `status=${diagnostics.status}, running=${diagnostics.runningProcessCount}, tracked=${diagnostics.trackedProcessCount}, sessions=${diagnostics.activeSessionCount}`;
   currentReadinessSummary = summary;
   logAdagio("info", "Diagnostics status fetched", {
     status: diagnostics.status,
     runningProcessCount: diagnostics.runningProcessCount,
     trackedProcessCount: diagnostics.trackedProcessCount,
+    activeSessionCount: diagnostics.activeSessionCount,
+    oldestSessionAgeSeconds: diagnostics.oldestSessionAgeSeconds,
     issues: diagnostics.issues,
   });
 
@@ -469,7 +524,7 @@ async function cmdRunInstallerAndCollectArtifacts(): Promise<void> {
     placeHolder: "C:\\Apps\\installer.log",
   });
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.runAndCollectArtifacts({
     command,
     arguments: argumentsValue || undefined,
@@ -512,7 +567,7 @@ async function cmdRunInstallerAndAssert(): Promise<void> {
     placeHolder: "Installation completed successfully",
   });
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.runAndAssert({
     command,
     arguments: argumentsValue || undefined,
@@ -545,7 +600,7 @@ async function cmdGetUiTree(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const tree = await client.getUiTree(pid);
 
   const doc = await vscode.workspace.openTextDocument({
@@ -575,7 +630,7 @@ async function cmdClickElement(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.clickElement(pid, elementId);
   if (result.status === "ok") {
     vscode.window.showInformationMessage(`Clicked element '${elementId}'.`);
@@ -599,7 +654,7 @@ async function cmdGetScreenshot(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const screenshot = await client.getScreenshot(pid);
 
   // Write the image to a temp file and open it
@@ -635,7 +690,7 @@ async function cmdTypeText(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.typeText(pid, elementId, text);
   if (result.status === "ok") {
     vscode.window.showInformationMessage(
@@ -670,7 +725,7 @@ async function cmdCopyFile(): Promise<void> {
     const fileBytes = await vscode.workspace.fs.readFile(fileUri);
     const base64Content = Buffer.from(fileBytes).toString("base64");
 
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.copyFile({
       destinationPath,
       fileContentBase64: base64Content,
@@ -699,7 +754,7 @@ async function cmdGetProcessStatus(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const status = await client.getProcessStatus(pid);
   vscode.window.showInformationMessage(
     `Process ${status.pid}: ${status.status}` +
@@ -733,7 +788,7 @@ async function cmdWaitForExit(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.waitForExit({ pid, timeoutMilliseconds });
   vscode.window.showInformationMessage(
     result.exited
@@ -773,7 +828,7 @@ async function cmdCollectInstallArtifacts(): Promise<void> {
     placeHolder: "C:\\Apps\\installer.log",
   });
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.collectProcessArtifacts({
     pid,
     timeoutMilliseconds,
@@ -799,7 +854,7 @@ async function cmdTerminateProcess(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.terminateProcess({ pid });
   if (result.status === "ok") {
     vscode.window.showInformationMessage(result.message ?? `Process ${pid} terminated.`);
@@ -817,7 +872,7 @@ async function cmdReadTextFile(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.readTextFile({ path });
   const doc = await vscode.workspace.openTextDocument({
     language: "log",
@@ -849,7 +904,7 @@ async function cmdTailFile(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.tailFile({ path, lines });
   const doc = await vscode.workspace.openTextDocument({
     language: "log",
@@ -867,7 +922,7 @@ async function cmdListDirectory(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.listDirectory({ path });
   const doc = await vscode.workspace.openTextDocument({
     language: "json",
@@ -885,7 +940,7 @@ async function cmdFileExists(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.fileExists({ path });
   vscode.window.showInformationMessage(
     result.exists
@@ -904,7 +959,7 @@ async function cmdAssertProcessExited(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.assertProcessExited({ pid });
   vscode.window.showInformationMessage(result.message);
 }
@@ -916,7 +971,7 @@ async function cmdAssertPathExists(): Promise<void> {
   });
   if (!path) return;
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.assertPathExists({ path });
   vscode.window.showInformationMessage(result.message);
 }
@@ -934,7 +989,7 @@ async function cmdAssertLogContains(): Promise<void> {
   });
   if (!containsText) return;
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.assertLogContains({ path, containsText, ignoreCase: true });
   vscode.window.showInformationMessage(result.message);
 }
@@ -956,7 +1011,7 @@ async function cmdGetElementState(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.getElementState({ pid, elementId });
   vscode.window.showInformationMessage(
     `Element ${result.id}: ${result.type} '${result.name}'`
@@ -994,7 +1049,7 @@ async function cmdWaitForElementCommand(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.waitForElement({
     pid,
     elementId,
@@ -1025,7 +1080,7 @@ async function cmdSetFocus(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.setFocus({ pid, elementId });
   if (result.status === "ok") {
     vscode.window.showInformationMessage(`Focused element '${elementId}'.`);
@@ -1051,7 +1106,7 @@ async function cmdSendKeys(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.sendKeys({ pid, text });
   if (result.status === "ok") {
     vscode.window.showInformationMessage(`Sent keys to process ${pid}.`);
@@ -1086,7 +1141,7 @@ async function cmdPressHotkey(): Promise<void> {
     return;
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.pressHotkey({ pid, keys });
   if (result.status === "ok") {
     vscode.window.showInformationMessage(`Pressed hotkey ${keys.join("+")} on process ${pid}.`);
@@ -1121,7 +1176,7 @@ class RunExecutableTool implements vscode.LanguageModelTool<RunExecutableInput> 
   ): Promise<vscode.LanguageModelToolResult> {
     const { command, arguments: args, workingDirectory } = options.input;
     const request: RunRequest = { command, arguments: args, workingDirectory };
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.runExecutable(request);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
@@ -1136,7 +1191,7 @@ class RunInstallerAndCollectArtifactsTool implements vscode.LanguageModelTool<Ru
     options: vscode.LanguageModelToolInvocationOptions<RunInstallerAndCollectArtifactsInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.runAndCollectArtifacts(options.input);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
@@ -1163,7 +1218,7 @@ class RunInstallerAndAssertTool implements vscode.LanguageModelTool<RunInstaller
     options: vscode.LanguageModelToolInvocationOptions<RunInstallerAndAssertInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.runAndAssert(options.input);
 
     const assertionLines = result.assertions.map((assertion) =>
@@ -1194,7 +1249,7 @@ class GetUiTreeTool implements vscode.LanguageModelTool<PidInput> {
     options: vscode.LanguageModelToolInvocationOptions<PidInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const tree = await client.getUiTree(options.input.pid);
     const summary = uiTreeSummary(tree.elements);
     return new vscode.LanguageModelToolResult([
@@ -1210,7 +1265,7 @@ class GetScreenshotTool implements vscode.LanguageModelTool<PidInput> {
     options: vscode.LanguageModelToolInvocationOptions<PidInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const screenshot = await client.getScreenshot(options.input.pid);
     const imageBytes = new Uint8Array(Buffer.from(screenshot.imageBase64, "base64"));
     return new vscode.LanguageModelToolResult([
@@ -1228,7 +1283,7 @@ class ClickElementTool implements vscode.LanguageModelTool<ClickInput> {
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
     const { pid, elementId } = options.input;
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.clickElement(pid, elementId);
     const text =
       result.status === "ok"
@@ -1246,7 +1301,7 @@ class TypeTextTool implements vscode.LanguageModelTool<TypeInput> {
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
     const { pid, elementId, text } = options.input;
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.typeText(pid, elementId, text);
     const msg =
       result.status === "ok"
@@ -1274,7 +1329,7 @@ class CopyFileTool implements vscode.LanguageModelTool<CopyFileInput> {
     const fileBytes = await vscode.workspace.fs.readFile(fileUri);
     const base64Content = Buffer.from(fileBytes).toString("base64");
 
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.copyFile({
       destinationPath,
       fileContentBase64: base64Content,
@@ -1294,7 +1349,7 @@ class GetProcessStatusTool implements vscode.LanguageModelTool<PidInput> {
     options: vscode.LanguageModelToolInvocationOptions<PidInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const status = await client.getProcessStatus(options.input.pid);
     const parts = [
       `PID: ${status.pid}`,
@@ -1318,7 +1373,7 @@ class WaitForExitTool implements vscode.LanguageModelTool<WaitForExitInput> {
     options: vscode.LanguageModelToolInvocationOptions<WaitForExitInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const timeoutMilliseconds = options.input.timeoutMilliseconds ?? 30000;
     const result = await client.waitForExit({
       pid: options.input.pid,
@@ -1340,7 +1395,7 @@ class CollectInstallArtifactsTool implements vscode.LanguageModelTool<CollectIns
     options: vscode.LanguageModelToolInvocationOptions<CollectInstallArtifactsInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.collectProcessArtifacts({
       pid: options.input.pid,
       timeoutMilliseconds: options.input.timeoutMilliseconds ?? 30000,
@@ -1374,7 +1429,7 @@ class TerminateProcessTool implements vscode.LanguageModelTool<PidInput> {
     options: vscode.LanguageModelToolInvocationOptions<PidInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.terminateProcess({ pid: options.input.pid });
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(result.message ?? `Process ${options.input.pid} terminated.`),
@@ -1387,7 +1442,7 @@ class ReadTextFileTool implements vscode.LanguageModelTool<ReadTextFileInput> {
     options: vscode.LanguageModelToolInvocationOptions<ReadTextFileInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.readTextFile({ path: options.input.path });
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
@@ -1402,7 +1457,7 @@ class TailFileTool implements vscode.LanguageModelTool<TailFileInput> {
     options: vscode.LanguageModelToolInvocationOptions<TailFileInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const lines = options.input.lines ?? 200;
     const result = await client.tailFile({
       path: options.input.path,
@@ -1421,7 +1476,7 @@ class ListDirectoryTool implements vscode.LanguageModelTool<ListDirectoryInput> 
     options: vscode.LanguageModelToolInvocationOptions<ListDirectoryInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.listDirectory({ path: options.input.path });
     const lines = result.entries.map((entry) =>
       `${entry.isDirectory ? "[DIR]" : "[FILE]"} ${entry.name} (${entry.path})`
@@ -1440,7 +1495,7 @@ class FileExistsTool implements vscode.LanguageModelTool<FileExistsInput> {
     options: vscode.LanguageModelToolInvocationOptions<FileExistsInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.fileExists({ path: options.input.path });
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
@@ -1457,7 +1512,7 @@ class AssertProcessExitedTool implements vscode.LanguageModelTool<AssertProcessE
     options: vscode.LanguageModelToolInvocationOptions<AssertProcessExitedInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.assertProcessExited(options.input);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(result.message),
@@ -1470,7 +1525,7 @@ class AssertPathExistsTool implements vscode.LanguageModelTool<AssertPathExistsI
     options: vscode.LanguageModelToolInvocationOptions<AssertPathExistsInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.assertPathExists(options.input);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(result.message),
@@ -1483,7 +1538,7 @@ class AssertLogContainsTool implements vscode.LanguageModelTool<AssertLogContain
     options: vscode.LanguageModelToolInvocationOptions<AssertLogContainsInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.assertLogContains(options.input);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(result.message),
@@ -1496,7 +1551,7 @@ class GetElementStateTool implements vscode.LanguageModelTool<ElementStateInput>
     options: vscode.LanguageModelToolInvocationOptions<ElementStateInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.getElementState(options.input);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
@@ -1511,7 +1566,7 @@ class WaitForElementUiTool implements vscode.LanguageModelTool<WaitForElementToo
     options: vscode.LanguageModelToolInvocationOptions<WaitForElementToolInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.waitForElement({
       pid: options.input.pid,
       elementId: options.input.elementId,
@@ -1534,7 +1589,7 @@ class SetFocusTool implements vscode.LanguageModelTool<ElementStateInput> {
     options: vscode.LanguageModelToolInvocationOptions<ElementStateInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.setFocus(options.input);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
@@ -1549,7 +1604,7 @@ class SendKeysTool implements vscode.LanguageModelTool<SendKeysInput> {
     options: vscode.LanguageModelToolInvocationOptions<SendKeysInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.sendKeys(options.input);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
@@ -1578,7 +1633,7 @@ async function cmdSetCheckbox(): Promise<void> {
   if (stateStr === undefined) return;
   const isChecked = stateStr.trim().toLowerCase() !== "false";
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.setCheckbox({ pid, elementId, isChecked });
   if (result.status === "ok") {
     vscode.window.showInformationMessage(
@@ -1618,7 +1673,7 @@ async function cmdSelectOption(): Promise<void> {
     }
   }
 
-  const client = createAgentClient();
+  const client = getClient();
   const result = await client.selectOption({
     pid,
     elementId,
@@ -1639,7 +1694,7 @@ class SetCheckboxTool implements vscode.LanguageModelTool<SetCheckboxInput> {
     options: vscode.LanguageModelToolInvocationOptions<SetCheckboxInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.setCheckbox(options.input);
     const state = options.input.isChecked ? "checked" : "unchecked";
     return new vscode.LanguageModelToolResult([
@@ -1655,7 +1710,7 @@ class SelectOptionTool implements vscode.LanguageModelTool<SelectOptionInput> {
     options: vscode.LanguageModelToolInvocationOptions<SelectOptionInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.selectOption(options.input);
     const selection = options.input.optionText
       ? `"${options.input.optionText}"`
@@ -1673,7 +1728,7 @@ class PressHotkeyTool implements vscode.LanguageModelTool<PressHotkeyInput> {
     options: vscode.LanguageModelToolInvocationOptions<PressHotkeyInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    const client = createAgentClient();
+    const client = getClient();
     const result = await client.pressHotkey(options.input);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(

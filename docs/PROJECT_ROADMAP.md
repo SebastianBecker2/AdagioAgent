@@ -55,7 +55,7 @@ roadmap into a sprint backlog.
 | Phase 1 — Core Reliability | In progress | Structured diagnostics, controller-level 4xx/5xx contract normalization, and expanded error-path regression coverage are in place; remaining work is deeper cancellation semantics and final edge-case hardening |
 | Phase 2 — Linux Parity | In progress (substantial) | Linux HTTPS setup docs, systemd unit/install scripts, `.deb` packaging script, Linux CI/release legs, Linux `send-keys`/`press-hotkey` support, and parity evidence matrix implemented; operating-model promotion to Linux Beta still pending |
 | Phase 3 — Distribution | In progress | GitHub Release draft workflow with MSI/VSIX/.deb artifacts, quick-start guide, README use-vs-develop split, and local-only extension activation telemetry are implemented; Marketplace publication remains pending |
-| Phase 4 — Session and Concurrency | In progress | Backend session connect primitives, session-scoped process tracking, session cap enforcement with structured `AGENT_BUSY` responses, and versioned/legacy session regression coverage are now in place; heartbeat/expiry and extension session lifecycle work remain |
+| Phase 4 — Session and Concurrency | Completed | Session connect primitives, session-scoped process tracking, concurrent session cap enforcement (`AGENT_BUSY`), session expiry pruning, extension-side session lifecycle management, and diagnostics session metrics are implemented with regression coverage |
 | Phase 5+ | Not started | Security maturity expansion, extensibility model, and GA commitments remain planned work |
 
 Recent phase-aligned completions:
@@ -75,6 +75,9 @@ Recent phase-aligned completions:
 13. Extension output-channel telemetry for first activation and first successful command is now regression-tested and documented as local-only behavior.
 14. Backend Phase 4.1 groundwork is implemented: clients can create sessions via `/session/connect`, tracked processes are scoped by `X-Adagio-Session-ID`, and controller/integration tests cover session isolation and versioned route parity.
 15. Phase 4.2 concurrent session limit implemented: `MaxConcurrentSessions` in `AgentOptions` controls the cap; excess `/session/connect` calls return `503 Service Unavailable` with structured `AGENT_BUSY` error code and remediation hint.
+16. Phase 4.3 implemented: idle sessions are reclaimed via configurable `SessionIdleTimeoutSeconds`, with periodic pruning by a hosted background service and dedicated session-service unit test coverage.
+17. Phase 4.4 implemented in the extension: agent requests now run under a session lifecycle (connect on readiness/first use, attach `X-Adagio-Session-ID`, and recover by reconnecting when `SESSION_NOT_FOUND`/`SESSION_EXPIRED` is returned).
+18. Phase 4.5 implemented: `/diagnostics/status` now reports `activeSessionCount` and `oldestSessionAgeSeconds`, and backend/extension contracts plus tests were updated accordingly.
 
 ---
 

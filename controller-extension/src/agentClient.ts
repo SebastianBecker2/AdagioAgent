@@ -52,6 +52,8 @@ import {
   PressHotkeyRequest,
   SetCheckboxRequest,
   SelectOptionRequest,
+  ConnectSessionRequest,
+  ConnectSessionResponse,
 } from "./schema";
 
 export class AgentClientError extends Error {
@@ -102,10 +104,12 @@ export function getCorrelationIdFromError(error: unknown): string | undefined {
 export class AgentClient {
   private baseUrl: string;
   private apiKey?: string;
+  private sessionId?: string;
 
-  constructor(baseUrl: string, apiKey?: string) {
+  constructor(baseUrl: string, apiKey?: string, sessionId?: string) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
     this.apiKey = apiKey;
+    this.sessionId = sessionId;
   }
 
   // ─── Health ──────────────────────────────────────────────────────────────
@@ -120,6 +124,10 @@ export class AgentClient {
 
   async diagnosticsStatus(): Promise<DiagnosticsStatusResponse> {
     return this.get<DiagnosticsStatusResponse>("/diagnostics/status");
+  }
+
+  async connectSession(request?: ConnectSessionRequest): Promise<ConnectSessionResponse> {
+    return this.post<ConnectSessionResponse>("/session/connect", request ?? {});
   }
 
   // ─── Process ─────────────────────────────────────────────────────────────
@@ -401,6 +409,9 @@ export class AgentClient {
     if (this.apiKey) {
       headers["X-API-Key"] = this.apiKey;
     }
+    if (this.sessionId) {
+      headers["X-Adagio-Session-ID"] = this.sessionId;
+    }
     return headers;
   }
 
@@ -438,7 +449,7 @@ export class AgentClient {
 /**
  * Create an AgentClient using the URL from VS Code configuration.
  */
-export function createAgentClient(): AgentClient {
+export function createAgentClient(sessionId?: string): AgentClient {
   const config = vscode.workspace.getConfiguration("adagioAgent");
   const url = config.get<string>("vmAgentUrl") ?? "https://127.0.0.1:5443/api/v1";
   const requireHttps = config.get<boolean>("requireHttps") ?? true;
@@ -450,5 +461,5 @@ export function createAgentClient(): AgentClient {
     );
   }
 
-  return new AgentClient(url, apiKey);
+  return new AgentClient(url, apiKey, sessionId);
 }

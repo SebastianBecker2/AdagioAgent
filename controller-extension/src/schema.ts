@@ -79,6 +79,11 @@ export interface TerminateProcessRequest {
   pid: number;
 }
 
+export interface ConnectSessionRequest {
+  clientName?: string;
+}
+
+
 export interface ReadTextFileRequest {
   path: string;
 }
@@ -245,7 +250,15 @@ export interface DiagnosticsStatusResponse {
   issues: string[];
   runningProcessCount: number;
   trackedProcessCount: number;
+  activeSessionCount: number;
+  oldestSessionAgeSeconds?: number;
   timestampUtc: string;
+}
+
+export interface ConnectSessionResponse {
+  sessionId: string;
+  createdAtUtc: string;
+  sessionHeaderName: string;
 }
 
 export interface AgentError {

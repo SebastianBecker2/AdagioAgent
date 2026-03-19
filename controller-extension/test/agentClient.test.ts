@@ -960,4 +960,53 @@ describe("AgentClient", () => {
       })
     );
   });
+
+  it("connectSession posts to /session/connect with optional clientName", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          sessionId: "abc123",
+          createdAtUtc: "2026-03-19T00:00:00Z",
+          sessionHeaderName: "X-Adagio-Session-ID",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+
+    const client = new AgentClient("http://localhost:5000");
+    await client.connectSession({ clientName: "vscode-adagio-agent" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:5000/session/connect",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientName: "vscode-adagio-agent" }),
+      })
+    );
+  });
+
+  it("includes X-Adagio-Session-ID header when sessionId is provided", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ status: "healthy", version: "1.0.0" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const client = new AgentClient("https://127.0.0.1:5443", "secret-key", "session-42");
+    await client.health();
+
+    expect(fetchMock).toHaveBeenCalledWith("https://127.0.0.1:5443/health", {
+      headers: {
+        "X-API-Key": "secret-key",
+        "X-Adagio-Session-ID": "session-42",
+      },
+    });
+  });
 });
