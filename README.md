@@ -14,6 +14,10 @@ current support boundaries and deployment assumptions, and
 strategy decision. Troubleshooting workflows are documented in
 [docs/DIAGNOSTICS_TROUBLESHOOTING.md](docs/DIAGNOSTICS_TROUBLESHOOTING.md).
 
+Project direction:
+
+- [docs/PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
+
 Governance and support docs:
 
 - [CHANGELOG.md](CHANGELOG.md)

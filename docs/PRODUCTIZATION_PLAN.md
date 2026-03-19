@@ -582,3 +582,43 @@ The next implementation slice should focus on closure integrity gate enforcement
 2. [x] Add CI tagged-build gate that fails when closure integrity gate thresholds are not met.
 3. [x] Add docs section defining integrity gate policy and remediation flow.
 4. [x] Add quickstart check requiring integrity gate pass before final release promotion.
+
+## Post-0.2.1 Plan (New)
+
+The original productization phases are complete through pilot-readiness and release-ops hardening. The next plan focuses on scaling from successful pilot execution to repeatable operations across more environments.
+
+### Phase 7: Controlled Rollout And Adoption
+
+Expand from a single controlled pilot to multi-environment rollout with explicit rollout gates.
+
+1. [ ] Define rollout waves (pilot, limited production, broad production) with entry and exit criteria.
+2. [ ] Add environment-specific release checklists for workstation, shared VM, and server-hosted deployments.
+3. [ ] Add adoption KPIs (time-to-install, first-successful-command rate, support ticket rate per install).
+4. [ ] Add rollback trigger policy tied to Sev-1/Sev-2 thresholds and failed-upgrade rates.
+
+### Phase 8: Reliability And Performance Baseline
+
+Harden runtime reliability and establish measurable performance SLOs.
+
+1. [ ] Add latency and success-rate metrics for key command categories in diagnostics outputs.
+2. [ ] Add load and soak test workflow for backend command execution and process lifecycle paths.
+3. [ ] Add timeout/retry policy documentation with defaults and safe override guidance.
+4. [ ] Add regression test coverage for high-volume command scenarios and cancellation storms.
+
+### Phase 9: Security And Governance Maturity
+
+Move from baseline governance to ongoing compliance operations.
+
+1. [ ] Add scheduled dependency and vulnerability review cadence with ownership and SLA targets.
+2. [ ] Add key/certificate rotation runbook with rehearsal checklist and verification artifacts.
+3. [ ] Add incident postmortem template and required release-ops follow-up linkage.
+4. [ ] Add policy checks for minimum supported runtime/toolchain versions.
+
+## Next Active Slice (New)
+
+The next implementation slice should focus on rollout framework and measurable adoption:
+
+1. [ ] Add `docs/ROLLOUT_PLAN.md` with rollout waves, gates, and rollback triggers.
+2. [ ] Add `docs/ADOPTION_KPIS.md` with metric definitions, owners, and review cadence.
+3. [ ] Add CI check that rollout/adoption docs are linked from README operational docs index.
+4. [ ] Add release checklist steps requiring wave assignment and KPI snapshot before tag approval.
