@@ -59,9 +59,19 @@ build_script:
   - ps: |
       if ($env:APPVEYOR_REPO_TAG -eq 'true') {
         $readinessRoot = '.\artifacts\release-ops-tag-readiness'
+        $directorApprovalRef = if (-not [string]::IsNullOrWhiteSpace($env:ADAGIO_RELEASE_DIRECTOR_APPROVAL_REFERENCE)) {
+          $env:ADAGIO_RELEASE_DIRECTOR_APPROVAL_REFERENCE
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($env:APPVEYOR_BUILD_VERSION)) {
+          "APPVEYOR-$($env:APPVEYOR_BUILD_VERSION)"
+        }
+        else {
+          "APPVEYOR-TAG-$($env:APPVEYOR_REPO_TAG_NAME)"
+        }
+
         $gateError = $null
         try {
-          .\scripts\check-release-ops-promotion-gate.ps1 -ReadinessRoot $readinessRoot -FailOnBlock
+          .\scripts\check-release-ops-promotion-gate.ps1 -ReadinessRoot $readinessRoot -RequiredRecentReadyCount 1 -NoHoldInRecentCount 1 -AllowDirectorOverride -DirectorApprovalReference $directorApprovalRef -FailOnBlock
         }
         catch {
           $gateError = $_

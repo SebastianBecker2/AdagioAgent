@@ -21,7 +21,7 @@ if (-not (Test-Path -LiteralPath $signoffDir -PathType Container)) {
     throw 'Sign-off directory missing: docs/release-ops/signoffs'
 }
 
-$matches = Get-ChildItem -LiteralPath $signoffDir -File -Filter "v$version-*.md"
+$matches = @(Get-ChildItem -LiteralPath $signoffDir -File -Filter "v$version-*.md")
 if (-not $matches -or $matches.Count -eq 0) {
     throw "No sign-off record found for release $version in docs/release-ops/signoffs."
 }

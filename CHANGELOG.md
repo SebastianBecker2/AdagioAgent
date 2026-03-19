@@ -39,6 +39,7 @@ The format is inspired by Keep a Changelog and this project uses SemVer.
 - Installer upgrades now preserve existing `appsettings.json` values.
 - Bootstrap script now supports certificate-store fallback (`LocalMachine` -> `CurrentUser`) and suppresses secret output in installer context.
 - Bootstrap RNG generation now supports PowerShell 5.1 environments.
+- Release sign-off record: docs/release-ops/signoffs/v0.2.0-20260319.md
 
 ### Fixed
 

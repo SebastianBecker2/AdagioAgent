@@ -39,7 +39,7 @@ if ((Test-Path -LiteralPath $outputPath -PathType Leaf) -and -not $Force) {
     throw "Evidence index already exists: $outputPath (use -Force to overwrite)"
 }
 
-$signoffMatches = Get-ChildItem -LiteralPath $SignoffDirectory -File -Filter "v$Version-*.md" | Sort-Object LastWriteTime -Descending
+$signoffMatches = @(Get-ChildItem -LiteralPath $SignoffDirectory -File -Filter "v$Version-*.md" | Sort-Object LastWriteTime -Descending)
 $signoffReference = if ($signoffMatches -and $signoffMatches.Count -gt 0) {
     "docs/release-ops/signoffs/$($signoffMatches[0].Name)"
 } else {
