@@ -73,10 +73,20 @@ jobs:
         run: bash scripts/build-linux-deb.sh --output-dir ./artifacts/linux
 
       - name: Install Linux UI parity smoke dependencies
+        if: always()
         run: sudo apt-get install -y xvfb xdotool xterm at-spi2-core
 
       - name: Run Linux UI parity smoke
+        if: always()
         run: bash scripts/linux-ui-parity-smoke.sh ./artifacts/linux
+
+      - name: Ensure Linux UI parity report file exists
+        if: always()
+        run: |
+          mkdir -p artifacts/linux
+          if [ ! -f artifacts/linux/linux-ui-parity-smoke.txt ]; then
+            echo "Linux UI parity smoke did not run in this workflow attempt." > artifacts/linux/linux-ui-parity-smoke.txt
+          fi
 
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
@@ -90,6 +100,7 @@ jobs:
         with:
           name: linux-ui-parity-smoke
           path: artifacts/linux/linux-ui-parity-smoke.txt
+          if-no-files-found: warn
 
       # ── controller-extension ─────────────────────────────────────────────
       - name: Install extension dependencies
