@@ -95,7 +95,11 @@ jobs:
               ForEach-Object {
                 $pkg = $_.Name
                 $meta = $_.Value
-                "- $pkg (current=$($meta.current), wanted=$($meta.wanted), latest=$($meta.latest), type=$($meta.type))"
+                $currentValue = if ($meta.PSObject.Properties.Name -contains "current") { $meta.current } else { "n/a" }
+                $wantedValue = if ($meta.PSObject.Properties.Name -contains "wanted") { $meta.wanted } else { "n/a" }
+                $latestValue = if ($meta.PSObject.Properties.Name -contains "latest") { $meta.latest } else { "n/a" }
+                $typeValue = if ($meta.PSObject.Properties.Name -contains "type") { $meta.type } else { "n/a" }
+                "- $pkg (current=$currentValue, wanted=$wantedValue, latest=$latestValue, type=$typeValue)"
               }
           }
 
