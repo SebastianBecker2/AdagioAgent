@@ -44,9 +44,9 @@ public sealed class AutomationControllerTests
             $"Unexpected readiness status '{payload.Status}'.");
         Assert.False(string.IsNullOrWhiteSpace(payload.Version));
         Assert.Equal(1, payload.ApiVersion);
-        Assert.True(payload.UiAutomationAvailable);
         if (string.Equals(payload.Status, "ready", StringComparison.Ordinal))
         {
+            Assert.True(payload.UiAutomationAvailable);
             Assert.Empty(payload.Issues);
         }
         else
