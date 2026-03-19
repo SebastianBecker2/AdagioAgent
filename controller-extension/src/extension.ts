@@ -144,6 +144,7 @@ let readinessStatusItem: vscode.StatusBarItem | undefined;
 let adagioOutput: vscode.OutputChannel | undefined;
 let currentReadinessSummary = "status=checking";
 let extensionContextGlobal: vscode.ExtensionContext | undefined;
+let clientFactory: (sessionId?: string) => AgentClient = createAgentClient;
 
 function logAdagio(level: "info" | "warn" | "error", message: string, details?: unknown): void {
   if (!adagioOutput) {
@@ -277,7 +278,7 @@ class SessionManager {
       return;
     }
     try {
-      const client = createAgentClient();
+      const client = clientFactory();
       const resp = await client.connectSession({ clientName: "vscode-adagio-agent" });
       this.sessionId = resp.sessionId;
       logAdagio("info", "Agent session established", { sessionId: resp.sessionId });
@@ -296,7 +297,12 @@ class SessionManager {
 const sessionManager = new SessionManager();
 
 function getClient(): AgentClient {
-  return createAgentClient(sessionManager.getSessionId());
+  return clientFactory(sessionManager.getSessionId());
+}
+
+// Test hook: allows deterministic client construction in unit tests.
+export function __setClientFactoryForTests(factory?: (sessionId?: string) => AgentClient): void {
+  clientFactory = factory ?? createAgentClient;
 }
 
 // ─── Telemetry (local, output-channel only) ──────────────────────────────────

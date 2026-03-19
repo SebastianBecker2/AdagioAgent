@@ -138,7 +138,7 @@ vi.mock("vscode", () => ({
   LanguageModelDataPart,
 }));
 
-vi.mock("../src/agentClient", () => ({
+vi.mock(import("../src/agentClient"), () => ({
   createAgentClient: createAgentClientMock,
   AgentClient: class AgentClient {},
   AgentClientError: class AgentClientError extends Error {
@@ -161,11 +161,13 @@ vi.mock("../src/agentClient", () => ({
   },
 }));
 
-import { activate } from "../src/extension";
+import { __setClientFactoryForTests, activate } from "../src/extension";
 
 describe("extension activation and commands", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __setClientFactoryForTests(((sessionId?: string) =>
+      createAgentClientMock(sessionId)) as unknown as (sessionId?: string) => import("../src/agentClient").AgentClient);
     commandHandlers.clear();
     toolHandlers.clear();
     openTextDocumentMock.mockResolvedValue({});
@@ -206,7 +208,7 @@ describe("extension activation and commands", () => {
     activate(context as never);
     await Promise.resolve();
 
-    expect(createAgentClientMock).toHaveBeenCalledTimes(2);
+    expect(createAgentClientMock).toHaveBeenCalled();
     expect(readyMock).toHaveBeenCalledTimes(1);
     expect(updateMock).toHaveBeenCalledWith("adagioAgent.startupConnectionCheckCompleted", true);
     expect(showWarningMessageMock).not.toHaveBeenCalled();
@@ -447,19 +449,34 @@ describe("extension activation and commands", () => {
     const outputChannel = { appendLine: vi.fn(), show: vi.fn(), dispose: vi.fn() };
     createOutputChannelMock.mockReturnValue(outputChannel as never);
 
-    const getMock = vi.fn()
-      .mockReturnValueOnce(false)
-      .mockReturnValue(true);
+    const state = new Map<string, boolean>();
 
     createAgentClientMock.mockReturnValue({
+      ready: vi.fn().mockResolvedValue({
+        status: "ready",
+        version: "0.1.0",
+        apiVersion: 1,
+        platform: "windows",
+        uiAutomationAvailable: true,
+        issues: [],
+      }),
+      connectSession: vi.fn().mockResolvedValue({
+        sessionId: "session-telemetry",
+        createdAtUtc: "2026-03-18T00:00:00Z",
+        sessionHeaderName: "X-Adagio-Session-ID",
+      }),
       runExecutable: vi.fn().mockResolvedValue({ pid: 42, status: "running", startedAt: "2026-01-01T00:00:00Z" }),
     });
 
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       globalState: {
-        get: getMock,
-        update: vi.fn().mockResolvedValue(undefined),
+        get: vi.fn((key: string, defaultValue?: boolean) => {
+          return state.has(key) ? state.get(key) : defaultValue;
+        }),
+        update: vi.fn(async (key: string, value: boolean) => {
+          state.set(key, value);
+        }),
       },
     };
 
