@@ -71,8 +71,8 @@ try {
     Invoke-NativeStep -Name "npm --version" -Command "npm" -Arguments @("--version")
 
     if ($InstallDeps) {
-        Invoke-NativeStep -Name "npm ci" -Command "npm" -Arguments @("ci")
-        Invoke-NativeStep -Name "npm i --no-save @rolldown/binding-win32-x64-msvc" -Command "npm" -Arguments @("i", "--no-save", "@rolldown/binding-win32-x64-msvc")
+        Invoke-NativeStep -Name "npm ci" -Command "npm" -Arguments @("ci", "--loglevel=error")
+        Invoke-NativeStep -Name "npm i --no-save @rolldown/binding-win32-x64-msvc" -Command "npm" -Arguments @("i", "--no-save", "--loglevel=error", "@rolldown/binding-win32-x64-msvc")
     }
 
     if ($Compile) {
