@@ -8,6 +8,17 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+# In PowerShell 7+, native stderr can be promoted to errors when
+# ErrorActionPreference is Stop. npm emits benign deprecation warnings to stderr,
+# so rely on native exit codes for pass/fail instead.
+$previousNativeErrorPreference = $null
+$hasNativeErrorPreference = $false
+if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+    $hasNativeErrorPreference = $true
+    $previousNativeErrorPreference = $PSNativeCommandUseErrorActionPreference
+    $PSNativeCommandUseErrorActionPreference = $false
+}
+
 function Invoke-Step {
     param(
         [Parameter(Mandatory = $true)]
@@ -55,5 +66,8 @@ try {
     }
 }
 finally {
+    if ($hasNativeErrorPreference) {
+        $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPreference
+    }
     Pop-Location
 }
