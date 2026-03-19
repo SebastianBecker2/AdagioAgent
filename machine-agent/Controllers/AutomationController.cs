@@ -29,6 +29,19 @@ public sealed class AutomationController : ControllerBase
         _logger = logger;
     }
 
+    private BadRequestObjectResult ValidationError(
+        string error,
+        string remediationHint,
+        string errorCode = AgentErrorCodes.ValidationFailed,
+        string? detail = null)
+    {
+        return BadRequest(new ErrorResponse(
+            error,
+            detail,
+            ErrorCode: errorCode,
+            RemediationHint: remediationHint));
+    }
+
     // ── GET /health ──────────────────────────────────────────────────────────
 
     [HttpGet("/health")]
@@ -217,7 +230,7 @@ public sealed class AutomationController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Command))
         {
-            return BadRequest(new ErrorResponse("Command is required."));
+            return ValidationError("Command is required.", "Provide the executable path or command name in the request.");
         }
 
         try
@@ -262,22 +275,22 @@ public sealed class AutomationController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Command))
         {
-            return BadRequest(new ErrorResponse("Command is required."));
+            return ValidationError("Command is required.", "Provide the executable path or command name in the request.");
         }
 
         if (request.TimeoutMilliseconds <= 0)
         {
-            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer."));
+            return ValidationError("timeoutMilliseconds must be a positive integer.", "Set timeoutMilliseconds to a value greater than zero.");
         }
 
         if (request.TailLines <= 0)
         {
-            return BadRequest(new ErrorResponse("tailLines must be a positive integer."));
+            return ValidationError("tailLines must be a positive integer.", "Set tailLines to a value greater than zero.");
         }
 
         if (request.EventEntryCount <= 0)
         {
-            return BadRequest(new ErrorResponse("eventEntryCount must be a positive integer."));
+            return ValidationError("eventEntryCount must be a positive integer.", "Set eventEntryCount to a value greater than zero.");
         }
 
         try
@@ -303,7 +316,10 @@ public sealed class AutomationController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "RunInstallerAndCollectArtifacts rejected: {Message}", ex.Message);
-            return BadRequest(new ErrorResponse(ex.Message));
+            return ValidationError(
+                ex.Message,
+                "Verify installer command path policy and active process concurrency limits.",
+                AgentErrorCodes.CommandRejected);
         }
         catch (Exception ex)
         {
@@ -327,27 +343,27 @@ public sealed class AutomationController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Command))
         {
-            return BadRequest(new ErrorResponse("Command is required."));
+            return ValidationError("Command is required.", "Provide the executable path or command name in the request.");
         }
 
         if (request.TimeoutMilliseconds <= 0)
         {
-            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer."));
+            return ValidationError("timeoutMilliseconds must be a positive integer.", "Set timeoutMilliseconds to a value greater than zero.");
         }
 
         if (request.TailLines <= 0)
         {
-            return BadRequest(new ErrorResponse("tailLines must be a positive integer."));
+            return ValidationError("tailLines must be a positive integer.", "Set tailLines to a value greater than zero.");
         }
 
         if (request.EventEntryCount <= 0)
         {
-            return BadRequest(new ErrorResponse("eventEntryCount must be a positive integer."));
+            return ValidationError("eventEntryCount must be a positive integer.", "Set eventEntryCount to a value greater than zero.");
         }
 
         if (!string.IsNullOrWhiteSpace(request.LogMustContainText) && string.IsNullOrWhiteSpace(request.LogPath))
         {
-            return BadRequest(new ErrorResponse("logPath is required when logMustContainText is provided."));
+            return ValidationError("logPath is required when logMustContainText is provided.", "Set logPath when using logMustContainText assertions.");
         }
 
         try
@@ -393,7 +409,10 @@ public sealed class AutomationController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "RunInstallerAndAssert rejected: {Message}", ex.Message);
-            return BadRequest(new ErrorResponse(ex.Message));
+            return ValidationError(
+                ex.Message,
+                "Verify installer command path policy and active process concurrency limits.",
+                AgentErrorCodes.CommandRejected);
         }
         catch (Exception ex)
         {
@@ -414,7 +433,7 @@ public sealed class AutomationController : ControllerBase
     {
         if (pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         var tracked = _processService.Get(pid);
@@ -440,14 +459,12 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer.",
-                ErrorCode: AgentErrorCodes.ValidationFailed));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         if (request.TimeoutMilliseconds <= 0)
         {
-            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer.",
-                ErrorCode: AgentErrorCodes.ValidationFailed));
+            return ValidationError("timeoutMilliseconds must be a positive integer.", "Set timeoutMilliseconds to a value greater than zero.");
         }
 
         var tracked = _processService.Get(request.Pid);
@@ -504,22 +521,22 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         if (request.TimeoutMilliseconds <= 0)
         {
-            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer."));
+            return ValidationError("timeoutMilliseconds must be a positive integer.", "Set timeoutMilliseconds to a value greater than zero.");
         }
 
         if (request.TailLines <= 0)
         {
-            return BadRequest(new ErrorResponse("tailLines must be a positive integer."));
+            return ValidationError("tailLines must be a positive integer.", "Set tailLines to a value greater than zero.");
         }
 
         if (request.EventEntryCount <= 0)
         {
-            return BadRequest(new ErrorResponse("eventEntryCount must be a positive integer."));
+            return ValidationError("eventEntryCount must be a positive integer.", "Set eventEntryCount to a value greater than zero.");
         }
 
         var tracked = _processService.Get(request.Pid);
@@ -543,7 +560,9 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new ErrorResponse(ex.Message, ErrorCode: AgentErrorCodes.ValidationFailed));
+            return ValidationError(
+                ex.Message,
+                "Review artifact collection inputs, including optional log path and line limits.");
         }
         catch (Exception ex)
         {
@@ -565,7 +584,7 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         var tracked = _processService.Get(request.Pid);
@@ -607,7 +626,7 @@ public sealed class AutomationController : ControllerBase
     {
         if (pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         try
@@ -646,12 +665,12 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         if (string.IsNullOrWhiteSpace(request.ElementId))
         {
-            return BadRequest(new ErrorResponse("elementId is required."));
+            return ValidationError("elementId is required.", "Provide a non-empty elementId from /ui-tree.");
         }
 
         try
@@ -688,26 +707,22 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer.",
-                ErrorCode: AgentErrorCodes.ValidationFailed));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         if (string.IsNullOrWhiteSpace(request.ElementId))
         {
-            return BadRequest(new ErrorResponse("elementId is required.",
-                ErrorCode: AgentErrorCodes.ValidationFailed));
+            return ValidationError("elementId is required.", "Provide a non-empty elementId from /ui-tree.");
         }
 
         if (request.TimeoutMilliseconds <= 0)
         {
-            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer.",
-                ErrorCode: AgentErrorCodes.ValidationFailed));
+            return ValidationError("timeoutMilliseconds must be a positive integer.", "Set timeoutMilliseconds to a value greater than zero.");
         }
 
         if (request.PollIntervalMilliseconds <= 0)
         {
-            return BadRequest(new ErrorResponse("pollIntervalMilliseconds must be a positive integer.",
-                ErrorCode: AgentErrorCodes.ValidationFailed));
+            return ValidationError("pollIntervalMilliseconds must be a positive integer.", "Set pollIntervalMilliseconds to a value greater than zero.");
         }
 
         try
@@ -759,12 +774,12 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         if (string.IsNullOrWhiteSpace(request.ElementId))
         {
-            return BadRequest(new ErrorResponse("elementId is required."));
+            return ValidationError("elementId is required.", "Provide a non-empty elementId from /ui-tree.");
         }
 
         try
@@ -802,12 +817,12 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Text))
         {
-            return BadRequest(new ErrorResponse("text is required."));
+            return ValidationError("text is required.", "Provide non-empty text content in the request.");
         }
 
         try
@@ -845,12 +860,12 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         if (request.Keys is null || request.Keys.Count == 0)
         {
-            return BadRequest(new ErrorResponse("keys must contain at least one key."));
+            return ValidationError("keys must contain at least one key.", "Provide at least one key name in keys.");
         }
 
         try
@@ -889,12 +904,12 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         if (string.IsNullOrWhiteSpace(request.ElementId))
         {
-            return BadRequest(new ErrorResponse("elementId is required."));
+            return ValidationError("elementId is required.", "Provide a non-empty elementId from /ui-tree.");
         }
 
         try
@@ -933,17 +948,17 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         if (string.IsNullOrWhiteSpace(request.ElementId))
         {
-            return BadRequest(new ErrorResponse("elementId is required."));
+            return ValidationError("elementId is required.", "Provide a non-empty elementId from /ui-tree.");
         }
 
         if (request.OptionText is null && request.OptionIndex is null)
         {
-            return BadRequest(new ErrorResponse("Either optionText or optionIndex must be provided."));
+            return ValidationError("Either optionText or optionIndex must be provided.", "Set optionText or optionIndex so the option can be resolved.");
         }
 
         try
@@ -982,7 +997,7 @@ public sealed class AutomationController : ControllerBase
     {
         if (pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         try
@@ -1021,12 +1036,12 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         if (string.IsNullOrWhiteSpace(request.ElementId))
         {
-            return BadRequest(new ErrorResponse("elementId is required."));
+            return ValidationError("elementId is required.", "Provide a non-empty elementId from /ui-tree.");
         }
 
         try
@@ -1065,17 +1080,17 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         if (string.IsNullOrWhiteSpace(request.ElementId))
         {
-            return BadRequest(new ErrorResponse("elementId is required."));
+            return ValidationError("elementId is required.", "Provide a non-empty elementId from /ui-tree.");
         }
 
         if (request.Text is null)
         {
-            return BadRequest(new ErrorResponse("text is required."));
+            return ValidationError("text is required.", "Provide non-empty text content in the request.");
         }
 
         try
@@ -1113,12 +1128,12 @@ public sealed class AutomationController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.DestinationPath))
         {
-            return BadRequest(new ErrorResponse("DestinationPath is required."));
+            return ValidationError("DestinationPath is required.", "Provide a destinationPath in an allowed writable directory.");
         }
 
         if (string.IsNullOrWhiteSpace(request.FileContentBase64))
         {
-            return BadRequest(new ErrorResponse("FileContentBase64 is required."));
+            return ValidationError("FileContentBase64 is required.", "Provide base64-encoded file content.");
         }
 
         try
@@ -1133,16 +1148,19 @@ public sealed class AutomationController : ControllerBase
 
             if (!allowed)
             {
-                return BadRequest(new ErrorResponse(
+                return ValidationError(
                     $"Destination path '{request.DestinationPath}' is not in an allowed directory. " +
-                    $"Allowed paths: {string.Join(", ", options.Value.AllowedWritablePaths)}"));
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedWritablePaths)}",
+                    "Choose a destination under an allowed writable path.",
+                    AgentErrorCodes.PathNotAllowed);
             }
 
             // Check if file exists and overwrite flag
             if (System.IO.File.Exists(destinationPath) && !request.OverwriteIfExists)
             {
-                return BadRequest(new ErrorResponse(
-                    $"File already exists at '{request.DestinationPath}' and overwrite is not enabled."));
+                return ValidationError(
+                    $"File already exists at '{request.DestinationPath}' and overwrite is not enabled.",
+                    "Set overwriteIfExists to true or choose a different destination path.");
             }
 
             // Decode and write file
@@ -1163,7 +1181,7 @@ public sealed class AutomationController : ControllerBase
         catch (FormatException ex)
         {
             _logger.LogWarning(ex, "Invalid base64 format for file content.");
-            return BadRequest(new ErrorResponse("FileContentBase64 must be valid base64.", ex.Message));
+            return ValidationError("FileContentBase64 must be valid base64.", "Ensure fileContentBase64 is valid Base64 text.", detail: ex.Message);
         }
         catch (Exception ex)
         {
@@ -1183,7 +1201,7 @@ public sealed class AutomationController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Path))
         {
-            return BadRequest(new ErrorResponse("Path is required."));
+            return ValidationError("Path is required.", "Provide a non-empty path within an allowed directory.");
         }
 
         try
@@ -1196,9 +1214,11 @@ public sealed class AutomationController : ControllerBase
 
             if (!allowed)
             {
-                return BadRequest(new ErrorResponse(
+                return ValidationError(
                     $"Path '{request.Path}' is not in an allowed directory. " +
-                    $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}"));
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}",
+                    "Choose a path under an allowed readable directory.",
+                    AgentErrorCodes.PathNotAllowed);
             }
 
             if (!System.IO.File.Exists(fullPath))
@@ -1227,12 +1247,12 @@ public sealed class AutomationController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Path))
         {
-            return BadRequest(new ErrorResponse("Path is required."));
+            return ValidationError("Path is required.", "Provide a non-empty path within an allowed directory.");
         }
 
         if (request.Lines <= 0)
         {
-            return BadRequest(new ErrorResponse("Lines must be a positive integer."));
+            return ValidationError("Lines must be a positive integer.", "Set lines to a value greater than zero.");
         }
 
         try
@@ -1245,9 +1265,11 @@ public sealed class AutomationController : ControllerBase
 
             if (!allowed)
             {
-                return BadRequest(new ErrorResponse(
+                return ValidationError(
                     $"Path '{request.Path}' is not in an allowed directory. " +
-                    $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}"));
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}",
+                    "Choose a path under an allowed readable directory.",
+                    AgentErrorCodes.PathNotAllowed);
             }
 
             if (!System.IO.File.Exists(fullPath))
@@ -1276,7 +1298,7 @@ public sealed class AutomationController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Path))
         {
-            return BadRequest(new ErrorResponse("Path is required."));
+            return ValidationError("Path is required.", "Provide a non-empty path within an allowed directory.");
         }
 
         try
@@ -1289,9 +1311,11 @@ public sealed class AutomationController : ControllerBase
 
             if (!allowed)
             {
-                return BadRequest(new ErrorResponse(
+                return ValidationError(
                     $"Path '{request.Path}' is not in an allowed directory. " +
-                    $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}"));
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}",
+                    "Choose a path under an allowed readable directory.",
+                    AgentErrorCodes.PathNotAllowed);
             }
 
             if (!Directory.Exists(fullPath))
@@ -1328,7 +1352,7 @@ public sealed class AutomationController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Path))
         {
-            return BadRequest(new ErrorResponse("Path is required."));
+            return ValidationError("Path is required.", "Provide a non-empty path within an allowed directory.");
         }
 
         try
@@ -1341,9 +1365,11 @@ public sealed class AutomationController : ControllerBase
 
             if (!allowed)
             {
-                return BadRequest(new ErrorResponse(
+                return ValidationError(
                     $"Path '{request.Path}' is not in an allowed directory. " +
-                    $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}"));
+                    $"Allowed paths: {string.Join(", ", options.Value.AllowedReadablePaths)}",
+                    "Choose a path under an allowed readable directory.",
+                    AgentErrorCodes.PathNotAllowed);
             }
 
             var isDirectory = Directory.Exists(fullPath);
@@ -1369,18 +1395,21 @@ public sealed class AutomationController : ControllerBase
     {
         if (request.Pid <= 0)
         {
-            return BadRequest(new ErrorResponse("pid must be a positive integer."));
+            return ValidationError("pid must be a positive integer.", "Set pid to a running process ID greater than zero.");
         }
 
         if (request.TimeoutMilliseconds <= 0)
         {
-            return BadRequest(new ErrorResponse("timeoutMilliseconds must be a positive integer."));
+            return ValidationError("timeoutMilliseconds must be a positive integer.", "Set timeoutMilliseconds to a value greater than zero.");
         }
 
         var tracked = _processService.Get(request.Pid);
         if (tracked is null)
         {
-            return NotFound(new ErrorResponse($"Process {request.Pid} is not tracked."));
+            return NotFound(new ErrorResponse(
+                $"Process {request.Pid} is not tracked.",
+                ErrorCode: AgentErrorCodes.ProcessNotFound,
+                RemediationHint: "Confirm the PID was returned by a previous /run response in this session."));
         }
 
         try
@@ -1388,16 +1417,18 @@ public sealed class AutomationController : ControllerBase
             var exited = tracked.Process.WaitForExit(request.TimeoutMilliseconds);
             if (!exited)
             {
-                return BadRequest(new ErrorResponse(
-                    $"Process {request.Pid} did not exit within {request.TimeoutMilliseconds}ms."));
+                return ValidationError(
+                    $"Process {request.Pid} did not exit within {request.TimeoutMilliseconds}ms.",
+                    "Increase timeoutMilliseconds or verify the process can exit within the configured timeout.");
             }
 
             if (request.ExpectedExitCode.HasValue &&
                 tracked.Process.ExitCode != request.ExpectedExitCode.Value)
             {
-                return BadRequest(new ErrorResponse(
+                return ValidationError(
                     $"Process {request.Pid} exited with code {tracked.Process.ExitCode}, " +
-                    $"expected {request.ExpectedExitCode.Value}."));
+                    $"expected {request.ExpectedExitCode.Value}.",
+                    "Update expectedExitCode to match the process outcome or inspect process logs for failures.");
             }
 
             return Ok(new AssertionResponse(
@@ -1424,7 +1455,7 @@ public sealed class AutomationController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Path))
         {
-            return BadRequest(new ErrorResponse("Path is required."));
+            return ValidationError("Path is required.", "Provide a non-empty path within an allowed directory.");
         }
 
         try
@@ -1435,12 +1466,16 @@ public sealed class AutomationController : ControllerBase
 
             if (!exists)
             {
-                return BadRequest(new ErrorResponse($"Path '{request.Path}' does not exist."));
+                return ValidationError(
+                    $"Path '{request.Path}' does not exist.",
+                    "Verify the path and ensure the file or directory has been created before asserting.");
             }
 
             if (request.MustBeDirectory && !isDirectory)
             {
-                return BadRequest(new ErrorResponse($"Path '{request.Path}' exists but is not a directory."));
+                return ValidationError(
+                    $"Path '{request.Path}' exists but is not a directory.",
+                    "Set mustBeDirectory to false or provide a directory path.");
             }
 
             return Ok(new AssertionResponse(
@@ -1451,7 +1486,10 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new ErrorResponse(ex.Message));
+            return ValidationError(
+                ex.Message,
+                "Ensure the requested path is inside the allowed readable directories.",
+                AgentErrorCodes.PathNotAllowed);
         }
         catch (Exception ex)
         {
@@ -1472,12 +1510,12 @@ public sealed class AutomationController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Path))
         {
-            return BadRequest(new ErrorResponse("Path is required."));
+            return ValidationError("Path is required.", "Provide a non-empty path within an allowed directory.");
         }
 
         if (string.IsNullOrWhiteSpace(request.ContainsText))
         {
-            return BadRequest(new ErrorResponse("containsText is required."));
+            return ValidationError("containsText is required.", "Provide the text fragment to assert in the file.");
         }
 
         try
@@ -1497,8 +1535,9 @@ public sealed class AutomationController : ControllerBase
             var matched = content.Contains(request.ContainsText, comparison);
             if (!matched)
             {
-                return BadRequest(new ErrorResponse(
-                    $"File '{request.Path}' does not contain expected text '{request.ContainsText}'."));
+                return ValidationError(
+                    $"File '{request.Path}' does not contain expected text '{request.ContainsText}'.",
+                    "Check the file content and expected text, or enable ignoreCase when appropriate.");
             }
 
             return Ok(new AssertionResponse(
@@ -1507,7 +1546,10 @@ public sealed class AutomationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new ErrorResponse(ex.Message));
+            return ValidationError(
+                ex.Message,
+                "Ensure the requested path is inside the allowed readable directories.",
+                AgentErrorCodes.PathNotAllowed);
         }
         catch (Exception ex)
         {
@@ -1744,3 +1786,4 @@ public sealed class AutomationController : ControllerBase
     }
 #endif
 }
+

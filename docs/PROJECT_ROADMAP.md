@@ -52,7 +52,7 @@ roadmap into a sprint backlog.
 
 | Phase | Progress | Notes |
 |---|---|---|
-| Phase 1 — Core Reliability | In progress | Structured diagnostics and installer reliability hardening are in place; remaining work is broader runtime error-model standardization and cancellation semantics |
+| Phase 1 — Core Reliability | In progress | Structured diagnostics, installer reliability hardening, and controller-level 400 validation contract normalization are in place; remaining work is broader 404/500 consistency and cancellation semantics |
 | Phase 2 — Linux Parity | In progress (substantial) | Linux HTTPS setup docs, systemd unit/install scripts, `.deb` packaging script, Linux CI/release legs, Linux `send-keys`/`press-hotkey` support, and parity evidence matrix implemented; operating-model promotion to Linux Beta still pending |
 | Phase 3 — Distribution | In progress | GitHub Release draft workflow with MSI/VSIX/.deb artifacts and quick-start guide implemented; Marketplace publication and final README distribution/dev split still pending |
 | Phase 4+ | Not started | Session model, security maturity expansion, extensibility model, and GA commitments remain planned work |
@@ -64,6 +64,7 @@ Recent phase-aligned completions:
 3. Linux packaging assets added (`installer/linux/*.service`, install/uninstall scripts, `.deb` build script).
 4. Quick-start guide added for first-run setup on Windows and Linux.
 5. Controller extension now surfaces machine-agent `errorCode` and `remediationHint` details in client-side error output to improve LLM/operator troubleshooting.
+6. Automation controller validation failures now return standardized structured payloads with `VALIDATION_FAILED`/`PATH_NOT_ALLOWED` codes and actionable remediation hints across process, UI, and file endpoints.
 
 ---
 
