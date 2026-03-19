@@ -191,6 +191,12 @@ Operational command:
 - `adagioAgent.runStartupDiagnostics` (rerun readiness diagnostics on demand)
 - `adagioAgent.openDiagnosticsOutput` (open extension diagnostics output and current readiness summary)
 
+Local-only extension telemetry:
+
+- The extension writes `TELEMETRY:first_activation` the first time it activates.
+- The extension writes `TELEMETRY:first_successful_command` the first time any Adagio tool completes successfully.
+- These markers are written only to the local VS Code output channel and are not sent off-machine.
+
 **Build:**
 
 ```bash

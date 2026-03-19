@@ -420,6 +420,39 @@ describe("extension activation and commands", () => {
     expect(lines.some((l) => l.includes("TELEMETRY:first_successful_command"))).toBe(true);
   });
 
+  it("logs TELEMETRY:first_successful_command only once across repeated successful tool invocations", async () => {
+    const outputChannel = { appendLine: vi.fn(), show: vi.fn(), dispose: vi.fn() };
+    createOutputChannelMock.mockReturnValue(outputChannel as never);
+
+    const getMock = vi.fn()
+      .mockReturnValueOnce(false)
+      .mockReturnValue(true);
+
+    createAgentClientMock.mockReturnValue({
+      runExecutable: vi.fn().mockResolvedValue({ pid: 42, status: "running", startedAt: "2026-01-01T00:00:00Z" }),
+    });
+
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      globalState: {
+        get: getMock,
+        update: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+
+    activate(context as never);
+
+    const tool = toolHandlers.get("adagioAgent_runExecutable");
+    await tool?.invoke({ input: { command: "/usr/bin/true" } }, {} as never);
+    await tool?.invoke({ input: { command: "/usr/bin/true" } }, {} as never);
+
+    const telemetryLines = outputChannel.appendLine.mock.calls
+      .map((c: unknown[]) => String(c[0]))
+      .filter((line) => line.includes("TELEMETRY:first_successful_command"));
+
+    expect(telemetryLines).toHaveLength(1);
+  });
+
   it("getUiTree command rejects invalid pid without calling API", async () => {
     const context = { subscriptions: [] as Array<{ dispose: () => void }> };
     activate(context as never);

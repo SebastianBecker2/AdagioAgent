@@ -139,6 +139,12 @@ Re-read `bootstrap-secrets.json` on the VM and update `adagioAgent.vmAgentApiKey
 
 Run **Adagio Agent: Open Diagnostics Output** from the Command Palette to see the full log of all agent requests, responses, and any errors.
 
+The output channel also records local-only extension telemetry markers for:
+- first extension activation
+- first successful Adagio tool invocation
+
+These markers stay inside the VS Code output channel and are not sent to any external service.
+
 ---
 
 ## Next steps
