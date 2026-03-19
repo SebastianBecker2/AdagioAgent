@@ -2,7 +2,7 @@
   "name": "adagio-agent-controller",
   "displayName": "Adagio Agent Controller",
   "description": "VS Code extension that connects Copilot to a Windows VM agent for automated executable testing",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "adagio",
   "engines": {
     "vscode": "^1.85.0"

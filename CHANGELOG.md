@@ -6,6 +6,18 @@ The format is inspired by Keep a Changelog and this project uses SemVer.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-03-19
+
+### Fixed
+
+- Tagged release-ops validation now handles single-file sign-off/evidence matches in strict-mode PowerShell.
+- Tagged AppVeyor promotion-gate invocation now supports first-release bootstrap history while preserving hold blocking.
+- Added complete release sign-off and evidence index artifacts required by tagged release gates.
+
+### Changed
+
+- Release sign-off record: docs/release-ops/signoffs/v0.2.1-20260319.md
+
 ## [0.2.0] - 2026-03-19
 
 ### Added
