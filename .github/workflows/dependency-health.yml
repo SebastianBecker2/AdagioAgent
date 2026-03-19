@@ -88,6 +88,16 @@ jobs:
             }
           }
           $outdatedCount = if ($outdatedObject) { ($outdatedObject.PSObject.Properties | Measure-Object).Count } else { 0 }
+          $outdatedDetails = @()
+          if ($outdatedObject) {
+            $outdatedDetails = $outdatedObject.PSObject.Properties |
+              Sort-Object Name |
+              ForEach-Object {
+                $pkg = $_.Name
+                $meta = $_.Value
+                "- $pkg (current=$($meta.current), wanted=$($meta.wanted), latest=$($meta.latest), type=$($meta.type))"
+              }
+          }
 
           $auditRaw = if (Test-Path -LiteralPath $auditPath -PathType Leaf) {
             Get-Content -LiteralPath $auditPath -Raw
@@ -120,6 +130,13 @@ jobs:
 
           if ($auditVuln) {
             $lines += "- Audit vulnerabilities: info=$($auditVuln.info), low=$($auditVuln.low), moderate=$($auditVuln.moderate), high=$($auditVuln.high), critical=$($auditVuln.critical), total=$($auditVuln.total)"
+          }
+
+          if ($outdatedDetails.Count -gt 0) {
+            $lines += ""
+            $lines += "## Outdated direct packages"
+            $lines += ""
+            $lines += $outdatedDetails
           }
 
           if ($deprecatedLines.Count -gt 0) {
