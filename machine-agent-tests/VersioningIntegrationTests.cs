@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using AdagioMachineAgent.Models;
 using Microsoft.AspNetCore.Hosting;
@@ -122,6 +123,25 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
         var versionedPayload = await ReadJson<ErrorResponse>(versionedResponse);
         var legacyPayload = await ReadJson<ErrorResponse>(legacyResponse);
         Assert.Equal(versionedPayload.Error, legacyPayload.Error);
+        Assert.Equal(AgentErrorCodes.ValidationFailed, versionedPayload.ErrorCode);
+        Assert.Equal(versionedPayload.ErrorCode, legacyPayload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(versionedPayload.RemediationHint));
+        Assert.False(string.IsNullOrWhiteSpace(legacyPayload.RemediationHint));
+    }
+
+    [Fact]
+    public async Task ReadTextFile_MissingPath_ReturnsPathNotFoundCode()
+    {
+        var missingPath = Path.Combine(Path.GetTempPath(), $"adagio-missing-{Guid.NewGuid():N}.txt");
+        var body = JsonSerializer.Serialize(new { path = missingPath });
+        var request = new StringContent(body, Encoding.UTF8, "application/json");
+
+        var response = await _client.PostAsync("/read-text-file", request);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var payload = await ReadJson<ErrorResponse>(response);
+        Assert.Equal(AgentErrorCodes.PathNotFound, payload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
     }
 
     [Fact]

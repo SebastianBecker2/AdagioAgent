@@ -232,6 +232,9 @@ public static class AgentErrorCodes
     /// <summary>The destination or source path is not in an allowed directory.</summary>
     public const string PathNotAllowed = "PATH_NOT_ALLOWED";
 
+    /// <summary>The requested file or directory path does not exist.</summary>
+    public const string PathNotFound = "PATH_NOT_FOUND";
+
     /// <summary>The maximum concurrent process limit has been reached.</summary>
     public const string ConcurrencyLimitExceeded = "CONCURRENCY_LIMIT_EXCEEDED";
 

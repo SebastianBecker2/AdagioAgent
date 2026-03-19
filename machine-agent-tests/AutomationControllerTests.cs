@@ -154,6 +154,8 @@ public sealed class AutomationControllerTests
         var bad = Assert.IsType<BadRequestObjectResult>(result);
         var payload = Assert.IsType<ErrorResponse>(bad.Value);
         Assert.Equal("Command is required.", payload.Error);
+        Assert.Equal(AgentErrorCodes.ValidationFailed, payload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
     }
 
     [Fact]
@@ -772,6 +774,24 @@ public sealed class AutomationControllerTests
         var bad = Assert.IsType<BadRequestObjectResult>(result);
         var payload = Assert.IsType<ErrorResponse>(bad.Value);
         Assert.Equal("Path is required.", payload.Error);
+        Assert.Equal(AgentErrorCodes.ValidationFailed, payload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
+    }
+
+    [Fact]
+    public void ReadTextFile_ReturnsNotFoundWithPathCodeWhenFileMissing()
+    {
+        var missingPath = Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.log");
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var result = sut.ReadTextFile(new ReadTextFileRequest(missingPath));
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result);
+        var payload = Assert.IsType<ErrorResponse>(notFound.Value);
+        Assert.Equal(AgentErrorCodes.PathNotFound, payload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
     }
 
     [Fact]
@@ -865,6 +885,22 @@ public sealed class AutomationControllerTests
         {
             Directory.Delete(dirPath, recursive: true);
         }
+    }
+
+    [Fact]
+    public void ListDirectory_ReturnsNotFoundWithPathCodeWhenDirectoryMissing()
+    {
+        var missingPath = Path.Combine(Path.GetTempPath(), $"missing-dir-{Guid.NewGuid():N}");
+        using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
+        var uiService = new Mock<IUiAutomationService>();
+        var sut = CreateController(processService, uiService.Object);
+
+        var result = sut.ListDirectory(new ListDirectoryRequest(missingPath));
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result);
+        var payload = Assert.IsType<ErrorResponse>(notFound.Value);
+        Assert.Equal(AgentErrorCodes.PathNotFound, payload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
     }
 
     [Fact]

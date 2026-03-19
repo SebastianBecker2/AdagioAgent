@@ -42,6 +42,19 @@ public sealed class AutomationController : ControllerBase
             RemediationHint: remediationHint));
     }
 
+    private ObjectResult InternalError(
+        string error,
+        string remediationHint,
+        string? detail = null)
+    {
+        return StatusCode(StatusCodes.Status500InternalServerError,
+            new ErrorResponse(
+                error,
+                detail,
+                ErrorCode: AgentErrorCodes.InternalError,
+                RemediationHint: remediationHint));
+    }
+
     // ── GET /health ──────────────────────────────────────────────────────────
 
     [HttpGet("/health")]
@@ -119,8 +132,9 @@ public sealed class AutomationController : ControllerBase
 
         if (readyPayload is null)
         {
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to compute diagnostics status."));
+            return InternalError(
+                "Failed to compute diagnostics status.",
+                "Retry the diagnostics request and review readiness logs if the issue persists.");
         }
 
         return Ok(new DiagnosticsStatusResponse(
@@ -145,8 +159,9 @@ public sealed class AutomationController : ControllerBase
 
         if (diagnosticsPayload is null)
         {
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to compute diagnostics export metadata."));
+            return InternalError(
+                "Failed to compute diagnostics export metadata.",
+                "Retry after verifying /diagnostics/status is healthy.");
         }
 
         var services = HttpContext?.RequestServices;
@@ -155,8 +170,9 @@ public sealed class AutomationController : ControllerBase
 
         if (securityOptions is null || agentOptions is null)
         {
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Required options were not available for diagnostics export metadata."));
+            return InternalError(
+                "Required options were not available for diagnostics export metadata.",
+                "Verify AgentOptions and SecurityOptions are registered in dependency injection.");
         }
 
         var metadata = new SupportBundleMetadataResponse(
@@ -257,7 +273,8 @@ public sealed class AutomationController : ControllerBase
         {
             _logger.LogError(ex, "Failed to start process.");
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to start process.", ex.Message, ErrorCode: AgentErrorCodes.InternalError));
+                new ErrorResponse("Failed to start process.", ex.Message, ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -324,8 +341,10 @@ public sealed class AutomationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to run installer and collect artifacts.");
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to run installer and collect artifacts.", ex.Message));
+            return InternalError(
+                "Failed to run installer and collect artifacts.",
+                "Review process launch arguments and artifact collection settings.",
+                ex.Message);
         }
     }
 
@@ -417,8 +436,10 @@ public sealed class AutomationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to run installer and assert workflow.");
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to run installer and assert workflow.", ex.Message));
+            return InternalError(
+                "Failed to run installer and assert workflow.",
+                "Review assertion inputs and installer logs, then retry.",
+                ex.Message);
         }
     }
 
@@ -495,14 +516,16 @@ public sealed class AutomationController : ControllerBase
             // The HTTP request was cancelled by the client.
             return StatusCode(499,
                 new ErrorResponse("Request was cancelled.",
-                    ErrorCode: AgentErrorCodes.RequestCancelled));
+                    ErrorCode: AgentErrorCodes.RequestCancelled,
+                    RemediationHint: "Retry the request and keep the HTTP connection open until completion."));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed while waiting for process {Pid} exit.", request.Pid);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed while waiting for process exit.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+                    ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -567,9 +590,10 @@ public sealed class AutomationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to collect install artifacts for pid {Pid}.", request.Pid);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to collect install artifacts.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+            return InternalError(
+                "Failed to collect install artifacts.",
+                "Verify the process is still running and artifact inputs are valid.",
+                ex.Message);
         }
     }
 
@@ -609,9 +633,10 @@ public sealed class AutomationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to terminate process {Pid}.", request.Pid);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to terminate process.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+            return InternalError(
+                "Failed to terminate process.",
+                "Verify process permissions and that the PID is valid for this host.",
+                ex.Message);
         }
     }
 
@@ -650,7 +675,8 @@ public sealed class AutomationController : ControllerBase
             _logger.LogError(ex, "GetUiTree failed for pid {Pid}.", pid);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed to retrieve UI tree.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+                    ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -693,7 +719,8 @@ public sealed class AutomationController : ControllerBase
             _logger.LogError(ex, "GetElementState failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed to retrieve element state.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+                    ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -741,7 +768,8 @@ public sealed class AutomationController : ControllerBase
         {
             return StatusCode(499,
                 new ErrorResponse("Request was cancelled.",
-                    ErrorCode: AgentErrorCodes.RequestCancelled));
+                    ErrorCode: AgentErrorCodes.RequestCancelled,
+                    RemediationHint: "Retry the request and keep the HTTP connection open until completion."));
         }
         catch (InvalidOperationException ex)
         {
@@ -759,7 +787,8 @@ public sealed class AutomationController : ControllerBase
             _logger.LogError(ex, "WaitForElement failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed while waiting for element.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+                    ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -803,7 +832,8 @@ public sealed class AutomationController : ControllerBase
             _logger.LogError(ex, "SetFocus failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed to focus element.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+                    ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -846,7 +876,8 @@ public sealed class AutomationController : ControllerBase
             _logger.LogError(ex, "SendKeys failed for pid {Pid}.", request.Pid);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed to send keys.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+                    ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -889,7 +920,8 @@ public sealed class AutomationController : ControllerBase
             _logger.LogError(ex, "PressHotkey failed for pid {Pid}.", request.Pid);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed to press hotkey.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+                    ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -933,7 +965,8 @@ public sealed class AutomationController : ControllerBase
             _logger.LogError(ex, "SetCheckbox failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed to set checkbox state.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+                    ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -982,7 +1015,8 @@ public sealed class AutomationController : ControllerBase
             _logger.LogError(ex, "SelectOption failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed to select option.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+                    ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -1021,7 +1055,8 @@ public sealed class AutomationController : ControllerBase
             _logger.LogError(ex, "Screenshot failed for pid {Pid}.", pid);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed to capture screenshot.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+                    ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -1065,7 +1100,8 @@ public sealed class AutomationController : ControllerBase
             _logger.LogError(ex, "Click failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed to click element.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+                    ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -1114,7 +1150,8 @@ public sealed class AutomationController : ControllerBase
             _logger.LogError(ex, "Type failed for element {ElementId}.", request.ElementId);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse("Failed to type text.", ex.Message,
-                    ErrorCode: AgentErrorCodes.InternalError));
+                    ErrorCode: AgentErrorCodes.InternalError,
+                    RemediationHint: "Review agent logs for the correlation ID and retry the operation."));
         }
     }
 
@@ -1186,8 +1223,10 @@ public sealed class AutomationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to copy file.");
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to copy file.", ex.Message));
+            return InternalError(
+                "Failed to copy file.",
+                "Verify destination permissions and available disk space, then retry.",
+                ex.Message);
         }
     }
 
@@ -1223,7 +1262,10 @@ public sealed class AutomationController : ControllerBase
 
             if (!System.IO.File.Exists(fullPath))
             {
-                return NotFound(new ErrorResponse($"File '{request.Path}' does not exist."));
+                return NotFound(new ErrorResponse(
+                    $"File '{request.Path}' does not exist.",
+                    ErrorCode: AgentErrorCodes.PathNotFound,
+                    RemediationHint: "Verify the file path and create the file before retrying."));
             }
 
             var content = System.IO.File.ReadAllText(fullPath);
@@ -1232,8 +1274,10 @@ public sealed class AutomationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to read file '{Path}'.", request.Path);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to read text file.", ex.Message));
+            return InternalError(
+                "Failed to read text file.",
+                "Verify file permissions and path accessibility, then retry.",
+                ex.Message);
         }
     }
 
@@ -1274,7 +1318,10 @@ public sealed class AutomationController : ControllerBase
 
             if (!System.IO.File.Exists(fullPath))
             {
-                return NotFound(new ErrorResponse($"File '{request.Path}' does not exist."));
+                return NotFound(new ErrorResponse(
+                    $"File '{request.Path}' does not exist.",
+                    ErrorCode: AgentErrorCodes.PathNotFound,
+                    RemediationHint: "Verify the file path and create the file before retrying."));
             }
 
             return Ok(ReadTailFile(fullPath, request.Lines));
@@ -1282,8 +1329,10 @@ public sealed class AutomationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to tail file '{Path}'.", request.Path);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to tail file.", ex.Message));
+            return InternalError(
+                "Failed to tail file.",
+                "Verify file permissions and that the file is readable.",
+                ex.Message);
         }
     }
 
@@ -1320,7 +1369,10 @@ public sealed class AutomationController : ControllerBase
 
             if (!Directory.Exists(fullPath))
             {
-                return NotFound(new ErrorResponse($"Directory '{request.Path}' does not exist."));
+                return NotFound(new ErrorResponse(
+                    $"Directory '{request.Path}' does not exist.",
+                    ErrorCode: AgentErrorCodes.PathNotFound,
+                    RemediationHint: "Verify the directory path and create it before retrying."));
             }
 
             var entries = Directory
@@ -1337,8 +1389,10 @@ public sealed class AutomationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to list directory '{Path}'.", request.Path);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to list directory.", ex.Message));
+            return InternalError(
+                "Failed to list directory.",
+                "Verify directory permissions and path accessibility, then retry.",
+                ex.Message);
         }
     }
 
@@ -1379,8 +1433,10 @@ public sealed class AutomationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to check path existence '{Path}'.", request.Path);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to check path existence.", ex.Message));
+            return InternalError(
+                "Failed to check path existence.",
+                "Verify path accessibility and readable path configuration.",
+                ex.Message);
         }
     }
 
@@ -1440,8 +1496,10 @@ public sealed class AutomationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "AssertProcessExited failed for pid {Pid}.", request.Pid);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to assert process exit.", ex.Message));
+            return InternalError(
+                "Failed to assert process exit.",
+                "Verify the tracked process state and retry the assertion.",
+                ex.Message);
         }
     }
 
@@ -1494,8 +1552,10 @@ public sealed class AutomationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "AssertPathExists failed for path '{Path}'.", request.Path);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to assert path existence.", ex.Message));
+            return InternalError(
+                "Failed to assert path existence.",
+                "Verify path accessibility and readable path configuration.",
+                ex.Message);
         }
     }
 
@@ -1524,7 +1584,10 @@ public sealed class AutomationController : ControllerBase
 
             if (!System.IO.File.Exists(fullPath))
             {
-                return NotFound(new ErrorResponse($"File '{request.Path}' does not exist."));
+                return NotFound(new ErrorResponse(
+                    $"File '{request.Path}' does not exist.",
+                    ErrorCode: AgentErrorCodes.PathNotFound,
+                    RemediationHint: "Verify the file path and create the file before retrying."));
             }
 
             var content = System.IO.File.ReadAllText(fullPath);
@@ -1554,8 +1617,10 @@ public sealed class AutomationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "AssertLogContains failed for path '{Path}'.", request.Path);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new ErrorResponse("Failed to assert log content.", ex.Message));
+            return InternalError(
+                "Failed to assert log content.",
+                "Verify file readability and the expected text input, then retry.",
+                ex.Message);
         }
     }
 
@@ -1786,4 +1851,5 @@ public sealed class AutomationController : ControllerBase
     }
 #endif
 }
+
 
