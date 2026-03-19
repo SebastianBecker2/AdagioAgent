@@ -1,4 +1,4 @@
-import * as vscode from "vscode";
+﻿import * as vscode from "vscode";
 import * as os from "os";
 import { AgentClient, createAgentClient, getCorrelationIdFromError } from "./agentClient";
 import { wrapCommand } from "./commandSafety";
@@ -138,9 +138,12 @@ interface SelectOptionInput {
 }
 
 const startupConnectionCheckKey = "adagioAgent.startupConnectionCheckCompleted";
+const firstActivationLoggedKey = "adagioAgent.firstActivationLogged";
+const firstSuccessfulCommandLoggedKey = "adagioAgent.firstSuccessfulCommandLogged";
 let readinessStatusItem: vscode.StatusBarItem | undefined;
 let adagioOutput: vscode.OutputChannel | undefined;
 let currentReadinessSummary = "status=checking";
+let extensionContextGlobal: vscode.ExtensionContext | undefined;
 
 function logAdagio(level: "info" | "warn" | "error", message: string, details?: unknown): void {
   if (!adagioOutput) {
@@ -256,6 +259,33 @@ async function runStartupConnectionCheck(
   }
 }
 
+// ─── Telemetry (local, output-channel only) ──────────────────────────────────
+
+function notifyFirstSuccessfulCommand(toolName: string): void {
+  const state = extensionContextGlobal?.globalState;
+  if (!state) return;
+  if (state.get<boolean>(firstSuccessfulCommandLoggedKey, false)) return;
+  logAdagio("info", "TELEMETRY:first_successful_command", { tool: toolName });
+  void state.update(firstSuccessfulCommandLoggedKey, true);
+}
+
+function telemetryTool<T>(
+  name: string,
+  tool: vscode.LanguageModelTool<T>
+): vscode.LanguageModelTool<T> {
+  const orig = tool.invoke.bind(tool);
+  return {
+    invoke: async (
+      opts: vscode.LanguageModelToolInvocationOptions<T>,
+      token: vscode.CancellationToken
+    ) => {
+      const result = await orig(opts, token);
+      notifyFirstSuccessfulCommand(name);
+      return result;
+    },
+  };
+}
+
 // ─── Activation ──────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -326,57 +356,43 @@ export function activate(context: vscode.ExtensionContext): void {
 
   if (typeof vscode.lm !== "undefined" && "registerTool" in vscode.lm) {
     context.subscriptions.push(
-      vscode.lm.registerTool(
-        "adagioAgent_runExecutable",
-        new RunExecutableTool()
-      ),
-      vscode.lm.registerTool(
-        "adagioAgent_runInstallerAndCollectArtifacts",
-        new RunInstallerAndCollectArtifactsTool()
-      ),
-      vscode.lm.registerTool(
-        "adagioAgent_runAndCollectArtifacts",
-        new RunInstallerAndCollectArtifactsTool()
-      ),
-      vscode.lm.registerTool(
-        "adagioAgent_runInstallerAndAssert",
-        new RunInstallerAndAssertTool()
-      ),
-      vscode.lm.registerTool(
-        "adagioAgent_runAndAssert",
-        new RunInstallerAndAssertTool()
-      ),
-      vscode.lm.registerTool("adagioAgent_getUiTree", new GetUiTreeTool()),
-      vscode.lm.registerTool(
-        "adagioAgent_getScreenshot",
-        new GetScreenshotTool()
-      ),
-      vscode.lm.registerTool(
-        "adagioAgent_clickElement",
-        new ClickElementTool()
-      ),
-      vscode.lm.registerTool("adagioAgent_typeText", new TypeTextTool()),
-      vscode.lm.registerTool("adagioAgent_copyFile", new CopyFileTool()),
-      vscode.lm.registerTool("adagioAgent_getProcessStatus", new GetProcessStatusTool()),
-      vscode.lm.registerTool("adagioAgent_waitForExit", new WaitForExitTool()),
-      vscode.lm.registerTool("adagioAgent_collectInstallArtifacts", new CollectInstallArtifactsTool()),
-      vscode.lm.registerTool("adagioAgent_collectProcessArtifacts", new CollectInstallArtifactsTool()),
-      vscode.lm.registerTool("adagioAgent_terminateProcess", new TerminateProcessTool()),
-      vscode.lm.registerTool("adagioAgent_readTextFile", new ReadTextFileTool()),
-      vscode.lm.registerTool("adagioAgent_tailFile", new TailFileTool()),
-      vscode.lm.registerTool("adagioAgent_listDirectory", new ListDirectoryTool()),
-      vscode.lm.registerTool("adagioAgent_fileExists", new FileExistsTool()),
-      vscode.lm.registerTool("adagioAgent_assertProcessExited", new AssertProcessExitedTool()),
-      vscode.lm.registerTool("adagioAgent_assertPathExists", new AssertPathExistsTool()),
-      vscode.lm.registerTool("adagioAgent_assertLogContains", new AssertLogContainsTool()),
-      vscode.lm.registerTool("adagioAgent_getElementState", new GetElementStateTool()),
-      vscode.lm.registerTool("adagioAgent_waitForElement", new WaitForElementUiTool()),
-      vscode.lm.registerTool("adagioAgent_setFocus", new SetFocusTool()),
-      vscode.lm.registerTool("adagioAgent_sendKeys", new SendKeysTool()),
-      vscode.lm.registerTool("adagioAgent_pressHotkey", new PressHotkeyTool()),
-      vscode.lm.registerTool("adagioAgent_setCheckbox", new SetCheckboxTool()),
-      vscode.lm.registerTool("adagioAgent_selectOption", new SelectOptionTool())
+      vscode.lm.registerTool("adagioAgent_runExecutable", telemetryTool("adagioAgent_runExecutable", new RunExecutableTool())),
+      vscode.lm.registerTool("adagioAgent_runInstallerAndCollectArtifacts", telemetryTool("adagioAgent_runInstallerAndCollectArtifacts", new RunInstallerAndCollectArtifactsTool())),
+      vscode.lm.registerTool("adagioAgent_runAndCollectArtifacts", telemetryTool("adagioAgent_runAndCollectArtifacts", new RunInstallerAndCollectArtifactsTool())),
+      vscode.lm.registerTool("adagioAgent_runInstallerAndAssert", telemetryTool("adagioAgent_runInstallerAndAssert", new RunInstallerAndAssertTool())),
+      vscode.lm.registerTool("adagioAgent_runAndAssert", telemetryTool("adagioAgent_runAndAssert", new RunInstallerAndAssertTool())),
+      vscode.lm.registerTool("adagioAgent_getUiTree", telemetryTool("adagioAgent_getUiTree", new GetUiTreeTool())),
+      vscode.lm.registerTool("adagioAgent_getScreenshot", telemetryTool("adagioAgent_getScreenshot", new GetScreenshotTool())),
+      vscode.lm.registerTool("adagioAgent_clickElement", telemetryTool("adagioAgent_clickElement", new ClickElementTool())),
+      vscode.lm.registerTool("adagioAgent_typeText", telemetryTool("adagioAgent_typeText", new TypeTextTool())),
+      vscode.lm.registerTool("adagioAgent_copyFile", telemetryTool("adagioAgent_copyFile", new CopyFileTool())),
+      vscode.lm.registerTool("adagioAgent_getProcessStatus", telemetryTool("adagioAgent_getProcessStatus", new GetProcessStatusTool())),
+      vscode.lm.registerTool("adagioAgent_waitForExit", telemetryTool("adagioAgent_waitForExit", new WaitForExitTool())),
+      vscode.lm.registerTool("adagioAgent_collectInstallArtifacts", telemetryTool("adagioAgent_collectInstallArtifacts", new CollectInstallArtifactsTool())),
+      vscode.lm.registerTool("adagioAgent_collectProcessArtifacts", telemetryTool("adagioAgent_collectProcessArtifacts", new CollectInstallArtifactsTool())),
+      vscode.lm.registerTool("adagioAgent_terminateProcess", telemetryTool("adagioAgent_terminateProcess", new TerminateProcessTool())),
+      vscode.lm.registerTool("adagioAgent_readTextFile", telemetryTool("adagioAgent_readTextFile", new ReadTextFileTool())),
+      vscode.lm.registerTool("adagioAgent_tailFile", telemetryTool("adagioAgent_tailFile", new TailFileTool())),
+      vscode.lm.registerTool("adagioAgent_listDirectory", telemetryTool("adagioAgent_listDirectory", new ListDirectoryTool())),
+      vscode.lm.registerTool("adagioAgent_fileExists", telemetryTool("adagioAgent_fileExists", new FileExistsTool())),
+      vscode.lm.registerTool("adagioAgent_assertProcessExited", telemetryTool("adagioAgent_assertProcessExited", new AssertProcessExitedTool())),
+      vscode.lm.registerTool("adagioAgent_assertPathExists", telemetryTool("adagioAgent_assertPathExists", new AssertPathExistsTool())),
+      vscode.lm.registerTool("adagioAgent_assertLogContains", telemetryTool("adagioAgent_assertLogContains", new AssertLogContainsTool())),
+      vscode.lm.registerTool("adagioAgent_getElementState", telemetryTool("adagioAgent_getElementState", new GetElementStateTool())),
+      vscode.lm.registerTool("adagioAgent_waitForElement", telemetryTool("adagioAgent_waitForElement", new WaitForElementUiTool())),
+      vscode.lm.registerTool("adagioAgent_setFocus", telemetryTool("adagioAgent_setFocus", new SetFocusTool())),
+      vscode.lm.registerTool("adagioAgent_sendKeys", telemetryTool("adagioAgent_sendKeys", new SendKeysTool())),
+      vscode.lm.registerTool("adagioAgent_pressHotkey", telemetryTool("adagioAgent_pressHotkey", new PressHotkeyTool())),
+      vscode.lm.registerTool("adagioAgent_setCheckbox", telemetryTool("adagioAgent_setCheckbox", new SetCheckboxTool())),
+      vscode.lm.registerTool("adagioAgent_selectOption", telemetryTool("adagioAgent_selectOption", new SelectOptionTool()))
     );
+  }
+
+  extensionContextGlobal = context;
+  const activationState = context.globalState;
+  if (activationState && !activationState.get<boolean>(firstActivationLoggedKey, false)) {
+    logAdagio("info", "TELEMETRY:first_activation");
+    void activationState.update(firstActivationLoggedKey, true);
   }
 
   void runStartupConnectionCheck(context);

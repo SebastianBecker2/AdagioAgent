@@ -380,6 +380,46 @@ describe("extension activation and commands", () => {
     expect(showInformationMessageMock).toHaveBeenCalledWith("Adagio Agent current status=checking");
   });
 
+  it("logs TELEMETRY:first_activation on first-ever activation", () => {
+    const outputChannel = { appendLine: vi.fn(), show: vi.fn(), dispose: vi.fn() };
+    createOutputChannelMock.mockReturnValue(outputChannel as never);
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      globalState: {
+        get: vi.fn().mockReturnValue(false),
+        update: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+
+    activate(context as never);
+
+    const lines: string[] = outputChannel.appendLine.mock.calls.map((c: unknown[]) => String(c[0]));
+    expect(lines.some((l) => l.includes("TELEMETRY:first_activation"))).toBe(true);
+  });
+
+  it("logs TELEMETRY:first_successful_command on first successful tool invocation", async () => {
+    const outputChannel = { appendLine: vi.fn(), show: vi.fn(), dispose: vi.fn() };
+    createOutputChannelMock.mockReturnValue(outputChannel as never);
+    createAgentClientMock.mockReturnValue({
+      runExecutable: vi.fn().mockResolvedValue({ pid: 42, status: "running", startedAt: "2026-01-01T00:00:00Z" }),
+    });
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      globalState: {
+        get: vi.fn().mockReturnValue(false),
+        update: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+
+    activate(context as never);
+
+    const tool = toolHandlers.get("adagioAgent_runExecutable");
+    await tool?.invoke({ input: { command: "/usr/bin/true" } }, {} as never);
+
+    const lines: string[] = outputChannel.appendLine.mock.calls.map((c: unknown[]) => String(c[0]));
+    expect(lines.some((l) => l.includes("TELEMETRY:first_successful_command"))).toBe(true);
+  });
+
   it("getUiTree command rejects invalid pid without calling API", async () => {
     const context = { subscriptions: [] as Array<{ dispose: () => void }> };
     activate(context as never);

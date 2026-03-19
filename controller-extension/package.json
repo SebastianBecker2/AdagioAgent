@@ -985,11 +985,12 @@
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
     "test": "vitest run",
-    "package:vsix": "npx.cmd --yes @vscode/vsce package --allow-missing-repository --skip-license"
+    "package:vsix": "vsce package --allow-missing-repository --skip-license"
   },
   "devDependencies": {
     "@types/node": "^20.19.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.2",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^8.57.0",

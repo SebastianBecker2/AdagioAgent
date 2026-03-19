@@ -7,6 +7,22 @@ extension) to a UI-automation agent running inside a Windows or Linux VM.
 
 > Note: This project is AI-generated.
 
+---
+
+## For operators / users
+
+**New here?** → Follow the [Quick-start guide](docs/QUICKSTART.md) to go from zero to your first Copilot automation command in under 10 minutes.
+
+**Install:**
+- **Windows VM (agent host):** Download `AdagioMachineAgentSetup.msi` from [GitHub Releases](https://github.com/SebastianBecker2/AdagioAgent/releases) and run `msiexec /i AdagioMachineAgentSetup.msi /quiet`.
+- **VS Code (developer workstation):** Install the **Adagio Agent Controller** extension from the Marketplace or from a `.vsix` via `Extensions: Install from VSIX…`.
+
+**Configure** the extension with your VM's URL and API key (see [docs/QUICKSTART.md](docs/QUICKSTART.md) Step 3).
+
+---
+
+## For developers / contributors
+
 Current product posture: Windows-first, admin-managed deployment for controlled
 environments. See [docs/OPERATING_MODEL.md](docs/OPERATING_MODEL.md) for the
 current support boundaries and deployment assumptions, and

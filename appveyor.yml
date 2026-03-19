@@ -258,6 +258,7 @@ build_script:
   - npm ci
   - npm i --no-save @rolldown/binding-win32-x64-msvc
   - npm run compile
+  - npm run package:vsix
   - cd ..
 
   # 3. Build the WiX MSI installer (also publishes the machine-agent internally)
@@ -293,6 +294,8 @@ test_script:
 artifacts:
   - path: installer/bin/x64/Release/AdagioMachineAgentSetup.msi
     name: AdagioMachineAgentSetup
+  - path: controller-extension/*.vsix
+    name: AdagioControllerExtension
   - path: artifacts/release-ops-dryrun-diagnostics/*.json
     name: DryRunValidationDiagnostics
   - path: artifacts/release-ops-dryrun-diagnostics/*.md

@@ -1,0 +1,142 @@
+# Release workflow — Adagio Agent
+#
+# Triggered when a version tag (v*) is pushed.
+# Builds the Windows MSI, VS Code VSIX, and Linux .deb, then creates a draft
+# GitHub Release containing all three artifacts.
+#
+# After this workflow succeeds, a maintainer reviews the draft release and
+# publishes it manually.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-windows:
+    name: Build MSI + VSIX (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # ── machine-agent ──────────────────────────────────────────────────────
+      - name: Restore machine-agent
+        run: dotnet restore machine-agent\AdagioMachineAgent.csproj
+
+      - name: Build machine-agent (Release, win-x64)
+        run: dotnet build machine-agent\AdagioMachineAgent.csproj -c Release --no-restore
+
+      # ── controller-extension ──────────────────────────────────────────────
+      - name: Install extension dependencies
+        working-directory: controller-extension
+        run: npm ci
+
+      - name: Compile extension
+        working-directory: controller-extension
+        run: npm run compile
+
+      - name: Package VSIX
+        working-directory: controller-extension
+        run: npm run package:vsix
+
+      # ── MSI installer ─────────────────────────────────────────────────────
+      - name: Restore installer
+        run: dotnet restore installer\AdagioMachineAgent.Setup.wixproj
+
+      - name: Build MSI installer
+        run: dotnet build installer\AdagioMachineAgent.Setup.wixproj -p:Configuration=Release --no-restore
+
+      # ── Upload artifacts ──────────────────────────────────────────────────
+      - name: Upload MSI
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdagioMachineAgentSetup
+          path: installer/bin/x64/Release/AdagioMachineAgentSetup.msi
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdagioControllerExtension
+          path: controller-extension/*.vsix
+
+  build-linux:
+    name: Build .deb (Ubuntu)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # ── machine-agent ──────────────────────────────────────────────────────
+      - name: Restore machine-agent
+        run: dotnet restore machine-agent/AdagioMachineAgent.csproj
+
+      - name: Build machine-agent (Release, linux-x64)
+        run: >
+          dotnet build machine-agent/AdagioMachineAgent.csproj
+          --configuration Release
+          --no-restore
+
+      # ── .deb packaging ─────────────────────────────────────────────────────
+      - name: Install dpkg-dev
+        run: sudo apt-get install -y dpkg
+
+      - name: Build .deb package
+        run: bash scripts/build-linux-deb.sh --output-dir ./artifacts/linux
+
+      # ── Upload artifact ────────────────────────────────────────────────────
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdagioMachineAgentDeb
+          path: artifacts/linux/*.deb
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download MSI
+        uses: actions/download-artifact@v4
+        with:
+          name: AdagioMachineAgentSetup
+          path: release-artifacts
+
+      - name: Download VSIX
+        uses: actions/download-artifact@v4
+        with:
+          name: AdagioControllerExtension
+          path: release-artifacts
+
+      - name: Download .deb
+        uses: actions/download-artifact@v4
+        with:
+          name: AdagioMachineAgentDeb
+          path: release-artifacts
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: release-artifacts/*

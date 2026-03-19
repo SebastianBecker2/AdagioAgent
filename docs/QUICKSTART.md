@@ -1,0 +1,148 @@
+# AdagioAgent Quick-Start Guide
+
+Get from zero to your first Copilot-driven automation command in under 10 minutes.
+
+## Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| Windows 10/11 or Ubuntu 22.04+ target VM | The VM where automation runs |
+| VS Code 1.85+ with GitHub Copilot | Your developer workstation |
+| Administrator (Windows) or `sudo` (Linux) on the target VM | Required to install the agent service |
+
+---
+
+## Step 1 — Install the machine agent on the target VM
+
+### Windows
+
+1. Download `AdagioMachineAgentSetup.msi` from [GitHub Releases](https://github.com/SebastianBecker2/AdagioAgent/releases).
+
+2. Install silently (run as administrator):
+   ```powershell
+   msiexec /i AdagioMachineAgentSetup.msi /quiet
+   ```
+   The MSI automatically:
+   - Runs `bootstrap-agent.ps1` to generate a self-signed TLS certificate and API key.
+   - Writes credentials to `appsettings.json`.
+   - Starts the `AdagioMachineAgent` Windows service on port 5443.
+
+3. Retrieve your API key:
+   ```powershell
+   Get-Content "C:\ProgramData\AdagioMachineAgent\bootstrap-secrets.json"
+   ```
+   Copy the `apiKey` value — you will need it in Step 3.
+
+#### One-command bootstrap (if you prefer manual setup)
+
+If you cloned the repo and want to run bootstrap directly:
+```powershell
+.\scripts\bootstrap-agent.ps1 `
+    -WriteToAppSettings `
+    -WriteSecretHandoff `
+    -TrustCertificate `
+    -StartService
+```
+`-TrustCertificate` installs the generated cert into `LocalMachine\Root` so HTTPS connections from the same machine are trusted.  
+`-StartService` restarts the `AdagioMachineAgent` service automatically.
+
+### Linux (Ubuntu)
+
+1. Download `adagio-machine-agent_*.deb` from [GitHub Releases](https://github.com/SebastianBecker2/AdagioAgent/releases).
+
+2. Install:
+   ```bash
+   sudo dpkg -i adagio-machine-agent_*.deb
+   sudo systemctl enable --now adagio-machine-agent
+   ```
+
+3. Run bootstrap:
+   ```bash
+   sudo /opt/adagio-machine-agent/bootstrap-agent.sh
+   ```
+
+4. Retrieve your API key:
+   ```bash
+   sudo cat /etc/adagio-machine-agent/bootstrap-secrets.json
+   ```
+
+For TLS trust on Linux, see [docs/LINUX_HTTPS_SETUP.md](LINUX_HTTPS_SETUP.md).
+
+---
+
+## Step 2 — Install the VS Code extension
+
+**Option A — VS Code Marketplace** (once published):  
+Open VS Code, go to Extensions (`Ctrl+Shift+X`), search for **Adagio Agent Controller**, and click Install.
+
+**Option B — from a VSIX file:**
+1. Download `adagio-agent-controller-*.vsix` from [GitHub Releases](https://github.com/SebastianBecker2/AdagioAgent/releases).
+2. In VS Code: `Extensions` → `...` menu → **Install from VSIX…** → select the file.
+
+---
+
+## Step 3 — Configure the extension
+
+Open VS Code Settings (`Ctrl+,`) and configure:
+
+| Setting | Value | Example |
+|---|---|---|
+| `adagioAgent.vmAgentUrl` | URL of the machine agent | `https://192.168.1.50:5443/api/v1` |
+| `adagioAgent.vmAgentApiKey` | API key from Step 1 | `abc123...` |
+
+> **Loopback testing:** If VS Code and the agent are on the same machine, use `https://127.0.0.1:5443/api/v1`.
+
+---
+
+## Step 4 — Verify the connection
+
+1. Open the Command Palette (`Ctrl+Shift+P`).
+2. Run **Adagio Agent: Run Startup Diagnostics**.
+3. The status bar at the bottom left should change to **✓ Adagio: Ready**.
+
+If the status shows **✗ Adagio: Offline**, see [Troubleshooting](#troubleshooting) below.
+
+---
+
+## Step 5 — Your first Copilot command
+
+Open GitHub Copilot Chat and try:
+
+> `Start notepad.exe on the VM and tell me its PID.`
+
+Copilot will invoke the `adagioAgent_runExecutable` tool and return the process ID from the remote VM.
+
+Other things to try:
+- `"Take a screenshot of the VM desktop."`
+- `"List the contents of C:\Users on the VM."`
+- `"Run C:\MyTests\setup.exe on the VM and collect any .log files created."`
+
+---
+
+## Troubleshooting
+
+### Status bar shows `✗ Adagio: Offline`
+
+| Cause | Fix |
+|---|---|
+| Wrong URL | Check `adagioAgent.vmAgentUrl` — include `/api/v1` path |
+| Service not running | Run `Get-Service AdagioMachineAgent` (Windows) or `systemctl status adagio-machine-agent` (Linux) |
+| Firewall blocking port 5443 | Open inbound TCP 5443 on the target VM |
+| TLS certificate not trusted | On Windows run bootstrap with `-TrustCertificate`; on Linux see [LINUX_HTTPS_SETUP.md](LINUX_HTTPS_SETUP.md) |
+
+### `401 Unauthorized` in the Adagio Agent output channel
+
+The API key in VS Code settings does not match the one on the VM.  
+Re-read `bootstrap-secrets.json` on the VM and update `adagioAgent.vmAgentApiKey`.
+
+### Opening the diagnostics output channel
+
+Run **Adagio Agent: Open Diagnostics Output** from the Command Palette to see the full log of all agent requests, responses, and any errors.
+
+---
+
+## Next steps
+
+- Read the full [README](../README.md) for architecture details and developer setup.
+- See [docs/OPERATIONS_RUNBOOK.md](PILOT_RUNBOOK.md) for multi-VM fleet management.
+- See [docs/RELEASING.md](RELEASING.md) for how to publish a new release.

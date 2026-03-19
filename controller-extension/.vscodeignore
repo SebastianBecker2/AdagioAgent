@@ -6,3 +6,8 @@ test/**
 test-results/**
 .gitignore
 vsc-extension-quickstart.md
+tsconfig.json
+vitest.config.ts
+.eslintrc.json
+*.vsix
+!out/**

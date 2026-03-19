@@ -7,7 +7,9 @@ param(
     [switch]$WriteSecretHandoff,
     [string]$SecretHandoffPath = "C:\ProgramData\AdagioMachineAgent\bootstrap-secrets.json",
     [switch]$SuppressSecretOutput,
-    [string]$LogPath = ""
+    [string]$LogPath = "",
+    [switch]$TrustCertificate,
+    [switch]$StartService
 )
 
 Set-StrictMode -Version Latest
@@ -215,6 +217,36 @@ if (-not $SuppressSecretOutput.IsPresent) {
     Write-Host "Generated values (copy securely now):"
     Write-Host "SecurityOptions__ApiKey=$apiKey"
     Write-Host "SecurityOptions__HttpsCertificatePassword=$certificatePassword"
+}
+
+if ($TrustCertificate.IsPresent) {
+    if ($createCertificate -and (Test-Path -LiteralPath $CertificatePath)) {
+        Write-Host "Importing certificate into LocalMachine\Root trust store..."
+        try {
+            $pfxPasswordForImport = ConvertTo-SecureString -String $certificatePassword -AsPlainText -Force
+            $importedCert = Import-PfxCertificate -FilePath $CertificatePath -CertStoreLocation "Cert:\LocalMachine\Root" -Password $pfxPasswordForImport
+            Write-Host "Certificate trusted (thumbprint: $($importedCert.Thumbprint))."
+        }
+        catch {
+            Write-Warning "Could not add certificate to LocalMachine\Root: $($_.Exception.Message)"
+        }
+    }
+    elseif (-not $createCertificate) {
+        Write-Host "Skipping certificate trust: existing certificate retained. Import it manually using the password in appsettings.json."
+    }
+}
+
+if ($StartService.IsPresent) {
+    $svc = Get-Service -Name "AdagioMachineAgent" -ErrorAction SilentlyContinue
+    if ($null -ne $svc) {
+        Write-Host "Restarting AdagioMachineAgent service..."
+        Restart-Service -Name "AdagioMachineAgent" -Force
+        $svc = Get-Service -Name "AdagioMachineAgent"
+        Write-Host "Service state: $($svc.Status)"
+    }
+    else {
+        Write-Host "WARNING: AdagioMachineAgent service not found. Install the MSI first, or start the service manually."
+    }
 }
 }
 catch {
