@@ -220,6 +220,9 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
 
         var payload = await ReadJson<ErrorResponse>(response);
         Assert.Equal("Request validation failed.", payload.Error);
+        Assert.Equal(payload.Error, payload.Message);
+        Assert.Equal(AgentErrorCodes.ValidationFailed, payload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
         Assert.False(string.IsNullOrWhiteSpace(payload.CorrelationId));
         Assert.Equal(correlationHeader, payload.CorrelationId);
     }
@@ -250,6 +253,9 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
 
         var payload = await ReadJson<ErrorResponse>(response);
         Assert.Contains("Missing required header", payload.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(payload.Error, payload.Message);
+        Assert.Equal(AgentErrorCodes.Unauthorized, payload.ErrorCode);
+        Assert.False(string.IsNullOrWhiteSpace(payload.RemediationHint));
         Assert.Equal(correlationHeader, payload.CorrelationId);
     }
 

@@ -214,7 +214,11 @@ public sealed record ErrorResponse(
     string? Detail = null,
     string? CorrelationId = null,
     string? ErrorCode = null,
-    string? RemediationHint = null);
+    string? RemediationHint = null)
+{
+    /// <summary>Alias of Error for clients that consume a message field.</summary>
+    public string Message => Error;
+}
 
 /// <summary>Machine-readable error code constants for all named error conditions.</summary>
 public static class AgentErrorCodes

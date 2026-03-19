@@ -40,7 +40,8 @@ builder.Services
                 Error: "Request validation failed.",
                 Detail: detailText,
                 CorrelationId: correlationId,
-                ErrorCode: AgentErrorCodes.ValidationFailed));
+                ErrorCode: AgentErrorCodes.ValidationFailed,
+                RemediationHint: "Fix the request parameters/body to match the API contract and retry."));
         };
     });
 builder.Services.AddEndpointsApiExplorer();
@@ -194,7 +195,8 @@ app.Use(async (context, next) =>
                 ? ex.Message
                 : null,
             CorrelationId: correlationId,
-            ErrorCode: AgentErrorCodes.InternalError));
+            ErrorCode: AgentErrorCodes.InternalError,
+            RemediationHint: "Retry the request. If the issue persists, capture diagnostics and contact support."));
     }
 });
 
@@ -243,7 +245,9 @@ app.Use(async (context, next) =>
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
         await context.Response.WriteAsJsonAsync(new ErrorResponse(
             Error: "Server API key is not configured.",
-            CorrelationId: ResolveCorrelationId(context)));
+            CorrelationId: ResolveCorrelationId(context),
+            ErrorCode: AgentErrorCodes.InternalError,
+            RemediationHint: "Configure SecurityOptions:ApiKey in appsettings and restart the service."));
         return;
     }
 
@@ -252,7 +256,9 @@ app.Use(async (context, next) =>
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
         await context.Response.WriteAsJsonAsync(new ErrorResponse(
             Error: $"Missing required header '{securityOptions.ApiKeyHeaderName}'.",
-            CorrelationId: ResolveCorrelationId(context)));
+            CorrelationId: ResolveCorrelationId(context),
+            ErrorCode: AgentErrorCodes.Unauthorized,
+            RemediationHint: $"Send a valid API key in the '{securityOptions.ApiKeyHeaderName}' header."));
         return;
     }
 
@@ -261,7 +267,9 @@ app.Use(async (context, next) =>
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
         await context.Response.WriteAsJsonAsync(new ErrorResponse(
             Error: "Invalid API key.",
-            CorrelationId: ResolveCorrelationId(context)));
+            CorrelationId: ResolveCorrelationId(context),
+            ErrorCode: AgentErrorCodes.Unauthorized,
+            RemediationHint: "Verify the API key value and retry the request."));
         return;
     }
 
