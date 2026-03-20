@@ -11,6 +11,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "machine-agent-tests", "mach
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdagioMachineAgent.Tests", "machine-agent-tests\AdagioMachineAgent.Tests.csproj", "{7138454C-7DB1-49CA-879A-68D906237E3D}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "installer-bundle", "installer-bundle", "{D322688C-7309-0F9F-A9AD-D682F78ABC7B}"
+EndProject
+Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "AdagioMachineAgent.Bundle", "installer-bundle\AdagioMachineAgent.Bundle.wixproj", "{AD419141-2942-4EB9-BC65-5605B7F457C2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +49,12 @@ Global
 		{7138454C-7DB1-49CA-879A-68D906237E3D}.Release|x64.Build.0 = Release|Any CPU
 		{7138454C-7DB1-49CA-879A-68D906237E3D}.Release|x86.ActiveCfg = Release|Any CPU
 		{7138454C-7DB1-49CA-879A-68D906237E3D}.Release|x86.Build.0 = Release|Any CPU
+		{AD419141-2942-4EB9-BC65-5605B7F457C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD419141-2942-4EB9-BC65-5605B7F457C2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{AD419141-2942-4EB9-BC65-5605B7F457C2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AD419141-2942-4EB9-BC65-5605B7F457C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD419141-2942-4EB9-BC65-5605B7F457C2}.Release|x64.ActiveCfg = Release|Any CPU
+		{AD419141-2942-4EB9-BC65-5605B7F457C2}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -52,6 +62,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{135B5925-19DC-DC42-3F1B-92A9A8EE33AF} = {6E704E05-544F-482E-C092-3B4FF7A45332}
 		{7138454C-7DB1-49CA-879A-68D906237E3D} = {7BAB0C0C-B51B-8DCE-2994-B3A9D2AD1745}
+		{AD419141-2942-4EB9-BC65-5605B7F457C2} = {D322688C-7309-0F9F-A9AD-D682F78ABC7B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {10CAAAEC-A95A-4A3E-A790-6FF34DB1EE99}

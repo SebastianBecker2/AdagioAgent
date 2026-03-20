@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+  xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <Bundle Name="Adagio Machine Agent Installer"
+          Manufacturer="AdagioAgent"
+          Version="$(var.AgentVersion)"
+          UpgradeCode="{C513189E-13CC-4AFA-BEB9-B7F742E74F41}">
+
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication LicenseUrl="https://github.com/SebastianBecker2/AdagioAgent/blob/main/LICENSE"
+                                              Theme="hyperlinkLicense"
+                                              SuppressOptionsUI="yes" />
+    </BootstrapperApplication>
+
+    <Variable Name="ADAGIO_CERT_MODE" Type="string" Value="GeneratedCa" bal:Overridable="yes" />
+    <Variable Name="ADAGIO_PROVIDED_CERT_PATH" Type="string" Value="" bal:Overridable="yes" />
+    <Variable Name="ADAGIO_PROVIDED_CERT_PASSWORD" Type="string" Value="" bal:Overridable="yes" Hidden="yes" />
+    <Variable Name="ADAGIO_API_KEY_MODE" Type="string" Value="Generate" bal:Overridable="yes" />
+    <Variable Name="ADAGIO_PROVIDED_API_KEY" Type="string" Value="" bal:Overridable="yes" Hidden="yes" />
+    <Variable Name="ADAGIO_RESPONSE_FILE_PATH" Type="string" Value="" bal:Overridable="yes" />
+
+    <Chain>
+      <MsiPackage Id="AdagioMachineAgentMsi"
+                  SourceFile="$(sys.SOURCEFILEDIR)..\installer\bin\x64\Release\AdagioMachineAgentSetup.msi"
+                  Vital="yes"
+                  Compressed="yes">
+        <MsiProperty Name="ADAGIO_CERT_MODE" Value="[ADAGIO_CERT_MODE]" />
+        <MsiProperty Name="ADAGIO_PROVIDED_CERT_PATH" Value="[ADAGIO_PROVIDED_CERT_PATH]" />
+        <MsiProperty Name="ADAGIO_PROVIDED_CERT_PASSWORD" Value="[ADAGIO_PROVIDED_CERT_PASSWORD]" />
+        <MsiProperty Name="ADAGIO_API_KEY_MODE" Value="[ADAGIO_API_KEY_MODE]" />
+        <MsiProperty Name="ADAGIO_PROVIDED_API_KEY" Value="[ADAGIO_PROVIDED_API_KEY]" />
+        <MsiProperty Name="ADAGIO_RESPONSE_FILE_PATH" Value="[ADAGIO_RESPONSE_FILE_PATH]" />
+      </MsiPackage>
+    </Chain>
+
+  </Bundle>
+</Wix>

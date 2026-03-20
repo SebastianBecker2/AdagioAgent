@@ -2,13 +2,27 @@
 $bootstrapScript = Join-Path $repoRoot 'scripts\bootstrap-agent.ps1'
 
 function New-TestAppSettings {
-    param([string]$Path)
+    param(
+        [string]$Path,
+        [string]$ApiKey = 'CHANGE_ME',
+        [string]$HttpsCertificatePath = 'CHANGE_ME',
+        [string]$HttpsCertificatePassword = 'CHANGE_ME'
+    )
 
     $payload = @{
+        AllowedHosts = 'localhost;127.0.0.1'
+        Urls = 'https://127.0.0.1:5443'
         SecurityOptions = @{
-            ApiKey = 'CHANGE_ME'
-            HttpsCertificatePath = 'CHANGE_ME'
-            HttpsCertificatePassword = 'CHANGE_ME'
+            RequireHttps = $true
+            RequireApiKey = $true
+            ApiKey = $ApiKey
+            HttpsCertificatePath = $HttpsCertificatePath
+            HttpsCertificatePassword = $HttpsCertificatePassword
+        }
+        AgentOptions = @{
+            AllowedExecutablePaths = @('C:\Apps')
+            AllowedWritablePaths = @('C:\Apps')
+            AllowedReadablePaths = @('C:\Apps')
         }
     } | ConvertTo-Json -Depth 6
 
@@ -47,11 +61,18 @@ Describe 'Bootstrap provisioning script' {
 
         $diagnosticsRoot = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::CommonApplicationData)) 'AdagioMachineAgent'
         $script:bootstrapFailurePath = Join-Path $diagnosticsRoot 'bootstrap-failure.json'
+        $script:bootstrapFailureFallbackPath = Join-Path $env:TEMP 'AdagioMachineAgent-bootstrap-failure.json'
         $script:existingFailureContent = $null
         $script:hadFailureFile = Test-Path -LiteralPath $script:bootstrapFailurePath -PathType Leaf
+        $script:existingFailureFallbackContent = $null
+        $script:hadFailureFallbackFile = Test-Path -LiteralPath $script:bootstrapFailureFallbackPath -PathType Leaf
 
         if ($script:hadFailureFile) {
             $script:existingFailureContent = Get-Content -LiteralPath $script:bootstrapFailurePath -Raw
+        }
+
+        if ($script:hadFailureFallbackFile) {
+            $script:existingFailureFallbackContent = Get-Content -LiteralPath $script:bootstrapFailureFallbackPath -Raw
         }
     }
 
@@ -61,6 +82,13 @@ Describe 'Bootstrap provisioning script' {
         }
         else {
             Remove-Item -LiteralPath $script:bootstrapFailurePath -Force -ErrorAction SilentlyContinue
+        }
+
+        if ($script:hadFailureFallbackFile) {
+            Set-Content -LiteralPath $script:bootstrapFailureFallbackPath -Value $script:existingFailureFallbackContent -Encoding UTF8
+        }
+        else {
+            Remove-Item -LiteralPath $script:bootstrapFailureFallbackPath -Force -ErrorAction SilentlyContinue
         }
 
         if (Test-Path -LiteralPath $script:testRoot -PathType Container) {
@@ -100,6 +128,75 @@ Describe 'Bootstrap provisioning script' {
         $appSettings.SecurityOptions.HttpsCertificatePath | Should Be $script:certPath
     }
 
+    It 'preserves existing certificate password and API key when reusing existing certificate' {
+        $existingApiKey = 'existing-key-value'
+        $existingCertPassword = 'existing-cert-password'
+        New-TestAppSettings -Path $script:appSettingsPath -ApiKey $existingApiKey -HttpsCertificatePath $script:certPath -HttpsCertificatePassword $existingCertPassword
+
+        {
+            & $bootstrapScript -CertificatePath $script:certPath -WriteToAppSettings -AppSettingsPath $script:appSettingsPath -SuppressSecretOutput
+        } | Should Not Throw
+
+        $appSettings = Get-Content -LiteralPath $script:appSettingsPath -Raw | ConvertFrom-Json
+        $appSettings.SecurityOptions.ApiKey | Should Be $existingApiKey
+        $appSettings.SecurityOptions.HttpsCertificatePassword | Should Be $existingCertPassword
+        $appSettings.SecurityOptions.HttpsCertificatePath | Should Be $script:certPath
+    }
+
+    It 'accepts provided API key mode and writes explicit key to appsettings' {
+        $existingCertPassword = 'existing-cert-password'
+        New-TestAppSettings -Path $script:appSettingsPath -ApiKey 'CHANGE_ME' -HttpsCertificatePath $script:certPath -HttpsCertificatePassword $existingCertPassword
+
+        {
+            & $bootstrapScript -CertificatePath $script:certPath -ApiKeyMode Provided -ProvidedApiKey 'operator-provided-key' -WriteToAppSettings -AppSettingsPath $script:appSettingsPath -SuppressSecretOutput
+        } | Should Not Throw
+
+        $appSettings = Get-Content -LiteralPath $script:appSettingsPath -Raw | ConvertFrom-Json
+        $appSettings.SecurityOptions.ApiKey | Should Be 'operator-provided-key'
+        $appSettings.SecurityOptions.HttpsCertificatePassword | Should Be $existingCertPassword
+    }
+
+    It 'applies response-file values for silent parity when explicit CLI values are not provided' {
+        $existingCertPassword = 'existing-cert-password'
+        New-TestAppSettings -Path $script:appSettingsPath -ApiKey 'existing-key' -HttpsCertificatePath $script:certPath -HttpsCertificatePassword $existingCertPassword
+        $responsePath = Join-Path $script:testRoot 'response.json'
+
+        $responsePayload = @{
+            security = @{
+                apiKeyMode = 'Provided'
+                providedApiKey = 'response-file-api-key'
+                requireHttps = $false
+                requireApiKey = $true
+            }
+            network = @{
+                urls = 'https://10.0.0.2:5443'
+                allowedHosts = '10.0.0.2;agent-host'
+            }
+            agentOptions = @{
+                allowedExecutablePaths = @('C:\Tools')
+                allowedWritablePaths = @('C:\Logs')
+                allowedReadablePaths = @('C:\Logs', 'C:\Tools')
+            }
+        } | ConvertTo-Json -Depth 10
+
+        Set-Content -LiteralPath $responsePath -Value $responsePayload -Encoding UTF8
+
+        {
+            & $bootstrapScript -CertificatePath $script:certPath -ResponseFilePath $responsePath -WriteToAppSettings -AppSettingsPath $script:appSettingsPath -SuppressSecretOutput
+        } | Should Not Throw
+
+        $appSettings = Get-Content -LiteralPath $script:appSettingsPath -Raw | ConvertFrom-Json
+        $appSettings.SecurityOptions.ApiKey | Should Be 'response-file-api-key'
+        $appSettings.SecurityOptions.HttpsCertificatePassword | Should Be $existingCertPassword
+        $appSettings.SecurityOptions.RequireHttps | Should Be $false
+        $appSettings.SecurityOptions.RequireApiKey | Should Be $true
+        $appSettings.Urls | Should Be 'https://10.0.0.2:5443'
+        $appSettings.AllowedHosts | Should Be '10.0.0.2;agent-host'
+        @($appSettings.AgentOptions.AllowedExecutablePaths) | Should Be @('C:\Tools')
+        @($appSettings.AgentOptions.AllowedWritablePaths) | Should Be @('C:\Logs')
+        @($appSettings.AgentOptions.AllowedReadablePaths) | Should Be @('C:\Logs', 'C:\Tools')
+    }
+
     It 'writes secret handoff with restricted ACL for SYSTEM and Administrators' -Skip:(-not $script:isAdministrator) {
         { & $bootstrapScript -CertificatePath $script:certPath -WriteSecretHandoff -SecretHandoffPath $script:handoffPath -SuppressSecretOutput } | Should Not Throw
 
@@ -122,12 +219,23 @@ Describe 'Bootstrap provisioning script' {
 
     It 'emits AA1002 in bootstrap-failure artifact when appsettings path is missing' {
         Remove-Item -LiteralPath $script:bootstrapFailurePath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $script:bootstrapFailureFallbackPath -Force -ErrorAction SilentlyContinue
 
         { & $bootstrapScript -CertificatePath $script:certPath -WriteToAppSettings -AppSettingsPath $script:missingAppSettingsPath -SuppressSecretOutput } | Should Throw
 
-        (Test-Path -LiteralPath $script:bootstrapFailurePath -PathType Leaf) | Should Be $true
+        $failurePath = if (Test-Path -LiteralPath $script:bootstrapFailurePath -PathType Leaf) {
+            $script:bootstrapFailurePath
+        }
+        elseif (Test-Path -LiteralPath $script:bootstrapFailureFallbackPath -PathType Leaf) {
+            $script:bootstrapFailureFallbackPath
+        }
+        else {
+            $null
+        }
 
-        $failure = Get-Content -LiteralPath $script:bootstrapFailurePath -Raw | ConvertFrom-Json
+        ($null -ne $failurePath) | Should Be $true
+
+        $failure = Get-Content -LiteralPath $failurePath -Raw | ConvertFrom-Json
         $failure.errorCode | Should Be 'AA1002'
         $failure.appSettingsPath | Should Be $script:missingAppSettingsPath
     }

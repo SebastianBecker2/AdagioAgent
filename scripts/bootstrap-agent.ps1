@@ -5,6 +5,12 @@ param(
     [bool]$UseCertificateAuthority = $true,
     [string[]]$DnsNames = @("localhost"),
     [string[]]$IpAddresses = @("127.0.0.1"),
+    [string]$CertificateMode = "",
+    [string]$ProvidedCertificatePath = "",
+    [string]$ProvidedCertificatePassword = "",
+    [string]$ApiKeyMode = "Generate",
+    [string]$ProvidedApiKey = "",
+    [string]$ResponseFilePath = "",
     [switch]$PersistToEnvironment,
     [switch]$WriteToAppSettings,
     [string]$AppSettingsPath = "machine-agent\appsettings.json",
@@ -22,6 +28,10 @@ $ErrorActionPreference = "Stop"
 
 $bootstrapDiagnosticsRoot = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::CommonApplicationData)) "AdagioMachineAgent"
 $bootstrapFailurePath = Join-Path $bootstrapDiagnosticsRoot "bootstrap-failure.json"
+$bootstrapFailureFallbackPath = Join-Path $env:TEMP "AdagioMachineAgent-bootstrap-failure.json"
+$failureOutputPath = $bootstrapFailurePath
+$resolvedCertificateMode = 'Unknown'
+$resolvedApiKeyMode = 'Unknown'
 
 if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
     $logDir = Split-Path -Parent $LogPath
@@ -200,6 +210,185 @@ function Export-CertificatePem {
     Set-Content -LiteralPath $Path -Value $pem -Encoding Ascii
 }
 
+function Resolve-CertificateMode {
+    param(
+        [string]$RequestedMode,
+        [bool]$UseCertificateAuthority,
+        [hashtable]$BoundParameters
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RequestedMode)) {
+        if ($BoundParameters.ContainsKey('UseCertificateAuthority') -and -not $UseCertificateAuthority) {
+            return 'GeneratedLeaf'
+        }
+
+        return 'GeneratedCa'
+    }
+
+    $normalized = $RequestedMode.Trim().ToLowerInvariant()
+    switch ($normalized) {
+        'generatedca' { return 'GeneratedCa' }
+        'generatedleaf' { return 'GeneratedLeaf' }
+        'provided' { return 'Provided' }
+        default {
+            throw "Unsupported CertificateMode '$RequestedMode'. Supported values: GeneratedCa, GeneratedLeaf, Provided."
+        }
+    }
+}
+
+function Resolve-ApiKeyMode {
+    param([string]$RequestedMode)
+
+    $normalized = if ([string]::IsNullOrWhiteSpace($RequestedMode)) {
+        'generate'
+    }
+    else {
+        $RequestedMode.Trim().ToLowerInvariant()
+    }
+
+    switch ($normalized) {
+        'generate' { return 'Generate' }
+        'provided' { return 'Provided' }
+        default {
+            throw "Unsupported ApiKeyMode '$RequestedMode'. Supported values: Generate, Provided."
+        }
+    }
+}
+
+function Get-ExistingSecurityOptions {
+    param([string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        $config = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+        if ($null -eq $config -or $null -eq $config.SecurityOptions) {
+            return $null
+        }
+
+        return $config.SecurityOptions
+    }
+    catch {
+        return $null
+    }
+}
+
+function Get-InstallerResponseConfig {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Response file not found at '$Path'."
+    }
+
+    try {
+        return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    }
+    catch {
+        throw "Failed to parse response file at '$Path'. Error: $($_.Exception.Message)"
+    }
+}
+
+function Get-NestedValue {
+    param(
+        [object]$Root,
+        [string[]]$Path
+    )
+
+    $current = $Root
+    foreach ($segment in $Path) {
+        if ($null -eq $current) {
+            return $null
+        }
+
+        $property = $current.PSObject.Properties.Match($segment) | Select-Object -First 1
+        if ($null -eq $property) {
+            return $null
+        }
+
+        $current = $property.Value
+    }
+
+    return $current
+}
+
+function Get-ResponseString {
+    param(
+        [object]$Root,
+        [string[]]$Path
+    )
+
+    $value = Get-NestedValue -Root $Root -Path $Path
+    if ($null -eq $value) {
+        return ''
+    }
+
+    return [string]$value
+}
+
+function Get-ResponseStringArray {
+    param(
+        [object]$Root,
+        [string[]]$Path
+    )
+
+    $value = Get-NestedValue -Root $Root -Path $Path
+    if ($null -eq $value) {
+        return ,@()
+    }
+
+    $result = @($value | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    return ,$result
+}
+
+function Get-ResponseBoolean {
+    param(
+        [object]$Root,
+        [string[]]$Path
+    )
+
+    $value = Get-NestedValue -Root $Root -Path $Path
+    if ($null -eq $value) {
+        return $null
+    }
+
+    if ($value -is [bool]) {
+        return [bool]$value
+    }
+
+    $text = [string]$value
+    if ($text.Equals('true', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $true
+    }
+
+    if ($text.Equals('false', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $false
+    }
+
+    throw "Response file value '$($Path -join '.')' must be boolean."
+}
+
+function Set-ObjectProperty {
+    param(
+        [object]$Object,
+        [string]$Name,
+        [object]$Value
+    )
+
+    $property = $Object.PSObject.Properties.Match($Name) | Select-Object -First 1
+    if ($null -eq $property) {
+        $Object | Add-Member -NotePropertyName $Name -NotePropertyValue $Value
+    }
+    else {
+        $property.Value = $Value
+    }
+}
+
 $certDirectory = Split-Path -Parent $CertificatePath
 if (-not (Test-Path -LiteralPath $certDirectory)) {
     New-Item -ItemType Directory -Path $certDirectory -Force | Out-Null
@@ -221,13 +410,137 @@ if (-not $PSBoundParameters.ContainsKey('IpAddresses')) {
     $IpAddresses = Get-DefaultBootstrapIpAddresses
 }
 
-$certificatePassword = New-RandomString -ByteLength 24
+if ($WriteToAppSettings.IsPresent -and -not (Test-Path -LiteralPath $AppSettingsPath -PathType Leaf)) {
+    throw "appsettings file not found at '$AppSettingsPath'."
+}
+
+$responseConfig = Get-InstallerResponseConfig -Path $ResponseFilePath
+
+if ([string]::IsNullOrWhiteSpace($CertificateMode)) {
+    $CertificateMode = Get-ResponseString -Root $responseConfig -Path @('security', 'certificateMode')
+}
+
+if ([string]::IsNullOrWhiteSpace($ProvidedCertificatePath)) {
+    $ProvidedCertificatePath = Get-ResponseString -Root $responseConfig -Path @('security', 'providedCertificatePath')
+}
+
+if ([string]::IsNullOrWhiteSpace($ProvidedCertificatePassword)) {
+    $ProvidedCertificatePassword = Get-ResponseString -Root $responseConfig -Path @('security', 'providedCertificatePassword')
+}
+
+if (-not $PSBoundParameters.ContainsKey('ApiKeyMode')) {
+    $responseApiKeyMode = Get-ResponseString -Root $responseConfig -Path @('security', 'apiKeyMode')
+    if (-not [string]::IsNullOrWhiteSpace($responseApiKeyMode)) {
+        $ApiKeyMode = $responseApiKeyMode
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($ProvidedApiKey)) {
+    $ProvidedApiKey = Get-ResponseString -Root $responseConfig -Path @('security', 'providedApiKey')
+}
+
+if (-not $PSBoundParameters.ContainsKey('DnsNames')) {
+    $responseDnsNames = Get-ResponseStringArray -Root $responseConfig -Path @('security', 'dnsNames')
+    if ($responseDnsNames.Count -gt 0) {
+        $DnsNames = $responseDnsNames
+    }
+}
+
+if (-not $PSBoundParameters.ContainsKey('IpAddresses')) {
+    $responseIpAddresses = Get-ResponseStringArray -Root $responseConfig -Path @('security', 'ipAddresses')
+    if ($responseIpAddresses.Count -gt 0) {
+        $IpAddresses = $responseIpAddresses
+    }
+}
+
+$responseUrls = Get-ResponseString -Root $responseConfig -Path @('network', 'urls')
+$responseAllowedHosts = Get-ResponseString -Root $responseConfig -Path @('network', 'allowedHosts')
+$responseRequireHttps = Get-ResponseBoolean -Root $responseConfig -Path @('security', 'requireHttps')
+$responseRequireApiKey = Get-ResponseBoolean -Root $responseConfig -Path @('security', 'requireApiKey')
+$responseAllowedExecutablePaths = Get-ResponseStringArray -Root $responseConfig -Path @('agentOptions', 'allowedExecutablePaths')
+$responseAllowedWritablePaths = Get-ResponseStringArray -Root $responseConfig -Path @('agentOptions', 'allowedWritablePaths')
+$responseAllowedReadablePaths = Get-ResponseStringArray -Root $responseConfig -Path @('agentOptions', 'allowedReadablePaths')
+
+$resolvedCertificateMode = Resolve-CertificateMode -RequestedMode $CertificateMode -UseCertificateAuthority $UseCertificateAuthority -BoundParameters $PSBoundParameters
+$resolvedApiKeyMode = Resolve-ApiKeyMode -RequestedMode $ApiKeyMode
+$existingSecurity = Get-ExistingSecurityOptions -Path $AppSettingsPath
+
+$certificatePassword = $null
 $caCertificatePassword = New-RandomString -ByteLength 24
-$apiKey = New-RandomString -ByteLength 32
+
+if ($resolvedCertificateMode -eq 'Provided') {
+    if ([string]::IsNullOrWhiteSpace($ProvidedCertificatePath)) {
+        $ProvidedCertificatePath = $CertificatePath
+    }
+
+    if ([string]::IsNullOrWhiteSpace($ProvidedCertificatePath)) {
+        throw 'Provided certificate mode requires -ProvidedCertificatePath (or -CertificatePath).'
+    }
+
+    if ([string]::IsNullOrWhiteSpace($ProvidedCertificatePassword)) {
+        throw 'Provided certificate mode requires -ProvidedCertificatePassword.'
+    }
+
+    if (-not (Test-Path -LiteralPath $ProvidedCertificatePath -PathType Leaf)) {
+        throw "Provided certificate file not found at '$ProvidedCertificatePath'."
+    }
+
+    try {
+        [void](New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($ProvidedCertificatePath, $ProvidedCertificatePassword))
+    }
+    catch {
+        throw "Failed to load provided certificate from '$ProvidedCertificatePath'. Verify password and file integrity. Error: $($_.Exception.Message)"
+    }
+
+    $CertificatePath = $ProvidedCertificatePath
+    $certificatePassword = $ProvidedCertificatePassword
+    $UseCertificateAuthority = $false
+}
+else {
+    $UseCertificateAuthority = ($resolvedCertificateMode -eq 'GeneratedCa')
+}
+
+$createCertificate = $resolvedCertificateMode -ne 'Provided' -and ($ForceRegenerate.IsPresent -or -not (Test-Path -LiteralPath $CertificatePath))
+
+if ($resolvedCertificateMode -ne 'Provided') {
+    if ($createCertificate) {
+        $certificatePassword = New-RandomString -ByteLength 24
+    }
+    else {
+        $existingCertificatePassword = if ($null -ne $existingSecurity) { [string]$existingSecurity.HttpsCertificatePassword } else { '' }
+        $hasUsableExistingPassword = -not [string]::IsNullOrWhiteSpace($existingCertificatePassword) -and
+            $existingCertificatePassword -ne 'CHANGE_ME_CERT_PASSWORD' -and
+            $existingCertificatePassword -ne 'CHANGE_ME'
+
+        if (-not $hasUsableExistingPassword) {
+            $certificatePassword = New-RandomString -ByteLength 24
+            Write-Warning "Existing certificate detected at '$CertificatePath' but no usable certificate password was found in appsettings. Generated a replacement password value."
+        }
+        else {
+            $certificatePassword = $existingCertificatePassword
+        }
+    }
+}
+
+if ($resolvedApiKeyMode -eq 'Provided') {
+    if ([string]::IsNullOrWhiteSpace($ProvidedApiKey)) {
+        throw 'Provided API key mode requires -ProvidedApiKey.'
+    }
+
+    $apiKey = $ProvidedApiKey
+}
+else {
+    $existingApiKey = if ($null -ne $existingSecurity) { [string]$existingSecurity.ApiKey } else { '' }
+    if ($ForceRegenerate.IsPresent -or [string]::IsNullOrWhiteSpace($existingApiKey) -or $existingApiKey -eq 'CHANGE_ME') {
+        $apiKey = New-RandomString -ByteLength 32
+    }
+    else {
+        $apiKey = $existingApiKey
+    }
+}
 
 $pfxPassword = ConvertTo-SecureString -String $certificatePassword -AsPlainText -Force
 $caPfxPassword = ConvertTo-SecureString -String $caCertificatePassword -AsPlainText -Force
-$createCertificate = $ForceRegenerate.IsPresent -or -not (Test-Path -LiteralPath $CertificatePath)
 
 if ($createCertificate) {
     $subjectNames = @($DnsNames | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
@@ -348,9 +661,44 @@ if ($WriteToAppSettings.IsPresent) {
     }
 
     $config = Get-Content -LiteralPath $AppSettingsPath -Raw | ConvertFrom-Json
+    if ($null -eq $config.SecurityOptions) {
+        $config | Add-Member -NotePropertyName SecurityOptions -NotePropertyValue ([pscustomobject]@{})
+    }
+    if ($null -eq $config.AgentOptions) {
+        $config | Add-Member -NotePropertyName AgentOptions -NotePropertyValue ([pscustomobject]@{})
+    }
+
     $config.SecurityOptions.HttpsCertificatePath = $CertificatePath
     $config.SecurityOptions.HttpsCertificatePassword = $certificatePassword
     $config.SecurityOptions.ApiKey = $apiKey
+
+    if (-not [string]::IsNullOrWhiteSpace($responseUrls)) {
+        Set-ObjectProperty -Object $config -Name 'Urls' -Value $responseUrls
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($responseAllowedHosts)) {
+        Set-ObjectProperty -Object $config -Name 'AllowedHosts' -Value $responseAllowedHosts
+    }
+
+    if ($null -ne $responseRequireHttps) {
+        Set-ObjectProperty -Object $config.SecurityOptions -Name 'RequireHttps' -Value ([bool]$responseRequireHttps)
+    }
+
+    if ($null -ne $responseRequireApiKey) {
+        Set-ObjectProperty -Object $config.SecurityOptions -Name 'RequireApiKey' -Value ([bool]$responseRequireApiKey)
+    }
+
+    if ($responseAllowedExecutablePaths.Count -gt 0) {
+        Set-ObjectProperty -Object $config.AgentOptions -Name 'AllowedExecutablePaths' -Value @($responseAllowedExecutablePaths)
+    }
+
+    if ($responseAllowedWritablePaths.Count -gt 0) {
+        Set-ObjectProperty -Object $config.AgentOptions -Name 'AllowedWritablePaths' -Value @($responseAllowedWritablePaths)
+    }
+
+    if ($responseAllowedReadablePaths.Count -gt 0) {
+        Set-ObjectProperty -Object $config.AgentOptions -Name 'AllowedReadablePaths' -Value @($responseAllowedReadablePaths)
+    }
 
     $json = $config | ConvertTo-Json -Depth 16
     Set-Content -LiteralPath $AppSettingsPath -Value $json -Encoding UTF8
@@ -364,6 +712,9 @@ if ($WriteSecretHandoff.IsPresent) {
 
     $handoffPayload = [pscustomobject]@{
         generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u')
+        certificateMode = $resolvedCertificateMode
+        apiKeyMode = $resolvedApiKeyMode
+        responseFilePath = $ResponseFilePath
         apiKey = $apiKey
         httpsCertificatePassword = $certificatePassword
         httpsCertificatePath = $CertificatePath
@@ -400,10 +751,10 @@ if (-not $SuppressSecretOutput.IsPresent) {
 }
 
 if ($TrustCertificate.IsPresent) {
-    if ($createCertificate -and (Test-Path -LiteralPath $CertificatePath)) {
+    if (Test-Path -LiteralPath $CertificatePath) {
         Write-Host "Importing certificate into LocalMachine\Root trust store..."
         try {
-            if ($UseCertificateAuthority -and (Test-Path -LiteralPath $CaCertificatePfxPath)) {
+            if ($UseCertificateAuthority -and $createCertificate -and (Test-Path -LiteralPath $CaCertificatePfxPath)) {
                 $importedCert = Import-PfxCertificate -FilePath $CaCertificatePfxPath -CertStoreLocation "Cert:\LocalMachine\Root" -Password $caPfxPassword
             }
             else {
@@ -415,8 +766,8 @@ if ($TrustCertificate.IsPresent) {
             Write-Warning "Could not add certificate to LocalMachine\Root: $($_.Exception.Message)"
         }
     }
-    elseif (-not $createCertificate) {
-        Write-Host "Skipping certificate trust: existing certificate retained. Import it manually using the password in appsettings.json."
+    else {
+        Write-Host "Skipping certificate trust: certificate file '$CertificatePath' was not found."
     }
 }
 
@@ -435,7 +786,6 @@ if ($StartService.IsPresent) {
 }
 catch {
     try {
-        New-Item -ItemType Directory -Path $bootstrapDiagnosticsRoot -Force | Out-Null
         $metadata = Get-FailureMetadata -ErrorMessage $_.Exception.Message
 
         $failure = @{
@@ -445,23 +795,42 @@ catch {
             scriptPath = $PSCommandPath
             appSettingsPath = $AppSettingsPath
             certificatePath = $CertificatePath
+            certificateMode = $resolvedCertificateMode
+            apiKeyMode = $resolvedApiKeyMode
+            responseFilePath = $ResponseFilePath
             secretHandoffPath = $SecretHandoffPath
             logPath = $LogPath
             errorCode = $metadata.errorCode
             suggestedAction = $metadata.suggestedAction
         }
 
-        $failure | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $bootstrapFailurePath -Encoding UTF8
+        $failureJson = $failure | ConvertTo-Json -Depth 6
+        $wrotePrimaryFailure = $false
+
+        try {
+            New-Item -ItemType Directory -Path $bootstrapDiagnosticsRoot -Force | Out-Null
+            $failureJson | Set-Content -LiteralPath $bootstrapFailurePath -Encoding UTF8
+            $failureOutputPath = $bootstrapFailurePath
+            $wrotePrimaryFailure = $true
+        }
+        catch {
+            # Fall back to a user-writable location when ProgramData is unavailable.
+        }
+
+        if (-not $wrotePrimaryFailure) {
+            $failureJson | Set-Content -LiteralPath $bootstrapFailureFallbackPath -Encoding UTF8
+            $failureOutputPath = $bootstrapFailureFallbackPath
+        }
     }
     catch {
         # Ignore diagnostics-write errors and preserve original exception context.
     }
 
     if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
-        Write-Error "Bootstrap provisioning failed. See '$LogPath' and '$bootstrapFailurePath'. Error: $($_.Exception.Message)"
+        Write-Error "Bootstrap provisioning failed. See '$LogPath' and '$failureOutputPath'. Error: $($_.Exception.Message)"
     }
     else {
-        Write-Error "Bootstrap provisioning failed. See '$bootstrapFailurePath'. Error: $($_.Exception.Message)"
+        Write-Error "Bootstrap provisioning failed. See '$failureOutputPath'. Error: $($_.Exception.Message)"
     }
 
     throw

@@ -1,0 +1,37 @@
+<Project Sdk="WixToolset.Sdk/6.0.2">
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Bal.wixext" Version="6.0.2" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Bundle</OutputType>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Platform>x64</Platform>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <_MachineAgentCsproj>$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj</_MachineAgentCsproj>
+    <_MsiProjectPath>$(MSBuildThisFileDirectory)..\installer\AdagioMachineAgent.Setup.wixproj</_MsiProjectPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Bundle.wxs" />
+  </ItemGroup>
+
+  <Target Name="ResolveMachineAgentVersion" BeforeTargets="BeforeBuild">
+    <XmlPeek XmlInputPath="$(_MachineAgentCsproj)"
+             Query="/Project/PropertyGroup/Version/text()">
+      <Output TaskParameter="Result" PropertyName="AgentSemVer" />
+    </XmlPeek>
+
+    <PropertyGroup>
+      <DefineConstants>$(DefineConstants);AgentVersion=$(AgentSemVer)</DefineConstants>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="BuildMsiPackage" BeforeTargets="BeforeBuild">
+    <MSBuild Projects="$(_MsiProjectPath)"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);Platform=x64" />
+  </Target>
+
+</Project>

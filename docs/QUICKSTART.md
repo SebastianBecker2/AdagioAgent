@@ -62,6 +62,55 @@ If that works, continue with the full steps below for Linux, remote VM setup, an
    `adagioAgent.vmAgentCaCertPath` in VS Code so the extension trusts the VM
    certificate without importing it into the Windows trust store.
 
+#### Silent install parity (wizard-equivalent inputs)
+
+Use MSI properties to provide explicit certificate/API key values in unattended installs:
+
+```powershell
+msiexec /i AdagioMachineAgentSetup.msi /quiet /qn \
+   ADAGIO_CERT_MODE=Provided \
+   ADAGIO_PROVIDED_CERT_PATH="C:\ProgramData\AdagioMachineAgent\tls\agent.pfx" \
+   ADAGIO_PROVIDED_CERT_PASSWORD="<pfx-password>" \
+   ADAGIO_API_KEY_MODE=Provided \
+   ADAGIO_PROVIDED_API_KEY="<api-key>"
+```
+
+Supported values:
+- `ADAGIO_CERT_MODE`: `GeneratedCa` (default), `GeneratedLeaf`, `Provided`
+- `ADAGIO_API_KEY_MODE`: `Generate` (default), `Provided`
+
+You can also provide a response file path for deterministic unattended configuration:
+
+```powershell
+msiexec /i AdagioMachineAgentSetup.msi /quiet /qn \
+   ADAGIO_RESPONSE_FILE_PATH="C:\Install\adagio-response.json"
+```
+
+Example response file:
+
+```json
+{
+   "security": {
+      "certificateMode": "GeneratedCa",
+      "apiKeyMode": "Provided",
+      "providedApiKey": "replace-me",
+      "requireHttps": true,
+      "requireApiKey": true
+   },
+   "network": {
+      "urls": "https://10.0.0.2:5443",
+      "allowedHosts": "10.0.0.2;agent-host"
+   },
+   "agentOptions": {
+      "allowedExecutablePaths": ["C:\\Tools"],
+      "allowedWritablePaths": ["C:\\Logs"],
+      "allowedReadablePaths": ["C:\\Logs", "C:\\Tools"]
+   }
+}
+```
+
+Precedence order for overlapping values is: explicit MSI/wizard properties, response file, existing appsettings values, bootstrap defaults.
+
 #### One-command bootstrap (if you prefer manual setup)
 
 If you cloned the repo and want to run bootstrap directly:

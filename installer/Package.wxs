@@ -16,6 +16,13 @@
            UpgradeCode="{BA4F3D21-9E6B-4C7A-8F0E-2A1C5D8B7E3F}"
            Scope="perMachine">
 
+    <Property Id="ADAGIO_CERT_MODE" Value="GeneratedCa" Secure="yes" />
+    <Property Id="ADAGIO_PROVIDED_CERT_PATH" Secure="yes" />
+    <Property Id="ADAGIO_PROVIDED_CERT_PASSWORD" Secure="yes" />
+    <Property Id="ADAGIO_API_KEY_MODE" Value="Generate" Secure="yes" />
+    <Property Id="ADAGIO_PROVIDED_API_KEY" Secure="yes" />
+    <Property Id="ADAGIO_RESPONSE_FILE_PATH" Secure="yes" />
+
     <!-- Replace any earlier version; block downgrades. -->
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 
@@ -51,7 +58,7 @@
                   Execute="deferred"
                   Impersonate="no"
                   Return="check"
-                  ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]bootstrap-agent.ps1&quot; -WriteToAppSettings -WriteSecretHandoff -ForceRegenerate -SuppressSecretOutput" />
+                  ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]bootstrap-agent.ps1&quot; -WriteToAppSettings -WriteSecretHandoff -SuppressSecretOutput -CertificateMode &quot;[ADAGIO_CERT_MODE]&quot; -ProvidedCertificatePath &quot;[ADAGIO_PROVIDED_CERT_PATH]&quot; -ProvidedCertificatePassword &quot;[ADAGIO_PROVIDED_CERT_PASSWORD]&quot; -ApiKeyMode &quot;[ADAGIO_API_KEY_MODE]&quot; -ProvidedApiKey &quot;[ADAGIO_PROVIDED_API_KEY]&quot; -ResponseFilePath &quot;[ADAGIO_RESPONSE_FILE_PATH]&quot;" />
 
         <CustomAction Id="RunBootstrapPreflight"
           Directory="INSTALLFOLDER"
