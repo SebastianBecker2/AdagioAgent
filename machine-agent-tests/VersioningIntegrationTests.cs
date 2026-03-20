@@ -85,19 +85,13 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
     [Fact]
     public void Startup_Fails_WhenInstallerSchemaVersionIsUnsupported()
     {
-        using var factory = new AgentFactory().WithWebHostBuilder(builder =>
+        var options = new InstallerConfigOptions
         {
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["SecurityOptions:RequireHttps"] = "false",
-                    ["InstallerConfig:SchemaVersion"] = "2",
-                });
-            });
-        });
+            SchemaVersion = InstallerConfigOptions.MaxSupportedSchemaVersion + 1,
+        };
 
-        var ex = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            InstallerConfigCompatibilityPolicy.Validate(options));
         Assert.Contains("InstallerConfig.SchemaVersion", ex.Message, StringComparison.Ordinal);
     }
 

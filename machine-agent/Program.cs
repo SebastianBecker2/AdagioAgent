@@ -85,7 +85,7 @@ var securityOptions = securityOptionsSection.Get<SecurityOptions>() ?? new Secur
 var installerConfigOptions = installerConfigSection.Get<InstallerConfigOptions>() ?? new InstallerConfigOptions();
 try
 {
-    ValidateInstallerConfigCompatibility(installerConfigOptions);
+    InstallerConfigCompatibilityPolicy.Validate(installerConfigOptions);
     ConfigureTransportSecurity(builder, securityOptions);
     SecurityPolicy.ValidateSecurityOptions(securityOptions);
 }
@@ -352,17 +352,6 @@ static void WriteStartupFailureDiagnostics(Exception ex, SecurityOptions securit
     catch
     {
         // Best-effort diagnostics only; do not mask the original startup error.
-    }
-}
-
-static void ValidateInstallerConfigCompatibility(InstallerConfigOptions installerConfigOptions)
-{
-    if (installerConfigOptions.SchemaVersion < InstallerConfigOptions.MinSupportedSchemaVersion ||
-        installerConfigOptions.SchemaVersion > InstallerConfigOptions.MaxSupportedSchemaVersion)
-    {
-        throw new InvalidOperationException(
-            $"InstallerConfig.SchemaVersion '{installerConfigOptions.SchemaVersion}' is not supported. " +
-            $"Supported range: {InstallerConfigOptions.MinSupportedSchemaVersion}-{InstallerConfigOptions.MaxSupportedSchemaVersion}.");
     }
 }
 
