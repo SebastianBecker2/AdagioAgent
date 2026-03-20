@@ -193,6 +193,26 @@ function errorMessage(error: unknown): string {
   return "Unknown error.";
 }
 
+function getTlsModeForDiagnostics(): { mode: string; caCertPath?: string } {
+  if (!vscode.workspace || typeof vscode.workspace.getConfiguration !== "function") {
+    return { mode: "configuration-unavailable" };
+  }
+
+  const config = vscode.workspace.getConfiguration("adagioAgent");
+  const insecureSkipTlsVerify = config.get<boolean>("insecureSkipTlsVerify") ?? false;
+  const vmAgentCaCertPath = config.get<string>("vmAgentCaCertPath")?.trim();
+
+  if (insecureSkipTlsVerify) {
+    return { mode: "insecure-skip-verify" };
+  }
+
+  if (vmAgentCaCertPath) {
+    return { mode: "custom-ca", caCertPath: vmAgentCaCertPath };
+  }
+
+  return { mode: "default-system-trust" };
+}
+
 async function runStartupConnectionCheck(
   context?: vscode.ExtensionContext,
   options?: { force?: boolean; showSuccess?: boolean }
@@ -209,6 +229,9 @@ async function runStartupConnectionCheck(
   }
 
   try {
+    const tlsMode = getTlsModeForDiagnostics();
+    logAdagio("info", "Startup diagnostics TLS mode", tlsMode);
+
     const readiness = await getClient().ready();
     if (readiness.status === "ready") {
       if (state) {

@@ -159,6 +159,16 @@
           "default": true,
           "description": "Require vmAgentUrl to use HTTPS"
         },
+        "adagioAgent.vmAgentCaCertPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional path to a PEM CA/certificate file trusted only by the extension when connecting to vmAgentUrl"
+        },
+        "adagioAgent.insecureSkipTlsVerify": {
+          "type": "boolean",
+          "default": false,
+          "description": "Development only: skip TLS certificate verification for vmAgentUrl HTTPS requests"
+        },
         "adagioAgent.allowedExecutablePaths": {
           "type": "array",
           "items": {
@@ -987,6 +997,9 @@
     "test": "vitest run",
     "test:ci": "vitest run --reporter=default --reporter=junit --outputFile=.\\test-results\\vitest-junit.xml",
     "package:vsix": "vsce package --allow-missing-repository --skip-license"
+  },
+  "dependencies": {
+    "undici": "^6.21.3"
   },
   "devDependencies": {
     "@types/node": "^20.19.0",

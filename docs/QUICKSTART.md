@@ -49,6 +49,7 @@ If that works, continue with the full steps below for Linux, remote VM setup, an
    ```
    The MSI automatically:
    - Runs `bootstrap-agent.ps1` to generate a self-signed TLS certificate and API key.
+   - Includes `localhost`, the VM hostname, and detected non-loopback IPv4 addresses in the certificate SAN.
    - Writes credentials to `appsettings.json`.
    - Starts the `AdagioMachineAgent` Windows service on port 5443.
 
@@ -57,6 +58,9 @@ If that works, continue with the full steps below for Linux, remote VM setup, an
    Get-Content "C:\ProgramData\AdagioMachineAgent\bootstrap-secrets.json"
    ```
    Copy the `apiKey` value — you will need it in Step 3.
+   You can also use `httpsCaCertificatePemPath` from the same file as
+   `adagioAgent.vmAgentCaCertPath` in VS Code so the extension trusts the VM
+   certificate without importing it into the Windows trust store.
 
 #### One-command bootstrap (if you prefer manual setup)
 
@@ -65,11 +69,14 @@ If you cloned the repo and want to run bootstrap directly:
 .\scripts\bootstrap-agent.ps1 `
     -WriteToAppSettings `
     -WriteSecretHandoff `
+   -DnsNames $env:COMPUTERNAME, "localhost" `
+   -IpAddresses "127.0.0.1", "192.168.178.59" `
     -TrustCertificate `
     -StartService
 ```
 `-TrustCertificate` installs the generated cert into `LocalMachine\Root` so HTTPS connections from the same machine are trusted.  
 `-StartService` restarts the `AdagioMachineAgent` service automatically.
+If VS Code connects from another machine, include the VM hostname and VM IP in `-DnsNames` and `-IpAddresses` so the certificate matches `adagioAgent.vmAgentUrl`.
 
 ### Linux (Ubuntu)
 

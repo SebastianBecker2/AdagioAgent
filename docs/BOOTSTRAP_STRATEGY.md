@@ -43,7 +43,11 @@ The repository now includes `scripts/bootstrap-agent.ps1` to assist first-run
 bootstrap in controlled environments.
 
 - It can create/export a self-signed HTTPS certificate.
+- It exports the generated certificate as PEM (public cert only) alongside the
+   PFX so Node-based clients can trust it directly.
 - It generates a high-entropy API key and certificate password.
+- It can include VM hostnames and IP addresses in the certificate SAN when the
+   agent is accessed remotely instead of only over loopback.
 - It can persist values to user environment variables:
    - `SecurityOptions__ApiKey`
    - `SecurityOptions__HttpsCertificatePath`
@@ -59,6 +63,9 @@ PowerShell -ExecutionPolicy Bypass -File scripts/bootstrap-agent.ps1 -PersistToE
 
 # Optional: also write generated values into appsettings.json for local testing
 PowerShell -ExecutionPolicy Bypass -File scripts/bootstrap-agent.ps1 -WriteToAppSettings
+
+# Remote VM access: include the VM hostname/IP in the certificate SAN
+PowerShell -ExecutionPolicy Bypass -File scripts/bootstrap-agent.ps1 -WriteToAppSettings -DnsNames $env:COMPUTERNAME,localhost -IpAddresses 127.0.0.1,192.168.178.59
 ```
 
 ## Deferred items

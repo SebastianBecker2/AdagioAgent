@@ -51,7 +51,7 @@
                   Execute="deferred"
                   Impersonate="no"
                   Return="check"
-                  ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]bootstrap-agent.ps1&quot; -WriteToAppSettings -WriteSecretHandoff -SuppressSecretOutput" />
+                  ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]bootstrap-agent.ps1&quot; -WriteToAppSettings -WriteSecretHandoff -ForceRegenerate -SuppressSecretOutput" />
 
         <CustomAction Id="RunBootstrapPreflight"
           Directory="INSTALLFOLDER"

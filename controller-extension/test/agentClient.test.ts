@@ -35,6 +35,44 @@ describe("AgentClient", () => {
     });
   });
 
+  it("includes the request URL and a reachability hint when fetch is refused", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const cause = Object.assign(new Error("connect ECONNREFUSED 192.168.178.59:5443"), {
+      code: "ECONNREFUSED",
+    });
+    const fetchError = new TypeError("fetch failed");
+    Object.defineProperty(fetchError, "cause", {
+      value: cause,
+      configurable: true,
+    });
+    fetchMock.mockRejectedValue(fetchError);
+
+    const client = new AgentClient("https://192.168.178.59:5443/api/v1");
+
+    await expect(client.health()).rejects.toThrow(
+      "Request to https://192.168.178.59:5443/api/v1/health failed: fetch failed. The agent endpoint is not reachable. Verify the VM IP, that the AdagioMachineAgent service is running, and that inbound TCP 5443 is allowed on the VM."
+    );
+  });
+
+  it("includes a TLS trust hint when fetch fails certificate validation", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const cause = Object.assign(new Error("self-signed certificate"), {
+      code: "DEPTH_ZERO_SELF_SIGNED_CERT",
+    });
+    const fetchError = new TypeError("fetch failed");
+    Object.defineProperty(fetchError, "cause", {
+      value: cause,
+      configurable: true,
+    });
+    fetchMock.mockRejectedValue(fetchError);
+
+    const client = new AgentClient("https://192.168.178.59:5443/api/v1");
+
+    await expect(client.health()).rejects.toThrow(
+      "Request to https://192.168.178.59:5443/api/v1/health failed: fetch failed. TLS validation failed. Trust the VM agent certificate on this machine or replace it with a certificate signed by a trusted CA."
+    );
+  });
+
   it("calls readiness endpoint for startup validation", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock.mockResolvedValue(
@@ -366,6 +404,44 @@ describe("AgentClient", () => {
     expect(fallback.baseUrl).toBe("https://127.0.0.1:5443/api/v1");
   });
 
+  it("createAgentClient trims configured URL before validation", () => {
+    getConfigurationMock.mockReturnValueOnce({
+      get: vi.fn((key: string) => {
+        if (key === "vmAgentUrl") {
+          return "  https://127.0.0.1:5443/api/v1  ";
+        }
+
+        if (key === "requireHttps") {
+          return true;
+        }
+
+        return undefined;
+      }),
+    });
+
+    const client = createAgentClient() as unknown as { baseUrl: string };
+    expect(client.baseUrl).toBe("https://127.0.0.1:5443/api/v1");
+  });
+
+  it("createAgentClient falls back to the default URL when the configured URL is blank", () => {
+    getConfigurationMock.mockReturnValueOnce({
+      get: vi.fn((key: string) => {
+        if (key === "vmAgentUrl") {
+          return "   ";
+        }
+
+        if (key === "requireHttps") {
+          return true;
+        }
+
+        return undefined;
+      }),
+    });
+
+    const client = createAgentClient() as unknown as { baseUrl: string };
+    expect(client.baseUrl).toBe("https://127.0.0.1:5443/api/v1");
+  });
+
   it("createAgentClient rejects non-https URL when requireHttps is enabled", () => {
     getConfigurationMock.mockReturnValueOnce({
       get: vi.fn((key: string) => {
@@ -382,7 +458,7 @@ describe("AgentClient", () => {
     });
 
     expect(() => createAgentClient()).toThrow(
-      "adagioAgent.vmAgentUrl must use HTTPS when adagioAgent.requireHttps is true."
+      "adagioAgent.vmAgentUrl must use HTTPS when adagioAgent.requireHttps is true. Effective value: http://remote-agent:7777"
     );
   });
 

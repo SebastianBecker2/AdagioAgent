@@ -82,6 +82,24 @@ Describe 'Bootstrap provisioning script' {
         $appSettings.SecurityOptions.HttpsCertificatePassword | Should Not Be 'CHANGE_ME'
     }
 
+    It 'accepts explicit DNS and IP SAN parameters during bootstrap' {
+        {
+            $params = @{
+                CertificatePath = $script:certPath
+                DnsNames = @('adagio-vm', 'localhost')
+                IpAddresses = @('127.0.0.1', '192.168.178.59')
+                WriteToAppSettings = $true
+                AppSettingsPath = $script:appSettingsPath
+                SuppressSecretOutput = $true
+            }
+
+            & $bootstrapScript @params
+        } | Should Not Throw
+
+        $appSettings = Get-Content -LiteralPath $script:appSettingsPath -Raw | ConvertFrom-Json
+        $appSettings.SecurityOptions.HttpsCertificatePath | Should Be $script:certPath
+    }
+
     It 'writes secret handoff with restricted ACL for SYSTEM and Administrators' -Skip:(-not $script:isAdministrator) {
         { & $bootstrapScript -CertificatePath $script:certPath -WriteSecretHandoff -SecretHandoffPath $script:handoffPath -SuppressSecretOutput } | Should Not Throw
 
@@ -91,6 +109,8 @@ Describe 'Bootstrap provisioning script' {
         [string]::IsNullOrWhiteSpace($handoff.apiKey) | Should Be $false
         [string]::IsNullOrWhiteSpace($handoff.httpsCertificatePassword) | Should Be $false
         $handoff.httpsCertificatePath | Should Be $script:certPath
+        $handoff.httpsCaCertificatePemPath | Should Be (Join-Path $script:testRoot 'agent-ca.pem')
+        $handoff.httpsCaCertificatePfxPath | Should Be (Join-Path $script:testRoot 'agent-ca.pfx')
 
         $acl = Get-Acl -LiteralPath $script:handoffPath
         $acl.AreAccessRulesProtected | Should Be $true

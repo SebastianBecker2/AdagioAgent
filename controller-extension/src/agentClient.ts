@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as fs from "fs";
 import {
   RunRequest,
   RunResponse,
@@ -98,6 +99,35 @@ export function getCorrelationIdFromError(error: unknown): string | undefined {
   return undefined;
 }
 
+function describeFetchFailure(url: string, error: unknown): Error {
+  const message = error instanceof Error && error.message
+    ? error.message
+    : typeof error === "string" && error.length > 0
+      ? error
+      : "Unknown fetch error";
+  const cause = error instanceof Error ? (error as Error & { cause?: unknown }).cause : undefined;
+  const causeMessage = cause instanceof Error && cause.message
+    ? cause.message
+    : typeof cause === "string" && cause.length > 0
+      ? cause
+      : undefined;
+  const causeCode = typeof cause === "object" && cause !== null && "code" in cause && typeof cause.code === "string"
+    ? cause.code
+    : undefined;
+  const diagnostics = [message, causeMessage, causeCode].filter((value): value is string => Boolean(value)).join(" ");
+
+  let hint = "Verify the VM agent URL, network reachability, and TLS trust.";
+  if (/ECONNREFUSED|connection refused/i.test(diagnostics)) {
+    hint = "The agent endpoint is not reachable. Verify the VM IP, that the AdagioMachineAgent service is running, and that inbound TCP 5443 is allowed on the VM.";
+  } else if (/ENOTFOUND|EAI_AGAIN|getaddrinfo|name or service not known/i.test(diagnostics)) {
+    hint = "The VM host could not be resolved. Verify the hostname or IP address in adagioAgent.vmAgentUrl.";
+  } else if (/self-signed|CERT_|certificate|TLS|SSL|unable to verify/i.test(diagnostics)) {
+    hint = "TLS validation failed. Trust the VM agent certificate on this machine or replace it with a certificate signed by a trusted CA.";
+  }
+
+  return new Error(`Request to ${url} failed: ${message}. ${hint}`);
+}
+
 /**
  * HTTP client that wraps all calls to the Windows VM agent REST API.
  */
@@ -105,11 +135,32 @@ export class AgentClient {
   private baseUrl: string;
   private apiKey?: string;
   private sessionId?: string;
+  private fetchTlsOptions?: Record<string, unknown>;
+  private fetchImpl: typeof fetch;
 
-  constructor(baseUrl: string, apiKey?: string, sessionId?: string) {
+  constructor(
+    baseUrl: string,
+    apiKey?: string,
+    sessionId?: string,
+    vmAgentCaCertPath?: string,
+    insecureSkipTlsVerify?: boolean
+  ) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
     this.apiKey = apiKey;
     this.sessionId = sessionId;
+    this.fetchImpl = globalThis.fetch.bind(globalThis);
+
+    if (insecureSkipTlsVerify) {
+      this.fetchTlsOptions = this.createInsecureTlsFetchOptions();
+      return;
+    }
+
+    if (vmAgentCaCertPath) {
+      const trimmedPath = vmAgentCaCertPath.trim();
+      if (trimmedPath.length > 0) {
+        this.fetchTlsOptions = this.createTlsFetchOptions(trimmedPath);
+      }
+    }
   }
 
   // ─── Health ──────────────────────────────────────────────────────────────
@@ -385,22 +436,34 @@ export class AgentClient {
 
   private async get<T>(path: string): Promise<T> {
     const url = `${this.baseUrl}${path}`;
-    const response = await fetch(url, {
-      headers: this.buildHeaders(),
-    });
+    let response: Response;
+    try {
+      response = await this.fetchImpl(url, {
+        ...this.fetchTlsOptions,
+        headers: this.buildHeaders(),
+      });
+    } catch (error) {
+      throw describeFetchFailure(url, error);
+    }
     return this.handleResponse<T>(response);
   }
 
   private async post<T>(path: string, body: unknown): Promise<T> {
     const url = `${this.baseUrl}${path}`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        ...this.buildHeaders(),
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    let response: Response;
+    try {
+      response = await this.fetchImpl(url, {
+        ...this.fetchTlsOptions,
+        method: "POST",
+        headers: {
+          ...this.buildHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (error) {
+      throw describeFetchFailure(url, error);
+    }
     return this.handleResponse<T>(response);
   }
 
@@ -444,22 +507,72 @@ export class AgentClient {
     }
     return response.json() as Promise<T>;
   }
+
+  private createTlsFetchOptions(caCertPath: string): Record<string, unknown> {
+    try {
+      const caPem = fs.readFileSync(caCertPath, "utf8");
+      // Keep this dependency dynamic because fetch/undici is provided by the Node runtime.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const undici = require("undici") as {
+        Agent: new (options: unknown) => unknown;
+        fetch: typeof fetch;
+      };
+      const dispatcher = new undici.Agent({
+        connect: {
+          ca: caPem,
+        },
+      });
+
+      // Use undici.fetch directly so dispatcher support is guaranteed across
+      // extension-host Node runtime variants.
+      this.fetchImpl = undici.fetch.bind(undici);
+
+      return { dispatcher };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Failed to load adagioAgent.vmAgentCaCertPath '${caCertPath}': ${message}`
+      );
+    }
+  }
+
+  private createInsecureTlsFetchOptions(): Record<string, unknown> {
+    // Keep this dependency dynamic because fetch/undici is provided by the Node runtime.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const undici = require("undici") as {
+      Agent: new (options: unknown) => unknown;
+      fetch: typeof fetch;
+    };
+    const dispatcher = new undici.Agent({
+      connect: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    this.fetchImpl = undici.fetch.bind(undici);
+    return { dispatcher };
+  }
 }
 
 /**
  * Create an AgentClient using the URL from VS Code configuration.
  */
 export function createAgentClient(sessionId?: string): AgentClient {
+  const defaultUrl = "https://127.0.0.1:5443/api/v1";
   const config = vscode.workspace.getConfiguration("adagioAgent");
-  const url = config.get<string>("vmAgentUrl") ?? "https://127.0.0.1:5443/api/v1";
+  const configuredUrl = config.get<string>("vmAgentUrl");
+  const url = configuredUrl?.trim() || defaultUrl;
   const requireHttps = config.get<boolean>("requireHttps") ?? true;
   const apiKey = config.get<string>("vmAgentApiKey");
+  const configuredCaCertPath = config.get<string>("vmAgentCaCertPath");
+  const vmAgentCaCertPath = configuredCaCertPath?.trim();
+  const insecureSkipTlsVerify = config.get<boolean>("insecureSkipTlsVerify") ?? false;
 
   if (requireHttps && !url.toLowerCase().startsWith("https://")) {
     throw new Error(
-      "adagioAgent.vmAgentUrl must use HTTPS when adagioAgent.requireHttps is true."
+      `adagioAgent.vmAgentUrl must use HTTPS when adagioAgent.requireHttps is true. Effective value: ${url}`
     );
   }
 
-  return new AgentClient(url, apiKey, sessionId);
+  return new AgentClient(url, apiKey, sessionId, vmAgentCaCertPath, insecureSkipTlsVerify);
 }
