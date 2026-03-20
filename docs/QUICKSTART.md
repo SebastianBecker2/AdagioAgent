@@ -86,6 +86,14 @@ msiexec /i AdagioMachineAgentSetup.msi /quiet /qn \
    ADAGIO_RESPONSE_FILE_PATH="C:\Install\adagio-response.json"
 ```
 
+Generate that response file with discovery-aware defaults:
+
+```powershell
+.\scripts\generate-installer-response-file.ps1 -OutputPath C:\Install\adagio-response.json
+```
+
+Use `-NonInteractive` to produce a deterministic file from CLI values only.
+
 Example response file:
 
 ```json

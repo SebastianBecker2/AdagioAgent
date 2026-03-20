@@ -1,5 +1,6 @@
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $installerMatrixScript = Join-Path $repoRoot 'scripts\test-installer-bootstrap-matrix.ps1'
+$responseGeneratorScript = Join-Path $repoRoot 'scripts\generate-installer-response-file.ps1'
 
 Describe 'Installer validation matrix script' {
     BeforeEach {
@@ -75,5 +76,47 @@ Describe 'Installer validation matrix script' {
         $scriptText | Should Match 'Add-Type -TypeDefinition'
         $scriptText | Should Match 'RemoteCertificateValidationCallback'
         $scriptText | Should Not Match 'ServerCertificateValidationCallback\s*=\s*\{\s*\$true\s*\}'
+    }
+}
+
+Describe 'Installer response-file generator script' {
+    BeforeEach {
+        $script:testRoot = Join-Path $env:TEMP ("adagio-response-script-tests-" + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $script:testRoot -Force | Out-Null
+        $script:responsePath = Join-Path $script:testRoot 'installer-response.json'
+    }
+
+    AfterEach {
+        Remove-Item -LiteralPath $script:testRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'writes a valid response file in non-interactive mode' {
+        {
+            & $responseGeneratorScript -NonInteractive -OutputPath $script:responsePath
+        } | Should Not Throw
+
+        (Test-Path -LiteralPath $script:responsePath -PathType Leaf) | Should Be $true
+
+        $payload = Get-Content -LiteralPath $script:responsePath -Raw | ConvertFrom-Json
+        $payload.schemaVersion | Should Be 1
+        $payload.security.certificateMode | Should Be 'GeneratedCa'
+        $payload.security.apiKeyMode | Should Be 'Generate'
+        [string]::IsNullOrWhiteSpace([string]$payload.network.urls) | Should Be $false
+        [string]::IsNullOrWhiteSpace([string]$payload.network.allowedHosts) | Should Be $false
+        @($payload.agentOptions.allowedExecutablePaths).Count | Should BeGreaterThan 0
+        @($payload.agentOptions.allowedWritablePaths).Count | Should BeGreaterThan 0
+        @($payload.agentOptions.allowedReadablePaths).Count | Should BeGreaterThan 0
+    }
+
+    It 'rejects provided certificate mode without path and password' {
+        {
+            & $responseGeneratorScript -NonInteractive -OutputPath $script:responsePath -CertificateMode Provided
+        } | Should Throw
+    }
+
+    It 'rejects provided API key mode without providedApiKey' {
+        {
+            & $responseGeneratorScript -NonInteractive -OutputPath $script:responsePath -ApiKeyMode Provided
+        } | Should Throw
     }
 }
