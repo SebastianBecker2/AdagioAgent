@@ -82,6 +82,25 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
         Assert.Equal(directPayload.Platform, versionedPayload.Platform);
     }
 
+    [Fact]
+    public void Startup_Fails_WhenInstallerSchemaVersionIsUnsupported()
+    {
+        using var factory = new AgentFactory().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["SecurityOptions:RequireHttps"] = "false",
+                    ["InstallerConfig:SchemaVersion"] = "2",
+                });
+            });
+        });
+
+        var ex = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+        Assert.Contains("InstallerConfig.SchemaVersion", ex.Message, StringComparison.Ordinal);
+    }
+
     // ── versioned routing for non-health endpoints ────────────────────────
 
     [Fact]

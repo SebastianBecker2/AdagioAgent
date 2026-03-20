@@ -77,10 +77,14 @@ builder.Services.Configure<AgentOptions>(
 var securityOptionsSection = builder.Configuration.GetSection("SecurityOptions");
 builder.Services.Configure<SecurityOptions>(
     securityOptionsSection);
+var installerConfigSection = builder.Configuration.GetSection("InstallerConfig");
+builder.Services.Configure<InstallerConfigOptions>(installerConfigSection);
 
 var securityOptions = securityOptionsSection.Get<SecurityOptions>() ?? new SecurityOptions();
+var installerConfigOptions = installerConfigSection.Get<InstallerConfigOptions>() ?? new InstallerConfigOptions();
 try
 {
+    ValidateInstallerConfigCompatibility(installerConfigOptions);
     ConfigureTransportSecurity(builder, securityOptions);
     SecurityPolicy.ValidateSecurityOptions(securityOptions);
 }
@@ -350,6 +354,28 @@ static void WriteStartupFailureDiagnostics(Exception ex, SecurityOptions securit
     }
 }
 
+static void ValidateInstallerConfigCompatibility(InstallerConfigOptions installerConfigOptions)
+{
+    if (installerConfigOptions.SchemaVersion < InstallerConfigOptions.MinSupportedSchemaVersion ||
+        installerConfigOptions.SchemaVersion > InstallerConfigOptions.MaxSupportedSchemaVersion)
+    {
+        throw new InvalidOperationException(
+            $"InstallerConfig.SchemaVersion '{installerConfigOptions.SchemaVersion}' is not supported. " +
+            $"Supported range: {InstallerConfigOptions.MinSupportedSchemaVersion}-{InstallerConfigOptions.MaxSupportedSchemaVersion}.");
+    }
+}
+
+/// <summary>
+/// Installer-authored configuration contract version to guard upgrade compatibility.
+/// </summary>
+public sealed class InstallerConfigOptions
+{
+    public const int MinSupportedSchemaVersion = 1;
+    public const int MaxSupportedSchemaVersion = 1;
+
+    /// <summary>Schema version of installer-managed configuration payload.</summary>
+    public int SchemaVersion { get; set; } = 1;
+}
 // ─── Configuration model ──────────────────────────────────────────────────────
 
 /// <summary>Agent runtime configuration (appsettings.json / env vars).</summary>
