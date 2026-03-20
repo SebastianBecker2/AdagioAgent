@@ -1,6 +1,7 @@
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $installerMatrixScript = Join-Path $repoRoot 'scripts\test-installer-bootstrap-matrix.ps1'
 $responseGeneratorScript = Join-Path $repoRoot 'scripts\generate-installer-response-file.ps1'
+$bundleRunnerScript = Join-Path $repoRoot 'scripts\run-installer-bundle-with-response.ps1'
 
 Describe 'Installer validation matrix script' {
     BeforeEach {
@@ -117,6 +118,57 @@ Describe 'Installer response-file generator script' {
     It 'rejects provided API key mode without providedApiKey' {
         {
             & $responseGeneratorScript -NonInteractive -OutputPath $script:responsePath -ApiKeyMode Provided
+        } | Should Throw
+    }
+}
+
+Describe 'Installer bundle runner script' {
+    BeforeEach {
+        $script:testRoot = Join-Path $env:TEMP ("adagio-bundle-runner-tests-" + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $script:testRoot -Force | Out-Null
+
+        $script:outputDir = Join-Path $script:testRoot 'artifacts'
+        New-Item -ItemType Directory -Path $script:outputDir -Force | Out-Null
+
+        $script:responsePath = Join-Path $script:testRoot 'response.json'
+        & $responseGeneratorScript -NonInteractive -OutputPath $script:responsePath | Out-Null
+
+        $script:bundlePath = Join-Path $script:testRoot 'AdagioMachineAgent.Bundle.exe'
+        Set-Content -LiteralPath $script:bundlePath -Value 'fixture-bundle' -Encoding ASCII
+    }
+
+    AfterEach {
+        Remove-Item -LiteralPath $script:testRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'writes dry-run JSON and Markdown summaries' {
+        {
+            & $bundleRunnerScript -BundlePath $script:bundlePath -ResponseFilePath $script:responsePath -OutputDir $script:outputDir -DryRun
+        } | Should Not Throw
+
+        $summaryJsonPath = Join-Path $script:outputDir 'bundle-run-summary.json'
+        $summaryMarkdownPath = Join-Path $script:outputDir 'bundle-run-summary.md'
+
+        (Test-Path -LiteralPath $summaryJsonPath -PathType Leaf) | Should Be $true
+        (Test-Path -LiteralPath $summaryMarkdownPath -PathType Leaf) | Should Be $true
+
+        $summary = Get-Content -LiteralPath $summaryJsonPath -Raw | ConvertFrom-Json
+        $summary.dryRun | Should Be $true
+        $summary.success | Should Be $true
+        $summary.responseSchemaVersion | Should Be 1
+        $summary.bundlePath | Should Be $script:bundlePath
+        $summary.responseFilePath | Should Be $script:responsePath
+    }
+
+    It 'fails when response file path is missing' {
+        {
+            & $bundleRunnerScript -BundlePath $script:bundlePath -ResponseFilePath (Join-Path $script:testRoot 'missing-response.json') -OutputDir $script:outputDir -DryRun
+        } | Should Throw
+    }
+
+    It 'fails when bundle path is missing' {
+        {
+            & $bundleRunnerScript -BundlePath (Join-Path $script:testRoot 'missing-bundle.exe') -ResponseFilePath $script:responsePath -OutputDir $script:outputDir -DryRun
         } | Should Throw
     }
 }

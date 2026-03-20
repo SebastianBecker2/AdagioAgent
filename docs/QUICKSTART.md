@@ -94,6 +94,25 @@ Generate that response file with discovery-aware defaults:
 
 Use `-NonInteractive` to produce a deterministic file from CLI values only.
 
+Run the bundle with that response file and generate an execution summary:
+
+```powershell
+.\scripts\run-installer-bundle-with-response.ps1 \
+   -BundlePath .\installer-bundle\bin\x64\Release\AdagioMachineAgent.Bundle.exe \
+   -ResponseFilePath C:\Install\adagio-response.json \
+   -OutputDir .\artifacts\installer
+```
+
+Preview without executing install:
+
+```powershell
+.\scripts\run-installer-bundle-with-response.ps1 \
+   -BundlePath .\installer-bundle\bin\x64\Release\AdagioMachineAgent.Bundle.exe \
+   -ResponseFilePath C:\Install\adagio-response.json \
+   -OutputDir .\artifacts\installer \
+   -DryRun
+```
+
 Example response file:
 
 ```json
