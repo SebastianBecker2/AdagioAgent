@@ -16,7 +16,7 @@ extension) to a UI-automation agent running inside a Windows or Linux VM.
 | Use AdagioAgent on a VM | [docs/QUICKSTART.md](docs/QUICKSTART.md) |
 | Install the VS Code extension from release artifacts | [docs/QUICKSTART.md](docs/QUICKSTART.md#step-2--install-the-vs-code-extension) |
 | Troubleshoot readiness, bootstrap, or support bundles | [docs/DIAGNOSTICS_TROUBLESHOOTING.md](docs/DIAGNOSTICS_TROUBLESHOOTING.md) |
-| Understand product direction | [docs/PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md) |
+| Understand product direction | [docs/plans/PROJECT_ROADMAP.md](docs/plans/PROJECT_ROADMAP.md) |
 | Develop or modify the codebase | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 ---
@@ -66,7 +66,8 @@ strategy decision. Troubleshooting workflows are documented in
 
 Project direction:
 
-- [docs/PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md)
+- [docs/plans/README.md](docs/plans/README.md)
+- [docs/plans/PROJECT_ROADMAP.md](docs/plans/PROJECT_ROADMAP.md)
 
 ### Governance and support
 
@@ -571,8 +572,8 @@ will be removed when a `/api/v2` surface is introduced. No removal date is set
 yet; they will remain available throughout the API v1 lifecycle.
 
 For the full step-by-step release procedure see [docs/RELEASING.md](docs/RELEASING.md).
-For the implementation status of versioning work see [docs/VERSIONING_PLAN.md](docs/VERSIONING_PLAN.md).
-For the broader product roadmap see [docs/PRODUCTIZATION_PLAN.md](docs/PRODUCTIZATION_PLAN.md).
+For the implementation status of versioning work see [docs/plans/VERSIONING_PLAN.md](docs/plans/VERSIONING_PLAN.md).
+For the broader product roadmap see [docs/plans/PRODUCTIZATION_PLAN.md](docs/plans/PRODUCTIZATION_PLAN.md).
 
 ---
 

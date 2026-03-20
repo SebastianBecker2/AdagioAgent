@@ -43,4 +43,4 @@ Phase 2.1 is considered complete when:
 2. Linux CI passes with both:
    - standard machine-agent tests, and
    - Linux UI parity smoke artifact generation.
-3. `docs/OPERATING_MODEL.md` and `docs/PROJECT_ROADMAP.md` remain aligned with this matrix.
+3. `docs/OPERATING_MODEL.md` and `docs/plans/PROJECT_ROADMAP.md` remain aligned with this matrix.

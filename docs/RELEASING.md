@@ -228,4 +228,4 @@ When introducing breaking REST API changes:
 3. Update `HealthResponse.ApiVersion` to `2` in `AutomationController.cs`.
 4. Update `MinSupportedClientVersion` as appropriate.
 5. Remove the deprecated `/api/v1/...` aliases once support is dropped
-   (see **Phase 5.3** in [VERSIONING_PLAN.md](VERSIONING_PLAN.md)).
+   (see **Phase 5.3** in [plans/VERSIONING_PLAN.md](plans/VERSIONING_PLAN.md)).
