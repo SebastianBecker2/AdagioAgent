@@ -7,6 +7,7 @@ This folder contains planning documents and the roadmap source of truth.
 - [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md)
 - [PRODUCTIZATION_PLAN.md](PRODUCTIZATION_PLAN.md)
 - [INSTALLER_BOOTSTRAP_PLAN.md](INSTALLER_BOOTSTRAP_PLAN.md)
+- [INSTALLER_WIZARD_PLAN.md](INSTALLER_WIZARD_PLAN.md)
 - [VERSIONING_PLAN.md](VERSIONING_PLAN.md)
 
 ## Current Implementation Status (March 2026)
