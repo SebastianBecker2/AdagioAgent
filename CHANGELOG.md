@@ -6,6 +6,18 @@ The format is inspired by Keep a Changelog and this project uses SemVer.
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-03-20
+
+### Changed
+
+- Bumped machine-agent and controller-extension versions to 0.2.3 before creating tag `v0.2.3`.
+
+## [0.2.2] - 2026-03-20
+
+### Changed
+
+- Aligned machine-agent and controller-extension versions with tag `v0.2.2` for release preflight validation.
+
 ## [0.2.1] - 2026-03-19
 
 ### Fixed
