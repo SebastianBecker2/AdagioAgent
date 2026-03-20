@@ -11,6 +11,7 @@
     <InstallerPlatform>x64</InstallerPlatform>
     <_MachineAgentCsproj>$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj</_MachineAgentCsproj>
     <_MsiProjectPath>$(MSBuildThisFileDirectory)..\installer\AdagioMachineAgent.Setup.wixproj</_MsiProjectPath>
+    <_BaProjectPath>$(MSBuildThisFileDirectory)..\installer-ba\AdagioMachineAgent.BA.csproj</_BaProjectPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,6 +31,12 @@
 
   <Target Name="BuildMsiPackage" BeforeTargets="BeforeBuild">
     <MSBuild Projects="$(_MsiProjectPath)"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);Platform=x64" />
+  </Target>
+
+  <Target Name="BuildBootstrapperApplication" BeforeTargets="BuildMsiPackage">
+    <MSBuild Projects="$(_BaProjectPath)"
              Targets="Build"
              Properties="Configuration=$(Configuration);Platform=x64" />
   </Target>
