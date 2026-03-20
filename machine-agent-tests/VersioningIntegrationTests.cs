@@ -532,6 +532,55 @@ public sealed class VersioningIntegrationTests : IClassFixture<VersioningIntegra
     }
 
     [Fact]
+    public async Task DiagnosticsInstallationHistory_VersionedRoute_ReturnsSameResponseAsDirectRoute()
+    {
+        using var directBody = new StringContent("{}", Encoding.UTF8, "application/json");
+        using var versionedBody = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        var direct = await _client.PostAsync("/diagnostics/installation-history", directBody);
+        var versioned = await _client.PostAsync("/api/v1/diagnostics/installation-history", versionedBody);
+
+        Assert.Equal(HttpStatusCode.OK, direct.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, versioned.StatusCode);
+
+        var directPayload = await ReadJson<QueryInstallationHistoryResponse>(direct);
+        var versionedPayload = await ReadJson<QueryInstallationHistoryResponse>(versioned);
+
+        Assert.Equal(directPayload.Count, versionedPayload.Count);
+        Assert.Equal(directPayload.TotalAvailable, versionedPayload.TotalAvailable);
+    }
+
+    [Fact]
+    public async Task DiagnosticsExportInstallationHistory_VersionedRoute_ReturnsSameResponseAsDirectRoute()
+    {
+        var direct = await _client.GetAsync("/diagnostics/export-installation-history?format=json");
+        var versioned = await _client.GetAsync("/api/v1/diagnostics/export-installation-history?format=json");
+
+        Assert.Equal(HttpStatusCode.OK, direct.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, versioned.StatusCode);
+
+        var directPayload = await ReadJson<ExportInstallationHistoryResponse>(direct);
+        var versionedPayload = await ReadJson<ExportInstallationHistoryResponse>(versioned);
+
+        Assert.Equal("json", directPayload.Format, ignoreCase: true);
+        Assert.Equal(directPayload.Format, versionedPayload.Format, ignoreCase: true);
+        Assert.Equal(directPayload.RecordCount, versionedPayload.RecordCount);
+    }
+
+    [Fact]
+    public async Task DiagnosticsExportInstallationHistory_InvalidFormat_ReturnsIdenticalValidationErrors()
+    {
+        var direct = await _client.GetAsync("/diagnostics/export-installation-history?format=xml");
+        var versioned = await _client.GetAsync("/api/v1/diagnostics/export-installation-history?format=xml");
+
+        await AssertStructuredErrorParity(
+            versioned,
+            direct,
+            HttpStatusCode.BadRequest,
+            AgentErrorCodes.ValidationFailed);
+    }
+
+    [Fact]
     public async Task SwaggerJson_IsAvailableAndDeclaresVersionedServer()
     {
         var response = await _client.GetAsync("/swagger/v1/swagger.json");
