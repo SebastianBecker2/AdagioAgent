@@ -2,6 +2,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $installerMatrixScript = Join-Path $repoRoot 'scripts\test-installer-bootstrap-matrix.ps1'
 $responseGeneratorScript = Join-Path $repoRoot 'scripts\generate-installer-response-file.ps1'
 $bundleRunnerScript = Join-Path $repoRoot 'scripts\run-installer-bundle-with-response.ps1'
+$bootstrapPreflightScript = Join-Path $repoRoot 'scripts\check-bootstrap-preflight.ps1'
 
 Describe 'Installer validation matrix script' {
     BeforeEach {
@@ -169,6 +170,68 @@ Describe 'Installer bundle runner script' {
     It 'fails when bundle path is missing' {
         {
             & $bundleRunnerScript -BundlePath (Join-Path $script:testRoot 'missing-bundle.exe') -ResponseFilePath $script:responsePath -OutputDir $script:outputDir -DryRun
+        } | Should Throw
+    }
+}
+
+Describe 'Bootstrap preflight script validation' {
+    BeforeEach {
+        $script:testRoot = Join-Path $env:TEMP ("adagio-preflight-tests-" + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $script:testRoot -Force | Out-Null
+        $script:appSettingsPath = Join-Path $script:testRoot 'appsettings.json'
+    }
+
+    AfterEach {
+        Remove-Item -LiteralPath $script:testRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'fails when AllowedWritablePaths is empty' {
+        $payload = @{
+            AllowedHosts = 'localhost'
+            Urls = 'http://127.0.0.1:5443'
+            SecurityOptions = @{
+                RequireHttps = $false
+                RequireApiKey = $false
+                ApiKey = ''
+                HttpsCertificatePath = ''
+                HttpsCertificatePassword = ''
+            }
+            AgentOptions = @{
+                AllowedExecutablePaths = @('C:\Apps')
+                AllowedWritablePaths = @()
+                AllowedReadablePaths = @('C:\Apps')
+            }
+        } | ConvertTo-Json -Depth 8
+
+        Set-Content -LiteralPath $script:appSettingsPath -Value $payload -Encoding UTF8
+
+        {
+            & $bootstrapPreflightScript -AppSettingsPath $script:appSettingsPath
+        } | Should Throw
+    }
+
+    It 'fails when RequireHttps is true but Urls contains http endpoint' {
+        $payload = @{
+            AllowedHosts = 'localhost'
+            Urls = 'http://127.0.0.1:5443'
+            SecurityOptions = @{
+                RequireHttps = $true
+                RequireApiKey = $false
+                ApiKey = ''
+                HttpsCertificatePath = 'C:\does-not-matter.pfx'
+                HttpsCertificatePassword = 'pw'
+            }
+            AgentOptions = @{
+                AllowedExecutablePaths = @('C:\Apps')
+                AllowedWritablePaths = @('C:\Apps')
+                AllowedReadablePaths = @('C:\Apps')
+            }
+        } | ConvertTo-Json -Depth 8
+
+        Set-Content -LiteralPath $script:appSettingsPath -Value $payload -Encoding UTF8
+
+        {
+            & $bootstrapPreflightScript -AppSettingsPath $script:appSettingsPath
         } | Should Throw
     }
 }

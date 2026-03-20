@@ -197,6 +197,33 @@ Describe 'Bootstrap provisioning script' {
         @($appSettings.AgentOptions.AllowedReadablePaths) | Should Be @('C:\Logs', 'C:\Tools')
     }
 
+    It 'fails fast for unsupported response schemaVersion' {
+        $responsePath = Join-Path $script:testRoot 'unsupported-response.json'
+        $payload = @{
+            schemaVersion = 2
+            security = @{ apiKeyMode = 'Generate' }
+        } | ConvertTo-Json -Depth 5
+        Set-Content -LiteralPath $responsePath -Value $payload -Encoding UTF8
+
+        {
+            & $bootstrapScript -CertificatePath $script:certPath -ResponseFilePath $responsePath -SuppressSecretOutput
+        } | Should Throw
+
+        $failurePath = if (Test-Path -LiteralPath $script:bootstrapFailurePath -PathType Leaf) {
+            $script:bootstrapFailurePath
+        }
+        elseif (Test-Path -LiteralPath $script:bootstrapFailureFallbackPath -PathType Leaf) {
+            $script:bootstrapFailureFallbackPath
+        }
+        else {
+            $null
+        }
+
+        ($null -ne $failurePath) | Should Be $true
+        $failure = Get-Content -LiteralPath $failurePath -Raw | ConvertFrom-Json
+        $failure.errorCode | Should Be 'AA1004'
+    }
+
     It 'writes secret handoff with restricted ACL for SYSTEM and Administrators' -Skip:(-not $script:isAdministrator) {
         { & $bootstrapScript -CertificatePath $script:certPath -WriteSecretHandoff -SecretHandoffPath $script:handoffPath -SuppressSecretOutput } | Should Not Throw
 

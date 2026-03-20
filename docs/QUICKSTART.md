@@ -136,6 +136,10 @@ Example response file:
 }
 ```
 
+Schema compatibility:
+- `schemaVersion: 1` is currently supported.
+- Unknown schema versions are rejected by bootstrap with an explicit failure code and guidance to regenerate the file.
+
 Precedence order for overlapping values is: explicit MSI/wizard properties, response file, existing appsettings values, bootstrap defaults.
 
 #### One-command bootstrap (if you prefer manual setup)

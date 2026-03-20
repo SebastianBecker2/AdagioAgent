@@ -49,6 +49,20 @@ function Get-FailureMetadata {
         }
     }
 
+    if ($ErrorMessage -match 'AllowedHosts|AllowedExecutablePaths|AllowedWritablePaths|AllowedReadablePaths') {
+        return @{
+            errorCode = 'AA2005'
+            suggestedAction = 'Ensure installer wizard or response-file path settings include non-empty allowed hosts and path allowlists.'
+        }
+    }
+
+    if ($ErrorMessage -match 'Urls') {
+        return @{
+            errorCode = 'AA2006'
+            suggestedAction = 'Set Urls to valid endpoint values and ensure HTTPS endpoints are used when RequireHttps is true.'
+        }
+    }
+
     return @{
         errorCode = 'AA2099'
         suggestedAction = 'Inspect bootstrap-preflight.log for detailed validation output, then retry installation.'
@@ -75,6 +89,38 @@ try {
     }
 
     $security = $config.SecurityOptions
+    $urls = [string]$config.Urls
+    $allowedHosts = [string]$config.AllowedHosts
+    $agentOptions = $config.AgentOptions
+
+    if ([string]::IsNullOrWhiteSpace($urls)) {
+        throw 'Urls is required but empty.'
+    }
+
+    $urlEntries = @($urls.Split(';') | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($urlEntries.Count -eq 0) {
+        throw 'Urls does not contain any valid endpoint entries.'
+    }
+
+    if ([string]::IsNullOrWhiteSpace($allowedHosts)) {
+        throw 'AllowedHosts is required but empty.'
+    }
+
+    if ($null -eq $agentOptions) {
+        throw 'Missing AgentOptions section in appsettings.'
+    }
+
+    if (@($agentOptions.AllowedExecutablePaths).Count -eq 0) {
+        throw 'AllowedExecutablePaths is empty.'
+    }
+
+    if (@($agentOptions.AllowedWritablePaths).Count -eq 0) {
+        throw 'AllowedWritablePaths is empty.'
+    }
+
+    if (@($agentOptions.AllowedReadablePaths).Count -eq 0) {
+        throw 'AllowedReadablePaths is empty.'
+    }
 
     if ($security.RequireApiKey -and [string]::IsNullOrWhiteSpace([string]$security.ApiKey)) {
         throw "SecurityOptions.ApiKey is required but empty."
@@ -85,6 +131,12 @@ try {
     }
 
     if ($security.RequireHttps) {
+        foreach ($urlEntry in $urlEntries) {
+            if (-not $urlEntry.StartsWith('https://', [System.StringComparison]::OrdinalIgnoreCase)) {
+                throw "Urls contains non-HTTPS endpoint '$urlEntry' while SecurityOptions.RequireHttps is true."
+            }
+        }
+
         $certPath = [string]$security.HttpsCertificatePath
         $certPassword = [string]$security.HttpsCertificatePassword
 

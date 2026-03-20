@@ -93,6 +93,13 @@ function Get-FailureMetadata {
         }
     }
 
+    if ($ErrorMessage -match 'Unsupported response schemaVersion') {
+        return @{
+            errorCode = 'AA1004'
+            suggestedAction = 'Regenerate installer response file with scripts/generate-installer-response-file.ps1 or use a supported schemaVersion.'
+        }
+    }
+
     return @{
         errorCode = 'AA1099'
         suggestedAction = 'Inspect bootstrap.log for detailed command output, then retry installation.'
@@ -287,7 +294,21 @@ function Get-InstallerResponseConfig {
     }
 
     try {
-        return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+        $config = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+        if ($null -eq $config) {
+            throw 'Response file is empty.'
+        }
+
+        $schemaVersion = 1
+        if ($config.PSObject.Properties.Match('schemaVersion').Count -gt 0 -and $null -ne $config.schemaVersion) {
+            $schemaVersion = [int]$config.schemaVersion
+        }
+
+        if ($schemaVersion -ne 1) {
+            throw "Unsupported response schemaVersion '$schemaVersion'. Supported versions: 1."
+        }
+
+        return $config
     }
     catch {
         throw "Failed to parse response file at '$Path'. Error: $($_.Exception.Message)"
