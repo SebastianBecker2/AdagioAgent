@@ -56,6 +56,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 builder.Services.AddSingleton<ProcessService>();
 builder.Services.AddSingleton<SessionService>();
+builder.Services.AddSingleton<InstallationResultService>();
 builder.Services.AddHostedService<SessionExpiryService>();
 
 // Register the correct UI-automation backend for the host platform.

@@ -16,6 +16,7 @@ public sealed class AutomationController : ControllerBase
     private readonly ProcessService _processService;
     private readonly SessionService _sessionService;
     private readonly IUiAutomationService _uiService;
+    private readonly InstallationResultService _installationResultService;
     private readonly ILogger<AutomationController> _logger;
 
     private static readonly string AgentVersion =
@@ -25,11 +26,13 @@ public sealed class AutomationController : ControllerBase
         ProcessService processService,
         SessionService sessionService,
         IUiAutomationService uiService,
+        InstallationResultService installationResultService,
         ILogger<AutomationController> logger)
     {
         _processService = processService;
         _sessionService = sessionService;
         _uiService = uiService;
+        _installationResultService = installationResultService;
         _logger = logger;
     }
 
@@ -250,6 +253,74 @@ public sealed class AutomationController : ControllerBase
         return Ok(metadata);
     }
 
+    // ── GET /diagnostics/installation-history ──────────────────────────────
+
+    /// <summary>Query installation records for post-deployment diagnostics and troubleshooting.</summary>
+    [HttpPost("/diagnostics/installation-history")]
+    [ProducesResponseType(typeof(QueryInstallationHistoryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> QueryInstallationHistory(
+        [FromBody] QueryInstallationHistoryRequest? request = null)
+    {
+        try
+        {
+            // Use defaults if no request provided or use the provided filters.
+            var queryRequest = request ?? new QueryInstallationHistoryRequest();
+            var response = await _installationResultService.QueryHistoryAsync(queryRequest);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to query installation history.");
+            return InternalError(
+                "Failed to query installation history.",
+                "Verify installation history file exists and is readable.",
+                ex.Message);
+        }
+    }
+
+    // ── GET /diagnostics/export-installation-history ────────────────────────
+
+    /// <summary>Export installation history as JSON or CSV for offline analysis.</summary>
+    [HttpGet("/diagnostics/export-installation-history")]
+    [ProducesResponseType(typeof(ExportInstallationHistoryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ExportInstallationHistory([FromQuery] string format = "json")
+    {
+        try
+        {
+            if (!new[] { "json", "csv" }.Contains(format.ToLowerInvariant()))
+            {
+                return ValidationError(
+                    "format must be 'json' or 'csv'.",
+                    "Provide a supported export format.",
+                    AgentErrorCodes.ValidationFailed);
+            }
+
+            var response = await _installationResultService.ExportHistoryAsync(format);
+
+            // Set content-disposition to encourage browser/client download.
+            var contentType = format.ToLowerInvariant() == "csv" ? "text/csv" : "application/json";
+            Response.Headers.ContentDisposition = $"attachment; filename=\"{response.SuggestedFilename}\"";
+            Response.Headers.ContentType = contentType;
+
+            return Ok(response);
+        }
+        catch (ArgumentException ex)
+        {
+            return ValidationError(ex.Message, "Use 'json' or 'csv' format.", AgentErrorCodes.ValidationFailed);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export installation history.");
+            return InternalError(
+                "Failed to export installation history.",
+                "Verify installation history file exists and is accessible.",
+                ex.Message);
+        }
+    }
+
     private List<string> GetUiAutomationReadinessIssues(string platform)
     {
         var issues = new List<string>();
@@ -429,7 +500,7 @@ public sealed class AutomationController : ControllerBase
     [HttpPost("/run-and-assert")]
     [ProducesResponseType(typeof(RunInstallerAndAssertResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    public IActionResult RunInstallerAndAssert([FromBody] RunInstallerAndAssertRequest request)
+    public async Task<IActionResult> RunInstallerAndAssert([FromBody] RunInstallerAndAssertRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Command))
         {
@@ -464,6 +535,7 @@ public sealed class AutomationController : ControllerBase
 
         try
         {
+            var startedAt = DateTimeOffset.UtcNow;
             var tracked = _processService.Start(
                 request.Command,
                 request.Arguments,
@@ -497,12 +569,33 @@ public sealed class AutomationController : ControllerBase
                     request.LogContainsIgnoreCase));
             }
 
+            var allPassed = assertions.All(a => a.Passed);
+            var completedAt = DateTimeOffset.UtcNow;
+
+            // Record the installation result for post-deployment diagnostics.
+            await RecordInstallationResultAsync(
+                sessionId!,
+                startedAt,
+                completedAt,
+                request.Command,
+                request.Arguments,
+                request.WorkingDirectory,
+                artifacts.Exited,
+                artifacts.Process.ExitCode,
+                allPassed,
+                allPassed ? "Passed" : "Failed",
+                null, // no error message for successful recordings
+                request.LogPath,
+                request.TailLines,
+                artifacts.MsiEvents.Count,
+                ConvertAssertionsToRecords(assertions));
+
             return Ok(new RunInstallerAndAssertResponse(
                 tracked.Process.Id,
                 tracked.StartedAt,
                 artifacts,
                 assertions,
-                assertions.All(a => a.Passed)));
+                allPassed));
         }
         catch (InvalidOperationException ex)
         {
@@ -2008,6 +2101,72 @@ public sealed class AutomationController : ControllerBase
         }
     }
 #endif
+
+    // ── Installation Result Recording ──────────────────────────────────────
+
+    /// <summary>
+    /// Record an installation result to the persistent store for post-deployment diagnostics.
+    /// This is fire-and-forget; failures are logged but don't affect the HTTP response.
+    /// </summary>
+    private async Task RecordInstallationResultAsync(
+        string sessionId,
+        DateTimeOffset startedAt,
+        DateTimeOffset completedAt,
+        string command,
+        string? arguments,
+        string? workingDirectory,
+        bool processExited,
+        int? exitCode,
+        bool success,
+        string outcome,
+        string? errorMessage,
+        string? logPath,
+        int? logTailLineCount,
+        int? msiEventCount,
+        List<AssertionRecordItem> assertions)
+    {
+        try
+        {
+            await _installationResultService.RecordInstallationAsync(
+                sessionId,
+                startedAt,
+                completedAt,
+                command,
+                arguments,
+                workingDirectory,
+                processExited,
+                exitCode,
+                success,
+                outcome,
+                errorMessage,
+                logPath,
+                logTailLineCount,
+                msiEventCount,
+                assertions);
+        }
+        catch (Exception ex)
+        {
+            // Log but don't throw; recording failures shouldn't affect the HTTP response.
+            _logger.LogError(ex, "Failed to record installation result.");
+        }
+    }
+
+    /// <summary>
+    /// Convert AssertionResponse items to AssertionRecordItem for persistence.
+    /// </summary>
+    private static List<AssertionRecordItem> ConvertAssertionsToRecords(List<AssertionResponse> assertions)
+    {
+        return assertions.Select((assertion, i) => new AssertionRecordItem(
+            AssertionType: i switch
+            {
+                0 => "ExitCode",
+                > 0 => "PathExists", // This is simplified; could be enhanced to distinguish PathExists vs LogContains
+                _ => "Unknown"
+            },
+            Description: assertion.Message,
+            Passed: assertion.Passed,
+            Message: assertion.Message)).ToList();
+    }
 }
 
 

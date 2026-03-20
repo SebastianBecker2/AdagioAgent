@@ -1182,17 +1182,17 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
-    public void RunInstallerAndAssert_ValidatesInputs()
+    public async Task RunInstallerAndAssert_ValidatesInputs()
     {
         using var processService = CreateProcessService(allowedExecutablePaths: [Path.GetTempPath()]);
         var uiService = new Mock<IUiAutomationService>();
         var sut = CreateController(processService, uiService.Object);
 
-        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("")));
-        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", TimeoutMilliseconds: 0)));
-        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", TailLines: 0)));
-        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", EventEntryCount: 0)));
-        Assert.IsType<BadRequestObjectResult>(sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", LogMustContainText: "done")));
+        Assert.IsType<BadRequestObjectResult>(await sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("")));
+        Assert.IsType<BadRequestObjectResult>(await sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", TimeoutMilliseconds: 0)));
+        Assert.IsType<BadRequestObjectResult>(await sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", TailLines: 0)));
+        Assert.IsType<BadRequestObjectResult>(await sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", EventEntryCount: 0)));
+        Assert.IsType<BadRequestObjectResult>(await sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest("C:/Apps/setup.exe", LogMustContainText: "done")));
     }
 
     [Fact]
@@ -1222,7 +1222,7 @@ public sealed class AutomationControllerTests
     }
 
     [Fact]
-    public void RunInstallerAndAssert_ReturnsPassedWhenAllAssertionsSucceed()
+    public async Task RunInstallerAndAssert_ReturnsPassedWhenAllAssertionsSucceed()
     {
         var commandInfo = ResolveQuickExitCommand();
         var rootPath = Path.Combine(Path.GetTempPath(), $"adagio-run-assert-{Guid.NewGuid():N}");
@@ -1247,7 +1247,7 @@ public sealed class AutomationControllerTests
 
         try
         {
-            var result = sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest(
+            var result = await sut.RunInstallerAndAssert(new RunInstallerAndAssertRequest(
                 Command: commandInfo.Command,
                 Arguments: commandInfo.Arguments,
                 TimeoutMilliseconds: 5000,
@@ -1361,11 +1361,13 @@ public sealed class AutomationControllerTests
         CancellationToken requestAborted = default)
     {
         sessionService ??= new SessionService();
+        var installationResultService = new InstallationResultService(NullLogger<InstallationResultService>.Instance);
 
         var controller = new AutomationController(
             processService,
             sessionService,
             uiService,
+            installationResultService,
             NullLogger<AutomationController>.Instance);
 
         // Set up mock HttpContext with RequestServices for CopyFile endpoint
