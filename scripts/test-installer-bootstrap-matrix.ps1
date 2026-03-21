@@ -8,6 +8,7 @@ param(
     [string]$ServiceName = "AdagioMachineAgent",
     [string]$BaseUrl = "https://127.0.0.1:5443",
     [int]$ServiceStartTimeoutSeconds = 120,
+    [switch]$ForceCleanMachine,
     [switch]$KeepInstalled,
     [switch]$FailOnScenarioFailure
 )
@@ -298,6 +299,101 @@ function Assert-CleanMachine {
     }
 }
 
+function Get-InstalledProductCodes {
+    $candidateRoots = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+
+    $results = [System.Collections.Generic.List[string]]::new()
+    foreach ($root in $candidateRoots) {
+        $entries = Get-ItemProperty -Path $root -ErrorAction SilentlyContinue
+        foreach ($entry in $entries) {
+            $displayName = [string]$entry.DisplayName
+            if ($displayName -ne 'Adagio Machine Agent') {
+                continue
+            }
+
+            $productCode = $null
+            $keyName = [string]$entry.PSChildName
+            if ($keyName -match '^\{[0-9A-Fa-f\-]+\}$') {
+                $productCode = $keyName
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace([string]$entry.UninstallString) -and [string]$entry.UninstallString -match '(\{[0-9A-Fa-f\-]+\})') {
+                $productCode = $matches[1]
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($productCode)) {
+                [void]$results.Add($productCode)
+            }
+        }
+    }
+
+    return @($results | Select-Object -Unique)
+}
+
+function Invoke-ProductCodeUninstall {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProductCode,
+        [Parameter(Mandatory = $true)]
+        [string]$LogPath
+    )
+
+    $arguments = @(
+        '/x',
+        $ProductCode,
+        '/qn',
+        '/norestart',
+        '/l*v',
+        $LogPath
+    )
+
+    $process = Start-Process -FilePath 'msiexec.exe' -ArgumentList $arguments -PassThru -Wait -NoNewWindow
+    return $process.ExitCode
+}
+
+function Ensure-CleanMachine {
+    param(
+        [string]$ScenarioOutputDir,
+        [string]$ScenarioName
+    )
+
+    $serviceState = Get-ServiceState -Name $ServiceName
+    $installDirExists = Test-Path -LiteralPath $InstallDirectory -PathType Container
+    if ($serviceState -eq 'Absent' -and -not $installDirExists) {
+        return
+    }
+
+    Write-Host "Force-cleaning machine state before scenario '$ScenarioName'. ServiceState=$serviceState InstallDirectoryExists=$installDirExists"
+    $precleanLogDir = Join-Path $ScenarioOutputDir 'preclean'
+    New-Item -ItemType Directory -Path $precleanLogDir -Force | Out-Null
+
+    $productCodes = Get-InstalledProductCodes
+    foreach ($productCode in $productCodes) {
+        $safeProductCode = ($productCode -replace '[{}]', '')
+        $logPath = Join-Path $precleanLogDir ("uninstall-$safeProductCode.log")
+        $exitCode = Invoke-ProductCodeUninstall -ProductCode $productCode -LogPath $logPath
+        if ($exitCode -ne 0 -and $exitCode -ne 1605) {
+            throw "Pre-clean uninstall failed for product code '$productCode' with exit code $exitCode."
+        }
+    }
+
+    if ((Get-ServiceState -Name $ServiceName) -ne 'Absent') {
+        Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+        & sc.exe delete $ServiceName | Out-Null
+    }
+
+    if (-not (Wait-ForServiceStatus -Name $ServiceName -DesiredStatus Absent -TimeoutSeconds 60)) {
+        throw "Service '$ServiceName' still exists after force-clean attempt."
+    }
+
+    if (Test-Path -LiteralPath $InstallDirectory -PathType Container) {
+        Remove-Item -LiteralPath $InstallDirectory -Recurse -Force -ErrorAction Stop
+    }
+}
+
 function Get-InstalledAgentSnapshot {
     param(
         [string]$InstalledAppSettingsPath,
@@ -566,6 +662,10 @@ foreach ($scenarioName in $ScenarioNames) {
             if (-not [string]::IsNullOrWhiteSpace($scenario.sourceMsiVersion) -and -not [string]::IsNullOrWhiteSpace($scenario.targetMsiVersion) -and $scenario.sourceMsiVersion -eq $scenario.targetMsiVersion) {
                 throw "AdjacentUpgrade requires different MSI product versions, but both packages report '$($scenario.targetMsiVersion)'."
             }
+        }
+
+        if ($ForceCleanMachine.IsPresent) {
+            Ensure-CleanMachine -ScenarioOutputDir $scenarioOutputDir -ScenarioName $scenarioName
         }
 
         Assert-CleanMachine
