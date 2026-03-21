@@ -259,6 +259,9 @@ build_script:
   # 3. Build the WiX MSI installer (also publishes the machine-agent internally)
   - dotnet build installer/AdagioMachineAgent.Setup.wixproj -p:Configuration=Release
 
+  # 3.05 Build the Burn bundle wizard installer (.exe)
+  - dotnet build installer-bundle/AdagioMachineAgent.Bundle.wixproj -p:Configuration=Release
+
   # 3.1 Validate the fresh silent installer path on the ephemeral CI worker
   - ps: .\scripts\test-installer-bootstrap-matrix.ps1 -MsiPath .\installer\bin\x64\Release\AdagioMachineAgentSetup.msi -FailOnScenarioFailure
 
@@ -286,6 +289,8 @@ test_script:
 artifacts:
   - path: installer/bin/x64/Release/AdagioMachineAgentSetup.msi
     name: AdagioMachineAgentSetup
+  - path: installer-bundle/bin/x64/Release/AdagioMachineAgent.Bundle.exe
+    name: AdagioMachineAgentBundle
   - path: controller-extension/*.vsix
     name: AdagioControllerExtension
   - path: artifacts/release-ops-dryrun-diagnostics/*.json
