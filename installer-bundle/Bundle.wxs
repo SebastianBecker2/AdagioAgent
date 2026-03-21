@@ -7,7 +7,12 @@
           Version="$(var.AgentVersion)"
           UpgradeCode="{C513189E-13CC-4AFA-BEB9-B7F742E74F41}">
 
-    <BootstrapperApplication SourceFile="$(sys.SOURCEFILEDIR)..\installer-ba\bin\x64\Release\net8.0-windows10.0.22621.0\win-x64\AdagioMachineAgent.BA.exe" />
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+        LicenseUrl="https://github.com/SebastianBecker2/AdagioAgent/blob/main/README.md"
+        Theme="hyperlinkLicense"
+        SuppressOptionsUI="yes" />
+    </BootstrapperApplication>
 
     <Variable Name="ADAGIO_CERT_MODE" Type="string" Value="GeneratedCa" bal:Overridable="yes" />
     <Variable Name="ADAGIO_PROVIDED_CERT_PATH" Type="string" Value="" bal:Overridable="yes" />
