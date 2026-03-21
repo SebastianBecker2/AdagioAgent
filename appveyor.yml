@@ -262,9 +262,6 @@ build_script:
   # 3.05 Build the Burn bundle wizard installer (.exe)
   - dotnet build installer-bundle/AdagioMachineAgent.Bundle.wixproj -p:Configuration=Release
 
-  # 3.06 Guard: validate bundle can launch and execute in quiet mode with a generated response file
-  - ps: .\scripts\run-installer-bundle-with-response.ps1 -BundlePath .\installer-bundle\bin\x64\Release\AdagioMachineAgent.Bundle.exe -GenerateResponseFile -ResponseOutputPath .\artifacts\installer-bundle-validation\installer-response.json -OutputDir .\artifacts\installer-bundle-validation
-
   # 3.1 Validate the fresh silent installer path on the ephemeral CI worker
   - ps: .\scripts\test-installer-bootstrap-matrix.ps1 -MsiPath .\installer\bin\x64\Release\AdagioMachineAgentSetup.msi -ForceCleanMachine -FailOnScenarioFailure
 
@@ -279,6 +276,10 @@ build_script:
       else {
         .\scripts\test-installer-bootstrap-matrix.ps1 -ScenarioNames AdjacentUpgrade -PreviousMsiPath $env:ADAGIO_UPGRADE_BASELINE_MSI -MsiPath .\installer\bin\x64\Release\AdagioMachineAgentSetup.msi -ForceCleanMachine -FailOnScenarioFailure
       }
+
+  # 3.3 Guard: validate bundle can launch and execute in quiet mode with a generated response file
+  # Run after MSI matrix validation to avoid contaminating machine state before fresh-install checks.
+  - ps: .\scripts\run-installer-bundle-with-response.ps1 -BundlePath .\installer-bundle\bin\x64\Release\AdagioMachineAgent.Bundle.exe -GenerateResponseFile -ResponseOutputPath .\artifacts\installer-bundle-validation\installer-response.json -OutputDir .\artifacts\installer-bundle-validation
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 test_script:
