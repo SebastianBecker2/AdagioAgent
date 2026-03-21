@@ -309,7 +309,12 @@ function Get-InstalledProductCodes {
     foreach ($root in $candidateRoots) {
         $entries = Get-ItemProperty -Path $root -ErrorAction SilentlyContinue
         foreach ($entry in $entries) {
-            $displayName = [string]$entry.DisplayName
+            $displayNameProp = $entry.PSObject.Properties['DisplayName']
+            if (-not $displayNameProp) {
+                continue
+            }
+
+            $displayName = [string]$displayNameProp.Value
             if ($displayName -ne 'Adagio Machine Agent') {
                 continue
             }
@@ -319,8 +324,12 @@ function Get-InstalledProductCodes {
             if ($keyName -match '^\{[0-9A-Fa-f\-]+\}$') {
                 $productCode = $keyName
             }
-            elseif (-not [string]::IsNullOrWhiteSpace([string]$entry.UninstallString) -and [string]$entry.UninstallString -match '(\{[0-9A-Fa-f\-]+\})') {
-                $productCode = $matches[1]
+            else {
+                $uninstallStringProp = $entry.PSObject.Properties['UninstallString']
+                $uninstallString = if ($uninstallStringProp) { [string]$uninstallStringProp.Value } else { '' }
+                if (-not [string]::IsNullOrWhiteSpace($uninstallString) -and $uninstallString -match '(\{[0-9A-Fa-f\-]+\})') {
+                    $productCode = $matches[1]
+                }
             }
 
             if (-not [string]::IsNullOrWhiteSpace($productCode)) {
