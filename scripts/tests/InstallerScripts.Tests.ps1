@@ -103,6 +103,8 @@ Describe 'Installer response-file generator script' {
         $payload.schemaVersion | Should Be 1
         $payload.security.certificateMode | Should Be 'GeneratedCa'
         $payload.security.apiKeyMode | Should Be 'Generate'
+        $payload.security.caCertificatePemPath | Should Match 'agent-ca\.pem$'
+        $payload.security.caCertificatePfxPath | Should Match 'agent-ca\.pfx$'
         [string]::IsNullOrWhiteSpace([string]$payload.network.urls) | Should Be $false
         [string]::IsNullOrWhiteSpace([string]$payload.network.allowedHosts) | Should Be $false
         @($payload.agentOptions.allowedExecutablePaths).Count | Should BeGreaterThan 0

@@ -1,5 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace AdagioMachineAgent.BootstrapperApplication
 {
@@ -74,7 +77,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
                 Margin = new Thickness(0, 0, 0, 5),
                 TextWrapping = TextWrapping.Wrap,
                 AcceptsReturn = true,
-                Text = _context.AllowedExecutablePaths,
+                Text = string.Join("; ", _context.AllowedExecutablePaths),
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
             content.Children.Add(_executablePathsBox);
@@ -104,7 +107,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
                 Margin = new Thickness(0, 0, 0, 5),
                 TextWrapping = TextWrapping.Wrap,
                 AcceptsReturn = true,
-                Text = _context.AllowedWritablePaths,
+                Text = string.Join("; ", _context.AllowedWritablePaths),
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
             content.Children.Add(_writablePathsBox);
@@ -134,7 +137,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
                 Margin = new Thickness(0, 0, 0, 5),
                 TextWrapping = TextWrapping.Wrap,
                 AcceptsReturn = true,
-                Text = _context.AllowedReadablePaths,
+                Text = string.Join("; ", _context.AllowedReadablePaths),
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
             content.Children.Add(_readablePathsBox);
@@ -159,29 +162,87 @@ namespace AdagioMachineAgent.BootstrapperApplication
             AllowedWritablePaths = _writablePathsBox?.Text?.Trim();
             AllowedReadablePaths = _readablePathsBox?.Text?.Trim();
 
-            if (string.IsNullOrWhiteSpace(AllowedExecutablePaths))
+            var executablePaths = ParsePathList(AllowedExecutablePaths);
+            var writablePaths = ParsePathList(AllowedWritablePaths);
+            var readablePaths = ParsePathList(AllowedReadablePaths);
+
+            if (executablePaths.Count == 0)
             {
                 MessageBox.Show("Allowed executable paths are required.", "Validation Error");
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(AllowedWritablePaths))
+            if (writablePaths.Count == 0)
             {
                 MessageBox.Show("Allowed writable paths are required.", "Validation Error");
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(AllowedReadablePaths))
+            if (readablePaths.Count == 0)
             {
                 MessageBox.Show("Allowed readable paths are required.", "Validation Error");
                 return false;
             }
 
-            _context.AllowedExecutablePaths = AllowedExecutablePaths;
-            _context.AllowedWritablePaths = AllowedWritablePaths;
-            _context.AllowedReadablePaths = AllowedReadablePaths;
+            var invalidPaths = executablePaths
+                .Concat(writablePaths)
+                .Concat(readablePaths)
+                .Where(path => !Path.IsPathRooted(path) || path.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+                .Distinct()
+                .ToList();
+
+            if (invalidPaths.Count > 0)
+            {
+                MessageBox.Show(
+                    "Invalid or non-absolute path entries found:\n\n" + string.Join("\n", invalidPaths),
+                    "Validation Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return false;
+            }
+
+            var missingPaths = executablePaths
+                .Concat(writablePaths)
+                .Concat(readablePaths)
+                .Where(path => !Directory.Exists(path) && !File.Exists(path))
+                .Distinct()
+                .ToList();
+
+            if (missingPaths.Count > 0)
+            {
+                var continueResult = MessageBox.Show(
+                    "Some paths do not currently exist:\n\n" + string.Join("\n", missingPaths) +
+                    "\n\nContinue anyway?",
+                    "Path Warning",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (continueResult != MessageBoxResult.Yes)
+                {
+                    return false;
+                }
+            }
+
+            _context.AllowedExecutablePaths = executablePaths;
+            _context.AllowedWritablePaths = writablePaths;
+            _context.AllowedReadablePaths = readablePaths;
 
             return true;
+        }
+
+        private static List<string> ParsePathList(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return new List<string>();
+            }
+
+            return text
+                .Split(new[] { ';', '\n', '\r' }, System.StringSplitOptions.RemoveEmptyEntries)
+                .Select(path => path.Trim())
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Distinct(System.StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
     }
 }

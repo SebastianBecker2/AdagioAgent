@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Diagnostics;
+using System.IO;
 
 namespace AdagioMachineAgent.BootstrapperApplication
 {
@@ -11,6 +13,8 @@ namespace AdagioMachineAgent.BootstrapperApplication
         private readonly InstallerContext _context;
         private TextBlock? _certificateModeValue;
         private TextBlock? _certificatePathValue;
+        private TextBlock? _certificatePemExportValue;
+        private TextBlock? _certificatePfxExportValue;
         private TextBlock? _apiKeyModeValue;
         private TextBlock? _requireHttpsValue;
         private TextBlock? _requireApiKeyValue;
@@ -78,8 +82,12 @@ namespace AdagioMachineAgent.BootstrapperApplication
             var certSection = CreateSummarySection("Certificate Configuration");
             _certificateModeValue = CreateSummaryValue();
             _certificatePathValue = CreateSummaryValue();
+            _certificatePemExportValue = CreateSummaryValue();
+            _certificatePfxExportValue = CreateSummaryValue();
             certSection.Children.Add(_certificateModeValue);
             certSection.Children.Add(_certificatePathValue);
+            certSection.Children.Add(_certificatePemExportValue);
+            certSection.Children.Add(_certificatePfxExportValue);
             summaryContent.Children.Add(certSection);
 
             // API Key Info
@@ -148,6 +156,36 @@ namespace AdagioMachineAgent.BootstrapperApplication
             warningBox.Child = warningContent;
             content.Children.Add(warningBox);
 
+            var actionsPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 16, 0, 0)
+            };
+
+            var copyDetailsButton = new Button
+            {
+                Content = "Copy Connection Details",
+                Width = 180,
+                Height = 34,
+                Margin = new Thickness(0, 0, 10, 0)
+            };
+            copyDetailsButton.Click += (_, _) =>
+            {
+                Clipboard.SetText(BuildConnectionDetailsText());
+                MessageBox.Show("Connection details copied to clipboard.", "Summary", MessageBoxButton.OK, MessageBoxImage.Information);
+            };
+            actionsPanel.Children.Add(copyDetailsButton);
+
+            var openExportFolderButton = new Button
+            {
+                Content = "Open Export Folder",
+                Width = 150,
+                Height = 34
+            };
+            openExportFolderButton.Click += (_, _) => OpenExportFolder();
+            actionsPanel.Children.Add(openExportFolderButton);
+            content.Children.Add(actionsPanel);
+
             scrollViewer.Content = content;
             mainGrid.Children.Add(scrollViewer);
             this.Content = mainGrid;
@@ -184,6 +222,8 @@ namespace AdagioMachineAgent.BootstrapperApplication
                 _apiKeyModeValue == null ||
                 _requireHttpsValue == null ||
                 _requireApiKeyValue == null ||
+                _certificatePemExportValue == null ||
+                _certificatePfxExportValue == null ||
                 _urlsValue == null ||
                 _allowedHostsValue == null ||
                 _executablePathsValue == null ||
@@ -197,19 +237,21 @@ namespace AdagioMachineAgent.BootstrapperApplication
             _certificatePathValue.Text = _context.CertificateMode == "Provided"
                 ? $"Provided Certificate: {_context.ProvidedCertificatePath ?? "(missing)"}"
                 : "Provided Certificate: N/A";
+            _certificatePemExportValue.Text = $"CA PEM Export: {_context.CaCertificatePemPath}";
+            _certificatePfxExportValue.Text = $"CA PFX Export: {_context.CaCertificatePfxPath}";
 
             _apiKeyModeValue.Text = _context.ApiKeyMode == "Provided"
                 ? "API Key Mode: Provided (value hidden)"
-                : "API Key Mode: Generate automatically";
+                : "API Key Mode: Generate automatically during install";
             _requireHttpsValue.Text = $"Require HTTPS: {_context.RequireHttps}";
             _requireApiKeyValue.Text = $"Require API Key: {_context.RequireApiKey}";
 
             _urlsValue.Text = $"Service URLs: {_context.Urls}";
             _allowedHostsValue.Text = $"Allowed Hosts: {_context.AllowedHosts}";
 
-            _executablePathsValue.Text = $"Executable Paths: {_context.AllowedExecutablePaths}";
-            _writablePathsValue.Text = $"Writable Paths: {_context.AllowedWritablePaths}";
-            _readablePathsValue.Text = $"Readable Paths: {_context.AllowedReadablePaths}";
+            _executablePathsValue.Text = $"Executable Paths: {string.Join("; ", _context.AllowedExecutablePaths)}";
+            _writablePathsValue.Text = $"Writable Paths: {string.Join("; ", _context.AllowedWritablePaths)}";
+            _readablePathsValue.Text = $"Readable Paths: {string.Join("; ", _context.AllowedReadablePaths)}";
         }
 
         public override void OnBeforeShown()
@@ -218,5 +260,43 @@ namespace AdagioMachineAgent.BootstrapperApplication
         }
 
         public override bool Validate() => true;
+
+        private string BuildConnectionDetailsText()
+        {
+            return
+                "Adagio Machine Agent Connection Details\n" +
+                $"Certificate mode: {_context.CertificateMode}\n" +
+                $"CA PEM path: {_context.CaCertificatePemPath}\n" +
+                $"CA PFX path: {_context.CaCertificatePfxPath}\n" +
+                $"API key mode: {_context.ApiKeyMode}\n" +
+                $"Require HTTPS: {_context.RequireHttps}\n" +
+                $"Require API key: {_context.RequireApiKey}\n" +
+                $"URLs: {_context.Urls}\n" +
+                $"Allowed hosts: {_context.AllowedHosts}";
+        }
+
+        private void OpenExportFolder()
+        {
+            var exportDirectory = Path.GetDirectoryName(_context.CaCertificatePemPath);
+            if (string.IsNullOrWhiteSpace(exportDirectory))
+            {
+                MessageBox.Show("Export directory is not set.", "Summary", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(exportDirectory);
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = exportDirectory,
+                    UseShellExecute = true
+                });
+            }
+            catch (System.Exception ex)
+            {
+                MessageBox.Show($"Unable to open export folder: {ex.Message}", "Summary", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }

@@ -415,14 +415,6 @@ if (-not (Test-Path -LiteralPath $certDirectory)) {
     New-Item -ItemType Directory -Path $certDirectory -Force | Out-Null
 }
 
-if ([string]::IsNullOrWhiteSpace($CaCertificatePemPath)) {
-    $CaCertificatePemPath = Join-Path -Path $certDirectory -ChildPath "agent-ca.pem"
-}
-
-if ([string]::IsNullOrWhiteSpace($CaCertificatePfxPath)) {
-    $CaCertificatePfxPath = Join-Path -Path $certDirectory -ChildPath "agent-ca.pfx"
-}
-
 if (-not $PSBoundParameters.ContainsKey('DnsNames')) {
     $DnsNames = Get-DefaultBootstrapDnsNames
 }
@@ -447,6 +439,22 @@ if ([string]::IsNullOrWhiteSpace($ProvidedCertificatePath)) {
 
 if ([string]::IsNullOrWhiteSpace($ProvidedCertificatePassword)) {
     $ProvidedCertificatePassword = Get-ResponseString -Root $responseConfig -Path @('security', 'providedCertificatePassword')
+}
+
+if ([string]::IsNullOrWhiteSpace($CaCertificatePemPath)) {
+    $CaCertificatePemPath = Get-ResponseString -Root $responseConfig -Path @('security', 'caCertificatePemPath')
+}
+
+if ([string]::IsNullOrWhiteSpace($CaCertificatePfxPath)) {
+    $CaCertificatePfxPath = Get-ResponseString -Root $responseConfig -Path @('security', 'caCertificatePfxPath')
+}
+
+if ([string]::IsNullOrWhiteSpace($CaCertificatePemPath)) {
+    $CaCertificatePemPath = Join-Path -Path $certDirectory -ChildPath "agent-ca.pem"
+}
+
+if ([string]::IsNullOrWhiteSpace($CaCertificatePfxPath)) {
+    $CaCertificatePfxPath = Join-Path -Path $certDirectory -ChildPath "agent-ca.pfx"
 }
 
 if (-not $PSBoundParameters.ContainsKey('ApiKeyMode')) {

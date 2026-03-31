@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
 using System.Windows;
 
 namespace AdagioMachineAgent.BootstrapperApplication
@@ -22,6 +25,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
             // Initialize wizard screens
             _screens.Add(new WelcomeScreen());
             _screens.Add(new CertificateModeScreen(_context));
+            _screens.Add(new CertificateExportScreen(_context));
             _screens.Add(new ApiKeyModeScreen(_context));
             _screens.Add(new NetworkConfigurationScreen(_context));
             _screens.Add(new PathSecurityScreen(_context));
@@ -115,6 +119,8 @@ namespace AdagioMachineAgent.BootstrapperApplication
 
         private void ExecuteInstallation()
         {
+            var correlationId = Guid.NewGuid().ToString("N");
+
             try
             {
                 // Collect configuration from all screens
@@ -138,7 +144,29 @@ namespace AdagioMachineAgent.BootstrapperApplication
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error during installation setup: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                var diagnosticsPath = WriteInstallerFailureDiagnostics(ex, correlationId);
+                var prompt =
+                    $"Installation setup failed. Correlation ID: {correlationId}\n\n" +
+                    $"Diagnostics file: {diagnosticsPath}\n\n" +
+                    "Yes = Retry\nNo = Open diagnostics folder\nCancel = Exit installer";
+
+                var result = MessageBox.Show(
+                    prompt,
+                    "Installation Setup Error",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Error);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    ExecuteInstallation();
+                    return;
+                }
+
+                if (result == MessageBoxResult.No)
+                {
+                    OpenDiagnosticsFolder(diagnosticsPath);
+                }
+
                 Environment.Exit(1);
             }
         }
@@ -150,6 +178,8 @@ namespace AdagioMachineAgent.BootstrapperApplication
                 CertificateMode = _context.CertificateMode,
                 ProvidedCertificatePath = _context.ProvidedCertificatePath,
                 ProvidedCertificatePassword = _context.ProvidedCertificatePassword,
+                CaCertificatePemPath = _context.CaCertificatePemPath,
+                CaCertificatePfxPath = _context.CaCertificatePfxPath,
                 ApiKeyMode = _context.ApiKeyMode,
                 ProvidedApiKey = _context.ProvidedApiKey,
                 RequireHttps = _context.RequireHttps,
@@ -193,8 +223,64 @@ namespace AdagioMachineAgent.BootstrapperApplication
         {
             // Write to a marker file that the Burn bundle can read via environment variable or temp location
             string markerDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "AdagioInstaller");
+            System.IO.Directory.CreateDirectory(markerDir);
             string markerFile = System.IO.Path.Combine(markerDir, "response-path.txt");
             System.IO.File.WriteAllText(markerFile, responseFilePath);
+        }
+
+        private static string WriteInstallerFailureDiagnostics(Exception ex, string correlationId)
+        {
+            string diagnosticsDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "AdagioMachineAgent");
+
+            string fallbackDir = Path.Combine(Path.GetTempPath(), "AdagioInstaller");
+            string diagnosticsPath = Path.Combine(diagnosticsDir, "installer-ba-failure.json");
+
+            var payload = new
+            {
+                generatedAtUtc = DateTimeOffset.UtcNow.ToString("u"),
+                correlationId,
+                error = ex.Message,
+                exceptionType = ex.GetType().FullName,
+                stackTrace = ex.StackTrace,
+            };
+
+            try
+            {
+                Directory.CreateDirectory(diagnosticsDir);
+                File.WriteAllText(diagnosticsPath, JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }));
+                return diagnosticsPath;
+            }
+            catch
+            {
+                Directory.CreateDirectory(fallbackDir);
+                diagnosticsPath = Path.Combine(fallbackDir, "installer-ba-failure.json");
+                File.WriteAllText(diagnosticsPath, JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }));
+                return diagnosticsPath;
+            }
+        }
+
+        private static void OpenDiagnosticsFolder(string diagnosticsPath)
+        {
+            try
+            {
+                var folder = Path.GetDirectoryName(diagnosticsPath);
+                if (string.IsNullOrWhiteSpace(folder))
+                {
+                    return;
+                }
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = folder,
+                    UseShellExecute = true,
+                });
+            }
+            catch
+            {
+                // Best effort only.
+            }
         }
     }
 }

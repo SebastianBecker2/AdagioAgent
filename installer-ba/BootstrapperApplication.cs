@@ -59,6 +59,12 @@ namespace AdagioMachineAgent.BootstrapperApplication
         [JsonPropertyName("providedCertificatePassword")]
         public string? ProvidedCertificatePassword { get; set; }
 
+        [JsonPropertyName("caCertificatePemPath")]
+        public string? CaCertificatePemPath { get; set; }
+
+        [JsonPropertyName("caCertificatePfxPath")]
+        public string? CaCertificatePfxPath { get; set; }
+
         [JsonPropertyName("apiKeyMode")]
         public string? ApiKeyMode { get; set; }
 
@@ -90,13 +96,13 @@ namespace AdagioMachineAgent.BootstrapperApplication
     public class AgentOptions
     {
         [JsonPropertyName("allowedExecutablePaths")]
-        public string? AllowedExecutablePaths { get; set; }
+        public List<string> AllowedExecutablePaths { get; set; } = new();
 
         [JsonPropertyName("allowedWritablePaths")]
-        public string? AllowedWritablePaths { get; set; }
+        public List<string> AllowedWritablePaths { get; set; } = new();
 
         [JsonPropertyName("allowedReadablePaths")]
-        public string? AllowedReadablePaths { get; set; }
+        public List<string> AllowedReadablePaths { get; set; } = new();
     }
 
     /// <summary>
@@ -107,6 +113,8 @@ namespace AdagioMachineAgent.BootstrapperApplication
         public string CertificateMode { get; set; } = "GeneratedCa";
         public string? ProvidedCertificatePath { get; set; }
         public string? ProvidedCertificatePassword { get; set; }
+        public string CaCertificatePemPath { get; set; } = "C:\\ProgramData\\AdagioMachineAgent\\tls\\agent-ca.pem";
+        public string CaCertificatePfxPath { get; set; } = "C:\\ProgramData\\AdagioMachineAgent\\tls\\agent-ca.pfx";
 
         public string ApiKeyMode { get; set; } = "Generate";
         public string? ProvidedApiKey { get; set; }
@@ -116,9 +124,9 @@ namespace AdagioMachineAgent.BootstrapperApplication
         public string Urls { get; set; } = "https://localhost:5001; https://localhost:5002";
         public string AllowedHosts { get; set; } = "localhost; agent.example.com";
 
-        public string AllowedExecutablePaths { get; set; } = "C:\\Windows\\System32; C:\\Program Files";
-        public string AllowedWritablePaths { get; set; } = "C:\\Logs; C:\\Temp";
-        public string AllowedReadablePaths { get; set; } = "C:\\Program Files; C:\\Windows";
+        public List<string> AllowedExecutablePaths { get; set; } = new() { "C:\\Windows\\System32", "C:\\Program Files" };
+        public List<string> AllowedWritablePaths { get; set; } = new() { "C:\\Logs", "C:\\Temp" };
+        public List<string> AllowedReadablePaths { get; set; } = new() { "C:\\Program Files", "C:\\Windows" };
 
         /// <summary>
         /// Discovery data from pre-installation discovery pass.

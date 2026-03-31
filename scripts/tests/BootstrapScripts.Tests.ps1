@@ -167,6 +167,8 @@ Describe 'Bootstrap provisioning script' {
                 providedApiKey = 'response-file-api-key'
                 requireHttps = $false
                 requireApiKey = $true
+                caCertificatePemPath = (Join-Path $script:testRoot 'custom-ca.pem')
+                caCertificatePfxPath = (Join-Path $script:testRoot 'custom-ca.pfx')
             }
             network = @{
                 urls = 'https://10.0.0.2:5443'
@@ -182,7 +184,7 @@ Describe 'Bootstrap provisioning script' {
         Set-Content -LiteralPath $responsePath -Value $responsePayload -Encoding UTF8
 
         {
-            & $bootstrapScript -CertificatePath $script:certPath -ResponseFilePath $responsePath -WriteToAppSettings -AppSettingsPath $script:appSettingsPath -SuppressSecretOutput
+            & $bootstrapScript -CertificatePath $script:certPath -ResponseFilePath $responsePath -WriteToAppSettings -WriteSecretHandoff -SecretHandoffPath $script:handoffPath -AppSettingsPath $script:appSettingsPath -SuppressSecretOutput
         } | Should Not Throw
 
         $appSettings = Get-Content -LiteralPath $script:appSettingsPath -Raw | ConvertFrom-Json
@@ -195,6 +197,10 @@ Describe 'Bootstrap provisioning script' {
         @($appSettings.AgentOptions.AllowedExecutablePaths) | Should Be @('C:\Tools')
         @($appSettings.AgentOptions.AllowedWritablePaths) | Should Be @('C:\Logs')
         @($appSettings.AgentOptions.AllowedReadablePaths) | Should Be @('C:\Logs', 'C:\Tools')
+
+        $handoff = Get-Content -LiteralPath $script:handoffPath -Raw | ConvertFrom-Json
+        $handoff.httpsCaCertificatePemPath | Should Be (Join-Path $script:testRoot 'custom-ca.pem')
+        $handoff.httpsCaCertificatePfxPath | Should Be (Join-Path $script:testRoot 'custom-ca.pfx')
     }
 
     It 'fails fast for unsupported response schemaVersion' {

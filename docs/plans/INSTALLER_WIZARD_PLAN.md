@@ -55,11 +55,11 @@ Legend: `[x]` done, `[-]` partial, `[ ]` not started.
 - [-] Step 7: BA discovery and pre-population.
 - [-] Step 8: Wizard flow and validation framework.
 - [x] Step 9: Certificate mode selection screen.
-- [ ] Step 10: Certificate export screen with export/copy-path actions.
-- [-] Step 11: Security screen (toggles plus hidden-by-default provided-API-key reveal/copy now implemented; generated-key display flow remains).
-- [-] Step 12: Network screen (inputs present; URL builder and interface-based host multi-select incomplete).
-- [-] Step 13: Path allowlist editors with stronger validation still pending.
-- [-] Step 14: Summary/confirm with final effective config preview (live field preview now wired in `installer-ba`; final UX polish remains).
+- [x] Step 10: Certificate export screen with export/copy-path actions.
+- [-] Step 11: Security screen (toggles plus hidden-by-default reveal/copy for provided API key implemented; post-install generated-key reveal flow still pending).
+- [x] Step 12: Network screen with URL builder and interface-based host multi-select.
+- [x] Step 13: Path allowlist editors with stronger validation and missing-path warnings.
+- [x] Step 14: Summary/confirm with effective config preview and copy/open helper actions.
 - [x] Step 15: Phase 3 started.
 - [-] Step 16: MSI custom action plumbing for BA-provided values.
 - [x] Step 17: bootstrap-agent supports cert/API key modes and output targets.
@@ -68,11 +68,11 @@ Legend: `[x]` done, `[-]` partial, `[ ]` not started.
 - [x] Step 20: Phase 4 started.
 - [x] Step 21: Runtime read/write path enforcement is implemented.
 - [-] Step 22: Startup/readiness actionable validation expanded, with additional hardening still open.
-- [ ] Step 23: Startup schema-version handling in machine-agent for evolving installer payloads.
+- [x] Step 23: Startup schema-version handling in machine-agent for evolving installer payloads.
 - [-] Step 24: Phase 5 partially started.
 - [-] Step 25: Structured installer diagnostics across BA/MSI/bootstrap/service (with correlation IDs) partially in place.
-- [ ] Step 26: BA final screen with copyable connection details and one-click export/open actions.
-- [ ] Step 27: BA rollback/recovery actions for failed stages.
+- [x] Step 26: BA final screen with copyable connection details and one-click export/open actions.
+- [-] Step 27: BA rollback/recovery actions for failed stages (retry + diagnostics-folder open now implemented for BA setup failures).
 - [-] Step 28: Phase 6 partially started.
 - [-] Step 29: Interactive and unattended test matrix partially covered.
 - [-] Step 30: Fresh install generated-CA scenario coverage is partial.
@@ -88,7 +88,9 @@ Legend: `[x]` done, `[-]` partial, `[ ]` not started.
 Notes:
 - The bundle currently uses the WiX standard BA, so the custom `installer-ba` wizard is not yet the active installer UX.
 - Wizard screens and response-file generation logic exist in `installer-ba`, and bootstrap/MSI response plumbing is present.
-- Summary screen now renders selected certificate/API/network/path values from shared wizard context before install.
+- Bundle/MSI property plumbing now includes CA PEM/PFX export targets and response-driven CA export overrides.
+- Summary screen renders selected certificate/API/network/path values and supports copy/open actions for connection/export details before install.
+- BA setup failures now emit correlation-ID diagnostics artifacts and offer retry/open-diagnostics recovery actions.
 
 **Relevant files**
 - [installer/AdagioMachineAgent.Setup.wixproj](installer/AdagioMachineAgent.Setup.wixproj) — Add Burn bundle integration, build orchestration, artifact packaging.

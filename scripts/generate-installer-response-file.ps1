@@ -5,6 +5,8 @@ param(
     [string]$CertificateMode = 'GeneratedCa',
     [string]$ProvidedCertificatePath = '',
     [string]$ProvidedCertificatePassword = '',
+    [string]$CaCertificatePemPath = 'C:\ProgramData\AdagioMachineAgent\tls\agent-ca.pem',
+    [string]$CaCertificatePfxPath = 'C:\ProgramData\AdagioMachineAgent\tls\agent-ca.pfx',
     [ValidateSet('Generate', 'Provided')]
     [string]$ApiKeyMode = 'Generate',
     [string]$ProvidedApiKey = '',
@@ -144,6 +146,9 @@ if (-not $NonInteractive.IsPresent) {
         $ProvidedCertificatePassword = Read-HostOrDefault -Prompt 'Provided certificate password' -DefaultValue $ProvidedCertificatePassword
     }
 
+    $CaCertificatePemPath = Read-HostOrDefault -Prompt 'CA PEM export path' -DefaultValue $CaCertificatePemPath
+    $CaCertificatePfxPath = Read-HostOrDefault -Prompt 'CA PFX export path' -DefaultValue $CaCertificatePfxPath
+
     $ApiKeyMode = Read-HostOrDefault -Prompt 'API key mode (Generate, Provided)' -DefaultValue $ApiKeyMode
     if (@('Generate', 'Provided') -notcontains $ApiKeyMode) {
         throw "ApiKeyMode must be Generate or Provided."
@@ -209,6 +214,8 @@ $payload = [ordered]@{
         certificateMode = $CertificateMode
         providedCertificatePath = $ProvidedCertificatePath
         providedCertificatePassword = $ProvidedCertificatePassword
+        caCertificatePemPath = $CaCertificatePemPath
+        caCertificatePfxPath = $CaCertificatePfxPath
         apiKeyMode = $ApiKeyMode
         providedApiKey = $ProvidedApiKey
         requireHttps = $RequireHttps

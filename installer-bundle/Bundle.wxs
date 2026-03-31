@@ -17,6 +17,8 @@
     <Variable Name="ADAGIO_CERT_MODE" Type="string" Value="GeneratedCa" bal:Overridable="yes" />
     <Variable Name="ADAGIO_PROVIDED_CERT_PATH" Type="string" Value="" bal:Overridable="yes" />
     <Variable Name="ADAGIO_PROVIDED_CERT_PASSWORD" Type="string" Value="" bal:Overridable="yes" Hidden="yes" />
+    <Variable Name="ADAGIO_CA_CERT_PEM_PATH" Type="string" Value="" bal:Overridable="yes" />
+    <Variable Name="ADAGIO_CA_CERT_PFX_PATH" Type="string" Value="" bal:Overridable="yes" />
     <Variable Name="ADAGIO_API_KEY_MODE" Type="string" Value="Generate" bal:Overridable="yes" />
     <Variable Name="ADAGIO_PROVIDED_API_KEY" Type="string" Value="" bal:Overridable="yes" Hidden="yes" />
     <Variable Name="ADAGIO_RESPONSE_FILE_PATH" Type="string" Value="" bal:Overridable="yes" />
@@ -29,6 +31,8 @@
         <MsiProperty Name="ADAGIO_CERT_MODE" Value="[ADAGIO_CERT_MODE]" />
         <MsiProperty Name="ADAGIO_PROVIDED_CERT_PATH" Value="[ADAGIO_PROVIDED_CERT_PATH]" />
         <MsiProperty Name="ADAGIO_PROVIDED_CERT_PASSWORD" Value="[ADAGIO_PROVIDED_CERT_PASSWORD]" />
+        <MsiProperty Name="ADAGIO_CA_CERT_PEM_PATH" Value="[ADAGIO_CA_CERT_PEM_PATH]" />
+        <MsiProperty Name="ADAGIO_CA_CERT_PFX_PATH" Value="[ADAGIO_CA_CERT_PFX_PATH]" />
         <MsiProperty Name="ADAGIO_API_KEY_MODE" Value="[ADAGIO_API_KEY_MODE]" />
         <MsiProperty Name="ADAGIO_PROVIDED_API_KEY" Value="[ADAGIO_PROVIDED_API_KEY]" />
         <MsiProperty Name="ADAGIO_RESPONSE_FILE_PATH" Value="[ADAGIO_RESPONSE_FILE_PATH]" />
