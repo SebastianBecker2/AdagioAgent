@@ -41,7 +41,7 @@
        EXE is always up-to-date when developers iterate on the bundle. -->
   <Target Name="BuildBaApplication" BeforeTargets="BeforeBuild">
     <MSBuild Projects="$(_BaCsproj)"
-             Targets="Build"
+         Targets="Restore;Build"
              Properties="Configuration=$(Configuration);Platform=x64" />
   </Target>
 
