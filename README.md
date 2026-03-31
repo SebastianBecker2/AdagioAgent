@@ -1,6 +1,7 @@
 # AdagioAgent
 
 [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/SebastianBecker2/AdagioAgent?branch=main&svg=true)](https://ci.appveyor.com/project/SebastianBecker2/AdagioAgent)
+[![Windows Full CI](https://github.com/SebastianBecker2/AdagioAgent/actions/workflows/windows-full-ci.yml/badge.svg)](https://github.com/SebastianBecker2/AdagioAgent/actions/workflows/windows-full-ci.yml)
 
 Automated execution harness connecting GitHub Copilot (via a VS Code
 extension) to a UI-automation agent running inside a Windows or Linux VM.
