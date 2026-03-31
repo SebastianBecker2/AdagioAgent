@@ -42,6 +42,53 @@ Build a Burn bootstrapper application as the primary installer experience, keep 
 37. Update operator and user docs, quickstart, and release notes; include migration guidance from server-leaf PEM usage to CA PEM usage where relevant.
 38. Gate release with pilot checklist and rollback checklist completion before GA.
 
+**Implementation status (March 31, 2026)**
+
+Legend: `[x]` done, `[-]` partial, `[ ]` not started.
+
+- [x] Step 1: Phase 1 started (plan scope and implementation tracks exist).
+- [-] Step 2: Versioned wizard input contract mapped to machine-agent/bootstrap fields.
+- [-] Step 3: Unattended equivalence for interactive fields.
+- [-] Step 4: Upgrade/rerun compatibility policy with preserve/replace/reset behavior.
+- [x] Step 5: Phase 2 started.
+- [-] Step 6: Burn bundle plus BA orchestration for guided flow.
+- [-] Step 7: BA discovery and pre-population.
+- [-] Step 8: Wizard flow and validation framework.
+- [x] Step 9: Certificate mode selection screen.
+- [ ] Step 10: Certificate export screen with export/copy-path actions.
+- [-] Step 11: Security screen (toggles done; API key reveal/copy UX still open).
+- [-] Step 12: Network screen (inputs present; URL builder and interface-based host multi-select incomplete).
+- [-] Step 13: Path allowlist editors with stronger validation still pending.
+- [-] Step 14: Summary/confirm with final effective config preview.
+- [x] Step 15: Phase 3 started.
+- [-] Step 16: MSI custom action plumbing for BA-provided values.
+- [x] Step 17: bootstrap-agent supports cert/API key modes and output targets.
+- [x] Step 18: bootstrap-secrets remains the primary handoff artifact and includes response/output paths.
+- [x] Step 19: Service startup ordering is in place after bootstrap/preflight.
+- [x] Step 20: Phase 4 started.
+- [x] Step 21: Runtime read/write path enforcement is implemented.
+- [-] Step 22: Startup/readiness actionable validation expanded, with additional hardening still open.
+- [ ] Step 23: Startup schema-version handling in machine-agent for evolving installer payloads.
+- [-] Step 24: Phase 5 partially started.
+- [-] Step 25: Structured installer diagnostics across BA/MSI/bootstrap/service (with correlation IDs) partially in place.
+- [ ] Step 26: BA final screen with copyable connection details and one-click export/open actions.
+- [ ] Step 27: BA rollback/recovery actions for failed stages.
+- [-] Step 28: Phase 6 partially started.
+- [-] Step 29: Interactive and unattended test matrix partially covered.
+- [-] Step 30: Fresh install generated-CA scenario coverage is partial.
+- [-] Step 31: Fresh install provided-certificate scenario coverage is partial.
+- [-] Step 32: Upgrade install preserving existing config is partially covered.
+- [ ] Step 33: Upgrade install with explicit replace scenario.
+- [-] Step 34: Silent install parity validation is partial.
+- [x] Step 35: Path enforcement regression coverage implemented.
+- [ ] Step 36: Strict-TLS extension diagnostics validated across at least two distinct client machines.
+- [-] Step 37: Docs/quickstart/release-note migration guidance partially updated.
+- [ ] Step 38: Pilot and rollback checklist completion as GA gate.
+
+Notes:
+- The bundle currently uses the WiX standard BA, so the custom `installer-ba` wizard is not yet the active installer UX.
+- Wizard screens and response-file generation logic exist in `installer-ba`, and bootstrap/MSI response plumbing is present.
+
 **Relevant files**
 - [installer/AdagioMachineAgent.Setup.wixproj](installer/AdagioMachineAgent.Setup.wixproj) — Add Burn bundle integration, build orchestration, artifact packaging.
 - [installer/Package.wxs](installer/Package.wxs) — MSI property plumbing, custom action sequencing, service start ordering.
