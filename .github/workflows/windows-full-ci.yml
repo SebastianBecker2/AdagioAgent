@@ -39,15 +39,15 @@ jobs:
 
       - name: Run dry-run script tests
         shell: pwsh
-        run: Invoke-Pester -Script .\scripts\tests\DryRunScripts.Tests.ps1 -EnableExit
+        run: Invoke-Pester -Path .\scripts\tests\DryRunScripts.Tests.ps1 -EnableExit
 
       - name: Run bootstrap script tests
         shell: pwsh
-        run: Invoke-Pester -Script .\scripts\tests\BootstrapScripts.Tests.ps1 -EnableExit
+        run: Invoke-Pester -Path .\scripts\tests\BootstrapScripts.Tests.ps1 -EnableExit
 
       - name: Run installer script tests
         shell: pwsh
-        run: Invoke-Pester -Script .\scripts\tests\InstallerScripts.Tests.ps1 -EnableExit
+        run: Invoke-Pester -Path .\scripts\tests\InstallerScripts.Tests.ps1 -EnableExit
 
       - name: Restore machine-agent
         run: dotnet restore machine-agent\AdagioMachineAgent.csproj
