@@ -56,7 +56,7 @@ Legend: `[x]` done, `[-]` partial, `[ ]` not started.
 - [-] Step 8: Wizard flow and validation framework.
 - [x] Step 9: Certificate mode selection screen.
 - [ ] Step 10: Certificate export screen with export/copy-path actions.
-- [-] Step 11: Security screen (toggles done; API key reveal/copy UX still open).
+- [-] Step 11: Security screen (toggles plus hidden-by-default provided-API-key reveal/copy now implemented; generated-key display flow remains).
 - [-] Step 12: Network screen (inputs present; URL builder and interface-based host multi-select incomplete).
 - [-] Step 13: Path allowlist editors with stronger validation still pending.
 - [-] Step 14: Summary/confirm with final effective config preview (live field preview now wired in `installer-ba`; final UX polish remains).

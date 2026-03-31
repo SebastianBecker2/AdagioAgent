@@ -12,6 +12,9 @@ namespace AdagioMachineAgent.BootstrapperApplication
         private RadioButton? _generateRadio;
         private RadioButton? _providedRadio;
         private TextBox? _apiKeyBox;
+        private PasswordBox? _apiKeyPasswordBox;
+        private CheckBox? _revealApiKeyCheck;
+        private Button? _copyApiKeyButton;
         private CheckBox? _requireHttpsCheck;
         private CheckBox? _requireApiKeyCheck;
 
@@ -102,10 +105,43 @@ namespace AdagioMachineAgent.BootstrapperApplication
             // Provided API Key input (initially disabled)
             var apiKeyPanel = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
             var apiKeyLabel = new TextBlock { Text = "API Key (Base64):", Margin = new Thickness(0, 0, 0, 5), FontWeight = FontWeights.SemiBold };
-            _apiKeyBox = new TextBox { Height = 32, Padding = new Thickness(8), Margin = new Thickness(0, 0, 0, 10), TextWrapping = TextWrapping.Wrap, AcceptsReturn = true };
+            _apiKeyPasswordBox = new PasswordBox { Height = 32, Padding = new Thickness(8), Margin = new Thickness(0, 0, 0, 10) };
+            _apiKeyPasswordBox.Password = _context.ProvidedApiKey ?? string.Empty;
+            _apiKeyBox = new TextBox
+            {
+                Height = 32,
+                Padding = new Thickness(8),
+                Margin = new Thickness(0, 0, 0, 10),
+                TextWrapping = TextWrapping.Wrap,
+                AcceptsReturn = false,
+                Visibility = Visibility.Collapsed,
+                Text = _context.ProvidedApiKey ?? string.Empty
+            };
+
+            _revealApiKeyCheck = new CheckBox
+            {
+                Content = "Reveal API key",
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+            _revealApiKeyCheck.Checked += (s, e) => ToggleApiKeyVisibility(true);
+            _revealApiKeyCheck.Unchecked += (s, e) => ToggleApiKeyVisibility(false);
+
+            _copyApiKeyButton = new Button
+            {
+                Content = "Copy API key",
+                Width = 120,
+                Height = 30,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+            _copyApiKeyButton.Click += CopyApiKeyButton_Click;
+
             _apiKeyBox.Text = _context.ProvidedApiKey ?? string.Empty;
             apiKeyPanel.Children.Add(apiKeyLabel);
+            apiKeyPanel.Children.Add(_apiKeyPasswordBox);
             apiKeyPanel.Children.Add(_apiKeyBox);
+            apiKeyPanel.Children.Add(_revealApiKeyCheck);
+            apiKeyPanel.Children.Add(_copyApiKeyButton);
             content.Children.Add(apiKeyPanel);
 
             // Security Options Section
@@ -180,6 +216,62 @@ namespace AdagioMachineAgent.BootstrapperApplication
             bool isProvidedSelected = _providedRadio?.IsChecked == true;
             if (_apiKeyBox != null)
                 _apiKeyBox.IsEnabled = isProvidedSelected;
+            if (_apiKeyPasswordBox != null)
+                _apiKeyPasswordBox.IsEnabled = isProvidedSelected;
+            if (_revealApiKeyCheck != null)
+                _revealApiKeyCheck.IsEnabled = isProvidedSelected;
+            if (_copyApiKeyButton != null)
+                _copyApiKeyButton.IsEnabled = isProvidedSelected;
+
+            if (!isProvidedSelected && _revealApiKeyCheck != null)
+            {
+                _revealApiKeyCheck.IsChecked = false;
+                ToggleApiKeyVisibility(false);
+            }
+        }
+
+        private void ToggleApiKeyVisibility(bool isVisible)
+        {
+            if (_apiKeyBox == null || _apiKeyPasswordBox == null)
+            {
+                return;
+            }
+
+            if (isVisible)
+            {
+                _apiKeyBox.Text = _apiKeyPasswordBox.Password;
+                _apiKeyBox.Visibility = Visibility.Visible;
+                _apiKeyPasswordBox.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                _apiKeyPasswordBox.Password = _apiKeyBox.Text;
+                _apiKeyPasswordBox.Visibility = Visibility.Visible;
+                _apiKeyBox.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void CopyApiKeyButton_Click(object sender, RoutedEventArgs e)
+        {
+            var value = GetCurrentApiKeyValue();
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                MessageBox.Show("No API key value to copy.", "Copy API Key", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            Clipboard.SetText(value);
+            MessageBox.Show("API key copied to clipboard.", "Copy API Key", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private string GetCurrentApiKeyValue()
+        {
+            if (_apiKeyBox != null && _apiKeyBox.Visibility == Visibility.Visible)
+            {
+                return _apiKeyBox.Text;
+            }
+
+            return _apiKeyPasswordBox?.Password ?? string.Empty;
         }
 
         public override bool Validate()
@@ -192,7 +284,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
             else if (_providedRadio?.IsChecked == true)
             {
                 SelectedApiKeyMode = "Provided";
-                ProvidedApiKey = _apiKeyBox?.Text;
+                ProvidedApiKey = GetCurrentApiKeyValue();
 
                 if (string.IsNullOrWhiteSpace(ProvidedApiKey))
                 {
