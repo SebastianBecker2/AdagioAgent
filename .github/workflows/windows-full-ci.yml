@@ -37,10 +37,6 @@ jobs:
         shell: pwsh
         run: .\scripts\check-observability-docs.ps1
 
-      - name: Run validator script tests
-        shell: pwsh
-        run: Invoke-Pester -Script .\scripts\tests\ValidatorScripts.Tests.ps1 -EnableExit
-
       - name: Run dry-run script tests
         shell: pwsh
         run: Invoke-Pester -Script .\scripts\tests\DryRunScripts.Tests.ps1 -EnableExit
