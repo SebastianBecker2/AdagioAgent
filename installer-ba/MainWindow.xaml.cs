@@ -21,11 +21,11 @@ namespace AdagioMachineAgent.BootstrapperApplication
 
             // Initialize wizard screens
             _screens.Add(new WelcomeScreen());
-            _screens.Add(new CertificateModeScreen());
-            _screens.Add(new ApiKeyModeScreen());
-            _screens.Add(new NetworkConfigurationScreen(_context.Discovery));
-            _screens.Add(new PathSecurityScreen());
-            _screens.Add(new SummaryScreen());
+            _screens.Add(new CertificateModeScreen(_context));
+            _screens.Add(new ApiKeyModeScreen(_context));
+            _screens.Add(new NetworkConfigurationScreen(_context));
+            _screens.Add(new PathSecurityScreen(_context));
+            _screens.Add(new SummaryScreen(_context));
 
             // Start with first screen
             ShowCurrentScreen();
@@ -40,7 +40,9 @@ namespace AdagioMachineAgent.BootstrapperApplication
         {
             if (_currentScreenIndex >= 0 && _currentScreenIndex < _screens.Count)
             {
-                ScreenContainer.Content = _screens[_currentScreenIndex];
+                var screen = _screens[_currentScreenIndex];
+                screen.OnBeforeShown();
+                ScreenContainer.Content = screen;
                 UpdateNavigationButtons();
             }
         }
@@ -143,39 +145,34 @@ namespace AdagioMachineAgent.BootstrapperApplication
 
         private SecurityOptions GetSecurityConfiguration()
         {
-            var certScreen = _screens[1] as CertificateModeScreen;
-            var apiScreen = _screens[2] as ApiKeyModeScreen;
-
             return new SecurityOptions
             {
-                CertificateMode = certScreen?.SelectedCertificateMode ?? "GeneratedCa",
-                ProvidedCertificatePath = certScreen?.ProvidedCertPath,
-                ProvidedCertificatePassword = certScreen?.ProvidedCertPassword,
-                ApiKeyMode = apiScreen?.SelectedApiKeyMode ?? "Generate",
-                ProvidedApiKey = apiScreen?.ProvidedApiKey,
-                RequireHttps = (apiScreen?.RequireHttps ?? true),
-                RequireApiKey = (apiScreen?.RequireApiKey ?? true)
+                CertificateMode = _context.CertificateMode,
+                ProvidedCertificatePath = _context.ProvidedCertificatePath,
+                ProvidedCertificatePassword = _context.ProvidedCertificatePassword,
+                ApiKeyMode = _context.ApiKeyMode,
+                ProvidedApiKey = _context.ProvidedApiKey,
+                RequireHttps = _context.RequireHttps,
+                RequireApiKey = _context.RequireApiKey
             };
         }
 
         private NetworkOptions GetNetworkConfiguration()
         {
-            var networkScreen = _screens[3] as NetworkConfigurationScreen;
             return new NetworkOptions
             {
-                Urls = networkScreen?.Urls,
-                AllowedHosts = networkScreen?.AllowedHosts
+                Urls = _context.Urls,
+                AllowedHosts = _context.AllowedHosts
             };
         }
 
         private AgentOptions GetAgentOptionsConfiguration()
         {
-            var pathScreen = _screens[4] as PathSecurityScreen;
             return new AgentOptions
             {
-                AllowedExecutablePaths = pathScreen?.AllowedExecutablePaths,
-                AllowedWritablePaths = pathScreen?.AllowedWritablePaths,
-                AllowedReadablePaths = pathScreen?.AllowedReadablePaths
+                AllowedExecutablePaths = _context.AllowedExecutablePaths,
+                AllowedWritablePaths = _context.AllowedWritablePaths,
+                AllowedReadablePaths = _context.AllowedReadablePaths
             };
         }
 

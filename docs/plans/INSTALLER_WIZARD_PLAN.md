@@ -59,7 +59,7 @@ Legend: `[x]` done, `[-]` partial, `[ ]` not started.
 - [-] Step 11: Security screen (toggles done; API key reveal/copy UX still open).
 - [-] Step 12: Network screen (inputs present; URL builder and interface-based host multi-select incomplete).
 - [-] Step 13: Path allowlist editors with stronger validation still pending.
-- [-] Step 14: Summary/confirm with final effective config preview.
+- [-] Step 14: Summary/confirm with final effective config preview (live field preview now wired in `installer-ba`; final UX polish remains).
 - [x] Step 15: Phase 3 started.
 - [-] Step 16: MSI custom action plumbing for BA-provided values.
 - [x] Step 17: bootstrap-agent supports cert/API key modes and output targets.
@@ -88,6 +88,7 @@ Legend: `[x]` done, `[-]` partial, `[ ]` not started.
 Notes:
 - The bundle currently uses the WiX standard BA, so the custom `installer-ba` wizard is not yet the active installer UX.
 - Wizard screens and response-file generation logic exist in `installer-ba`, and bootstrap/MSI response plumbing is present.
+- Summary screen now renders selected certificate/API/network/path values from shared wizard context before install.
 
 **Relevant files**
 - [installer/AdagioMachineAgent.Setup.wixproj](installer/AdagioMachineAgent.Setup.wixproj) — Add Burn bundle integration, build orchestration, artifact packaging.

@@ -9,6 +9,13 @@ namespace AdagioMachineAgent.BootstrapperApplication
     public abstract class WizardScreen : UserControl
     {
         /// <summary>
+        /// Called by the host window when the screen becomes active.
+        /// </summary>
+        public virtual void OnBeforeShown()
+        {
+        }
+
+        /// <summary>
         /// Validates the screen's input and returns true if valid.
         /// </summary>
         public abstract bool Validate();

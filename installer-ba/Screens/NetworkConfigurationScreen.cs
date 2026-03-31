@@ -8,6 +8,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
     /// </summary>
     public class NetworkConfigurationScreen : WizardScreen
     {
+        private readonly InstallerContext _context;
         private TextBox? _urlsBox;
         private TextBox? _hostsBox;
         private TextBlock? _discoveryInfo;
@@ -15,9 +16,10 @@ namespace AdagioMachineAgent.BootstrapperApplication
         public string? Urls { get; private set; }
         public string? AllowedHosts { get; private set; }
 
-        public NetworkConfigurationScreen(DiscoveryData discoveryData)
+        public NetworkConfigurationScreen(InstallerContext context)
         {
-            InitializeUI(discoveryData);
+            _context = context;
+            InitializeUI(context.Discovery);
         }
 
         private void InitializeUI(DiscoveryData discoveryData)
@@ -96,7 +98,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
                 Margin = new Thickness(0, 0, 0, 10),
                 TextWrapping = TextWrapping.Wrap,
                 AcceptsReturn = true,
-                Text = "https://localhost:5001; https://localhost:5002",
+                Text = _context.Urls,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
             content.Children.Add(_urlsBox);
@@ -126,7 +128,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
                 Margin = new Thickness(0, 0, 0, 10),
                 TextWrapping = TextWrapping.Wrap,
                 AcceptsReturn = true,
-                Text = "localhost; agent.example.com",
+                Text = _context.AllowedHosts,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
             content.Children.Add(_hostsBox);
@@ -172,6 +174,9 @@ namespace AdagioMachineAgent.BootstrapperApplication
                     return false;
                 }
             }
+
+            _context.Urls = Urls;
+            _context.AllowedHosts = AllowedHosts;
 
             return true;
         }

@@ -8,6 +8,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
     /// </summary>
     public class ApiKeyModeScreen : WizardScreen
     {
+        private readonly InstallerContext _context;
         private RadioButton? _generateRadio;
         private RadioButton? _providedRadio;
         private TextBox? _apiKeyBox;
@@ -19,8 +20,9 @@ namespace AdagioMachineAgent.BootstrapperApplication
         public bool RequireHttps { get; private set; } = true;
         public bool RequireApiKey { get; private set; } = true;
 
-        public ApiKeyModeScreen()
+        public ApiKeyModeScreen(InstallerContext context)
         {
+            _context = context;
             InitializeUI();
         }
 
@@ -101,6 +103,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
             var apiKeyPanel = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
             var apiKeyLabel = new TextBlock { Text = "API Key (Base64):", Margin = new Thickness(0, 0, 0, 5), FontWeight = FontWeights.SemiBold };
             _apiKeyBox = new TextBox { Height = 32, Padding = new Thickness(8), Margin = new Thickness(0, 0, 0, 10), TextWrapping = TextWrapping.Wrap, AcceptsReturn = true };
+            _apiKeyBox.Text = _context.ProvidedApiKey ?? string.Empty;
             apiKeyPanel.Children.Add(apiKeyLabel);
             apiKeyPanel.Children.Add(_apiKeyBox);
             content.Children.Add(apiKeyPanel);
@@ -122,7 +125,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
             _requireHttpsCheck = new CheckBox
             {
                 Content = "Require HTTPS for all connections",
-                IsChecked = true,
+                IsChecked = _context.RequireHttps,
                 Margin = new Thickness(0, 10, 0, 10),
                 VerticalContentAlignment = VerticalAlignment.Center
             };
@@ -141,7 +144,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
             _requireApiKeyCheck = new CheckBox
             {
                 Content = "Require API key for all requests",
-                IsChecked = true,
+                IsChecked = _context.RequireApiKey,
                 Margin = new Thickness(0, 10, 0, 10),
                 VerticalContentAlignment = VerticalAlignment.Center
             };
@@ -160,6 +163,15 @@ namespace AdagioMachineAgent.BootstrapperApplication
             mainGrid.Children.Add(scrollViewer);
             this.Content = mainGrid;
 
+            if (_context.ApiKeyMode == "Provided")
+            {
+                _providedRadio.IsChecked = true;
+            }
+            else
+            {
+                _generateRadio.IsChecked = true;
+            }
+
             UpdateUI();
         }
 
@@ -175,6 +187,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
             if (_generateRadio?.IsChecked == true)
             {
                 SelectedApiKeyMode = "Generate";
+                ProvidedApiKey = null;
             }
             else if (_providedRadio?.IsChecked == true)
             {
@@ -190,6 +203,11 @@ namespace AdagioMachineAgent.BootstrapperApplication
 
             RequireHttps = _requireHttpsCheck?.IsChecked ?? true;
             RequireApiKey = _requireApiKeyCheck?.IsChecked ?? true;
+
+            _context.ApiKeyMode = SelectedApiKeyMode ?? "Generate";
+            _context.ProvidedApiKey = ProvidedApiKey;
+            _context.RequireHttps = RequireHttps;
+            _context.RequireApiKey = RequireApiKey;
 
             return true;
         }

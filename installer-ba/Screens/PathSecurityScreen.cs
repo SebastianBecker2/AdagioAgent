@@ -8,6 +8,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
     /// </summary>
     public class PathSecurityScreen : WizardScreen
     {
+        private readonly InstallerContext _context;
         private TextBox? _executablePathsBox;
         private TextBox? _writablePathsBox;
         private TextBox? _readablePathsBox;
@@ -16,8 +17,9 @@ namespace AdagioMachineAgent.BootstrapperApplication
         public string? AllowedWritablePaths { get; private set; }
         public string? AllowedReadablePaths { get; private set; }
 
-        public PathSecurityScreen()
+        public PathSecurityScreen(InstallerContext context)
         {
+            _context = context;
             InitializeUI();
         }
 
@@ -72,7 +74,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
                 Margin = new Thickness(0, 0, 0, 5),
                 TextWrapping = TextWrapping.Wrap,
                 AcceptsReturn = true,
-                Text = "C:\\Windows\\System32; C:\\Program Files",
+                Text = _context.AllowedExecutablePaths,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
             content.Children.Add(_executablePathsBox);
@@ -102,7 +104,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
                 Margin = new Thickness(0, 0, 0, 5),
                 TextWrapping = TextWrapping.Wrap,
                 AcceptsReturn = true,
-                Text = "C:\\Logs; C:\\Temp",
+                Text = _context.AllowedWritablePaths,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
             content.Children.Add(_writablePathsBox);
@@ -132,7 +134,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
                 Margin = new Thickness(0, 0, 0, 5),
                 TextWrapping = TextWrapping.Wrap,
                 AcceptsReturn = true,
-                Text = "C:\\Program Files; C:\\Windows",
+                Text = _context.AllowedReadablePaths,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
             content.Children.Add(_readablePathsBox);
@@ -174,6 +176,10 @@ namespace AdagioMachineAgent.BootstrapperApplication
                 MessageBox.Show("Allowed readable paths are required.", "Validation Error");
                 return false;
             }
+
+            _context.AllowedExecutablePaths = AllowedExecutablePaths;
+            _context.AllowedWritablePaths = AllowedWritablePaths;
+            _context.AllowedReadablePaths = AllowedReadablePaths;
 
             return true;
         }

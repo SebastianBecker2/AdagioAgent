@@ -8,6 +8,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
     /// </summary>
     public class CertificateModeScreen : WizardScreen
     {
+        private readonly InstallerContext _context;
         private RadioButton? _generatedCaRadio;
         private RadioButton? _generatedLeafRadio;
         private RadioButton? _providedRadio;
@@ -18,8 +19,9 @@ namespace AdagioMachineAgent.BootstrapperApplication
         public string? ProvidedCertPath { get; private set; }
         public string? ProvidedCertPassword { get; private set; }
 
-        public CertificateModeScreen()
+        public CertificateModeScreen(InstallerContext context)
         {
+            _context = context;
             InitializeUI();
         }
 
@@ -118,11 +120,13 @@ namespace AdagioMachineAgent.BootstrapperApplication
             var certPathPanel = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
             var certPathLabel = new TextBlock { Text = "Certificate Path (PFX):", Margin = new Thickness(0, 0, 0, 5), FontWeight = FontWeights.SemiBold };
             _certPathBox = new TextBox { Height = 32, Padding = new Thickness(8), Margin = new Thickness(0, 0, 0, 10) };
+            _certPathBox.Text = _context.ProvidedCertificatePath ?? string.Empty;
             certPathPanel.Children.Add(certPathLabel);
             certPathPanel.Children.Add(_certPathBox);
 
             var certPasswordLabel = new TextBlock { Text = "Certificate Password:", Margin = new Thickness(0, 0, 0, 5), FontWeight = FontWeights.SemiBold };
             _certPasswordBox = new PasswordBox { Height = 32, Padding = new Thickness(8) };
+            _certPasswordBox.Password = _context.ProvidedCertificatePassword ?? string.Empty;
             certPathPanel.Children.Add(certPasswordLabel);
             certPathPanel.Children.Add(_certPasswordBox);
 
@@ -131,6 +135,19 @@ namespace AdagioMachineAgent.BootstrapperApplication
             scrollViewer.Content = content;
             mainGrid.Children.Add(scrollViewer);
             this.Content = mainGrid;
+
+            switch (_context.CertificateMode)
+            {
+                case "Provided":
+                    _providedRadio.IsChecked = true;
+                    break;
+                case "GeneratedLeaf":
+                    _generatedLeafRadio.IsChecked = true;
+                    break;
+                default:
+                    _generatedCaRadio.IsChecked = true;
+                    break;
+            }
 
             UpdateUI();
         }
@@ -149,11 +166,17 @@ namespace AdagioMachineAgent.BootstrapperApplication
             if (_generatedCaRadio?.IsChecked == true)
             {
                 SelectedCertificateMode = "GeneratedCa";
+                _context.CertificateMode = SelectedCertificateMode;
+                _context.ProvidedCertificatePath = null;
+                _context.ProvidedCertificatePassword = null;
                 return true;
             }
             if (_generatedLeafRadio?.IsChecked == true)
             {
                 SelectedCertificateMode = "GeneratedLeaf";
+                _context.CertificateMode = SelectedCertificateMode;
+                _context.ProvidedCertificatePath = null;
+                _context.ProvidedCertificatePassword = null;
                 return true;
             }
             if (_providedRadio?.IsChecked == true)
@@ -173,6 +196,10 @@ namespace AdagioMachineAgent.BootstrapperApplication
                     MessageBox.Show("Certificate file not found.", "Validation Error");
                     return false;
                 }
+
+                _context.CertificateMode = SelectedCertificateMode;
+                _context.ProvidedCertificatePath = ProvidedCertPath;
+                _context.ProvidedCertificatePassword = ProvidedCertPassword;
 
                 return true;
             }

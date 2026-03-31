@@ -8,8 +8,21 @@ namespace AdagioMachineAgent.BootstrapperApplication
     /// </summary>
     public class SummaryScreen : WizardScreen
     {
-        public SummaryScreen()
+        private readonly InstallerContext _context;
+        private TextBlock? _certificateModeValue;
+        private TextBlock? _certificatePathValue;
+        private TextBlock? _apiKeyModeValue;
+        private TextBlock? _requireHttpsValue;
+        private TextBlock? _requireApiKeyValue;
+        private TextBlock? _urlsValue;
+        private TextBlock? _allowedHostsValue;
+        private TextBlock? _executablePathsValue;
+        private TextBlock? _writablePathsValue;
+        private TextBlock? _readablePathsValue;
+
+        public SummaryScreen(InstallerContext context)
         {
+            _context = context;
             InitializeUI();
         }
 
@@ -63,26 +76,38 @@ namespace AdagioMachineAgent.BootstrapperApplication
 
             // Certificate Info
             var certSection = CreateSummarySection("Certificate Configuration");
-            certSection.Children.Add(new TextBlock { Text = "Mode: (will be populated from wizard)", Margin = new Thickness(10, 0, 0, 5) });
+            _certificateModeValue = CreateSummaryValue();
+            _certificatePathValue = CreateSummaryValue();
+            certSection.Children.Add(_certificateModeValue);
+            certSection.Children.Add(_certificatePathValue);
             summaryContent.Children.Add(certSection);
 
             // API Key Info
             var apiSection = CreateSummarySection("Security Configuration");
-            apiSection.Children.Add(new TextBlock { Text = "API Key Mode: (will be populated from wizard)", Margin = new Thickness(10, 0, 0, 5) });
-            apiSection.Children.Add(new TextBlock { Text = "Require HTTPS: (will be populated from wizard)", Margin = new Thickness(10, 0, 0, 5) });
+            _apiKeyModeValue = CreateSummaryValue();
+            _requireHttpsValue = CreateSummaryValue();
+            _requireApiKeyValue = CreateSummaryValue();
+            apiSection.Children.Add(_apiKeyModeValue);
+            apiSection.Children.Add(_requireHttpsValue);
+            apiSection.Children.Add(_requireApiKeyValue);
             summaryContent.Children.Add(apiSection);
 
             // Network Info
             var networkSection = CreateSummarySection("Network Configuration");
-            networkSection.Children.Add(new TextBlock { Text = "Service URLs: (will be populated from wizard)", Margin = new Thickness(10, 0, 0, 5) });
-            networkSection.Children.Add(new TextBlock { Text = "Allowed Hosts: (will be populated from wizard)", Margin = new Thickness(10, 0, 0, 5) });
+            _urlsValue = CreateSummaryValue();
+            _allowedHostsValue = CreateSummaryValue();
+            networkSection.Children.Add(_urlsValue);
+            networkSection.Children.Add(_allowedHostsValue);
             summaryContent.Children.Add(networkSection);
 
             // Path Info
             var pathSection = CreateSummarySection("Path Security");
-            pathSection.Children.Add(new TextBlock { Text = "Executable Paths: (will be populated from wizard)", Margin = new Thickness(10, 0, 0, 5) });
-            pathSection.Children.Add(new TextBlock { Text = "Writable Paths: (will be populated from wizard)", Margin = new Thickness(10, 0, 0, 5) });
-            pathSection.Children.Add(new TextBlock { Text = "Readable Paths: (will be populated from wizard)", Margin = new Thickness(10, 0, 0, 5) });
+            _executablePathsValue = CreateSummaryValue();
+            _writablePathsValue = CreateSummaryValue();
+            _readablePathsValue = CreateSummaryValue();
+            pathSection.Children.Add(_executablePathsValue);
+            pathSection.Children.Add(_writablePathsValue);
+            pathSection.Children.Add(_readablePathsValue);
             summaryContent.Children.Add(pathSection);
 
             summaryBox.Child = summaryContent;
@@ -126,6 +151,8 @@ namespace AdagioMachineAgent.BootstrapperApplication
             scrollViewer.Content = content;
             mainGrid.Children.Add(scrollViewer);
             this.Content = mainGrid;
+
+            RefreshSummary();
         }
 
         private StackPanel CreateSummarySection(string title)
@@ -139,6 +166,55 @@ namespace AdagioMachineAgent.BootstrapperApplication
             };
             panel.Children.Add(titleBlock);
             return panel;
+        }
+
+        private TextBlock CreateSummaryValue()
+        {
+            return new TextBlock
+            {
+                Margin = new Thickness(10, 0, 0, 5),
+                TextWrapping = TextWrapping.Wrap
+            };
+        }
+
+        private void RefreshSummary()
+        {
+            if (_certificateModeValue == null ||
+                _certificatePathValue == null ||
+                _apiKeyModeValue == null ||
+                _requireHttpsValue == null ||
+                _requireApiKeyValue == null ||
+                _urlsValue == null ||
+                _allowedHostsValue == null ||
+                _executablePathsValue == null ||
+                _writablePathsValue == null ||
+                _readablePathsValue == null)
+            {
+                return;
+            }
+
+            _certificateModeValue.Text = $"Mode: {_context.CertificateMode}";
+            _certificatePathValue.Text = _context.CertificateMode == "Provided"
+                ? $"Provided Certificate: {_context.ProvidedCertificatePath ?? "(missing)"}"
+                : "Provided Certificate: N/A";
+
+            _apiKeyModeValue.Text = _context.ApiKeyMode == "Provided"
+                ? "API Key Mode: Provided (value hidden)"
+                : "API Key Mode: Generate automatically";
+            _requireHttpsValue.Text = $"Require HTTPS: {_context.RequireHttps}";
+            _requireApiKeyValue.Text = $"Require API Key: {_context.RequireApiKey}";
+
+            _urlsValue.Text = $"Service URLs: {_context.Urls}";
+            _allowedHostsValue.Text = $"Allowed Hosts: {_context.AllowedHosts}";
+
+            _executablePathsValue.Text = $"Executable Paths: {_context.AllowedExecutablePaths}";
+            _writablePathsValue.Text = $"Writable Paths: {_context.AllowedWritablePaths}";
+            _readablePathsValue.Text = $"Readable Paths: {_context.AllowedReadablePaths}";
+        }
+
+        public override void OnBeforeShown()
+        {
+            RefreshSummary();
         }
 
         public override bool Validate() => true;
