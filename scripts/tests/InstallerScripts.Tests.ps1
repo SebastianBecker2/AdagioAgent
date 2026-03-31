@@ -172,6 +172,18 @@ Describe 'Installer bundle runner script' {
             & $bundleRunnerScript -BundlePath (Join-Path $script:testRoot 'missing-bundle.exe') -ResponseFilePath $script:responsePath -OutputDir $script:outputDir -DryRun
         } | Should Throw
     }
+
+    It 'reports layoutOnly=true in summary when -LayoutOnly is set' {
+        # Use -DryRun so no real process is launched; only verifies the flag is surfaced in output
+        & $bundleRunnerScript -BundlePath $script:bundlePath -ResponseFilePath $script:responsePath -OutputDir $script:outputDir -DryRun -LayoutOnly
+
+        $summaryJsonPath = Join-Path $script:outputDir 'bundle-run-summary.json'
+        (Test-Path -LiteralPath $summaryJsonPath -PathType Leaf) | Should Be $true
+
+        $summary = Get-Content -LiteralPath $summaryJsonPath -Raw | ConvertFrom-Json
+        $summary.layoutOnly | Should Be $true
+        $summary.dryRun    | Should Be $true
+    }
 }
 
 Describe 'Bootstrap preflight script validation' {

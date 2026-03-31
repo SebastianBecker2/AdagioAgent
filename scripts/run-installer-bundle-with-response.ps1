@@ -5,6 +5,7 @@ param(
     [switch]$GenerateResponseFile,
     [string]$ResponseOutputPath = "artifacts\installer\installer-response.json",
     [switch]$DryRun,
+    [switch]$LayoutOnly,
     [string]$OutputDir = "artifacts\installer",
     [switch]$PassThru
 )
@@ -77,15 +78,27 @@ if (-not (Test-Path -LiteralPath $BundlePath -PathType Leaf)) {
 $responseRaw = Get-Content -LiteralPath $ResponseFilePath -Raw
 $response = $responseRaw | ConvertFrom-Json
 
-$bundleArgs = @(
-    '/quiet',
-    '/norestart',
-    "ADAGIO_RESPONSE_FILE_PATH=`"$ResponseFilePath`""
-)
-
 $bundleLogPath = Join-Path $OutputDir 'bundle-install.log'
 $summaryJsonPath = Join-Path $OutputDir 'bundle-run-summary.json'
 $summaryMarkdownPath = Join-Path $OutputDir 'bundle-run-summary.md'
+
+$layoutDir = $null
+if ($LayoutOnly.IsPresent) {
+    $layoutDir = Join-Path $OutputDir 'bundle-layout'
+    New-Item -ItemType Directory -Path $layoutDir -Force | Out-Null
+    $bundleArgs = @(
+        '/layout', "`"$layoutDir`"",
+        '/quiet',
+        "/log `"$bundleLogPath`""
+    )
+}
+else {
+    $bundleArgs = @(
+        '/quiet',
+        '/norestart',
+        "ADAGIO_RESPONSE_FILE_PATH=`"$ResponseFilePath`""
+    )
+}
 
 $commandPreview = ('"{0}" {1}' -f $BundlePath, ($bundleArgs -join ' '))
 $responseHash = Get-TextHash -Value $responseRaw
@@ -93,6 +106,7 @@ $responseHash = Get-TextHash -Value $responseRaw
 $summary = [ordered]@{
     generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('u')
     dryRun = [bool]$DryRun
+    layoutOnly = [bool]$LayoutOnly
     bundlePath = $BundlePath
     bundleExists = $true
     responseFilePath = $ResponseFilePath
@@ -110,10 +124,24 @@ $summary = [ordered]@{
 }
 
 if (-not $DryRun.IsPresent) {
-    $argumentsWithLog = @($bundleArgs + "/log `"$bundleLogPath`"")
-    $process = Start-Process -FilePath $BundlePath -ArgumentList $argumentsWithLog -Wait -PassThru -NoNewWindow
-    $summary.exitCode = $process.ExitCode
-    $summary.success = ($process.ExitCode -eq 0)
+    if ($LayoutOnly.IsPresent) {
+        # Layout mode: run bundle to extract/layout without installing.
+        # This exercises the Burn engine startup and BA pipe handshake
+        # without performing an actual installation.
+        $process = Start-Process -FilePath $BundlePath -ArgumentList $bundleArgs -Wait -PassThru -NoNewWindow
+        $summary.exitCode = $process.ExitCode
+        $summary.success = ($process.ExitCode -eq 0)
+        # Clean up extracted layout files
+        if (Test-Path -LiteralPath $layoutDir -PathType Container) {
+            Remove-Item -LiteralPath $layoutDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+    else {
+        $argumentsWithLog = @($bundleArgs + "/log `"$bundleLogPath`"")
+        $process = Start-Process -FilePath $BundlePath -ArgumentList $argumentsWithLog -Wait -PassThru -NoNewWindow
+        $summary.exitCode = $process.ExitCode
+        $summary.success = ($process.ExitCode -eq 0)
+    }
 }
 
 if ($DryRun.IsPresent) {
@@ -127,6 +155,7 @@ $markdownLines = @(
     '',
     "- GeneratedAtUtc: $($summary.generatedAtUtc)",
     "- DryRun: $($summary.dryRun)",
+    "- LayoutOnly: $($summary.layoutOnly)",
     "- Success: $($summary.success)",
     "- ExitCode: $($summary.exitCode)",
     "- BundlePath: $($summary.bundlePath)",

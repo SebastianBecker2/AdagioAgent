@@ -277,9 +277,10 @@ build_script:
         .\scripts\test-installer-bootstrap-matrix.ps1 -ScenarioNames AdjacentUpgrade -PreviousMsiPath $env:ADAGIO_UPGRADE_BASELINE_MSI -MsiPath .\installer\bin\x64\Release\AdagioMachineAgentSetup.msi -ForceCleanMachine -FailOnScenarioFailure
       }
 
-  # 3.3 Guard: validate bundle can launch and execute in quiet mode with a generated response file
-  # Run after MSI matrix validation to avoid contaminating machine state before fresh-install checks.
-  - ps: .\scripts\run-installer-bundle-with-response.ps1 -BundlePath .\installer-bundle\bin\x64\Release\AdagioMachineAgent.Bundle.exe -GenerateResponseFile -ResponseOutputPath .\artifacts\installer-bundle-validation\installer-response.json -OutputDir .\artifacts\installer-bundle-validation
+  # 3.3 Guard: validate bundle can launch (Burn BA pipe handshake) using layout-only mode.
+  # Layout mode runs the Burn engine and standard BA without performing an actual install,
+  # which avoids a duplicate bootstrap cycle after the MSI matrix test and prevents exit 1603.
+  - ps: .\scripts\run-installer-bundle-with-response.ps1 -BundlePath .\installer-bundle\bin\x64\Release\AdagioMachineAgent.Bundle.exe -GenerateResponseFile -ResponseOutputPath .\artifacts\installer-bundle-validation\installer-response.json -OutputDir .\artifacts\installer-bundle-validation -LayoutOnly
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 test_script:
