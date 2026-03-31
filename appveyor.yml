@@ -294,6 +294,8 @@ test_script:
 artifacts:
   - path: installer/bin/x64/Release/AdagioMachineAgentSetup.msi
     name: AdagioMachineAgentSetup
+  - path: installer-bundle/bin/x64/Release/AdagioMachineAgent.BA.exe
+    name: AdagioMachineAgentBA
   - path: installer-bundle/bin/x64/Release/AdagioMachineAgent.Bundle.exe
     name: AdagioMachineAgentBundle
   - path: artifacts/installer-bundle-validation/**/*.json
