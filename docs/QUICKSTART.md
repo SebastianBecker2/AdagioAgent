@@ -71,6 +71,8 @@ msiexec /i AdagioMachineAgentSetup.msi /quiet /qn \
    ADAGIO_CERT_MODE=Provided \
    ADAGIO_PROVIDED_CERT_PATH="C:\ProgramData\AdagioMachineAgent\tls\agent.pfx" \
    ADAGIO_PROVIDED_CERT_PASSWORD="<pfx-password>" \
+   ADAGIO_CA_CERT_PEM_PATH="C:\ProgramData\AdagioMachineAgent\tls\agent-ca.pem" \
+   ADAGIO_CA_CERT_PFX_PATH="C:\ProgramData\AdagioMachineAgent\tls\agent-ca.pfx" \
    ADAGIO_API_KEY_MODE=Provided \
    ADAGIO_PROVIDED_API_KEY="<api-key>"
 ```
@@ -78,6 +80,8 @@ msiexec /i AdagioMachineAgentSetup.msi /quiet /qn \
 Supported values:
 - `ADAGIO_CERT_MODE`: `GeneratedCa` (default), `GeneratedLeaf`, `Provided`
 - `ADAGIO_API_KEY_MODE`: `Generate` (default), `Provided`
+- `ADAGIO_CA_CERT_PEM_PATH`: optional explicit export target for CA PEM output
+- `ADAGIO_CA_CERT_PFX_PATH`: optional explicit export target for CA PFX output
 
 You can also provide a response file path for deterministic unattended configuration:
 
@@ -117,8 +121,11 @@ Example response file:
 
 ```json
 {
+   "schemaVersion": 1,
    "security": {
       "certificateMode": "GeneratedCa",
+      "caCertificatePemPath": "C:\\ProgramData\\AdagioMachineAgent\\tls\\agent-ca.pem",
+      "caCertificatePfxPath": "C:\\ProgramData\\AdagioMachineAgent\\tls\\agent-ca.pfx",
       "apiKeyMode": "Provided",
       "providedApiKey": "replace-me",
       "requireHttps": true,
