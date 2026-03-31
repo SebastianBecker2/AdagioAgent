@@ -1,0 +1,149 @@
+name: Windows Full CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  windows-full-build-test:
+    name: Build and test (Windows parity)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify docs links
+        shell: pwsh
+        run: .\scripts\check-doc-links.ps1
+
+      - name: Verify operational docs index
+        shell: pwsh
+        run: .\scripts\check-operational-docs-index.ps1
+
+      - name: Verify observability docs
+        shell: pwsh
+        run: .\scripts\check-observability-docs.ps1
+
+      - name: Run validator script tests
+        shell: pwsh
+        run: Invoke-Pester -Script .\scripts\tests\ValidatorScripts.Tests.ps1 -EnableExit
+
+      - name: Run dry-run script tests
+        shell: pwsh
+        run: Invoke-Pester -Script .\scripts\tests\DryRunScripts.Tests.ps1 -EnableExit
+
+      - name: Run bootstrap script tests
+        shell: pwsh
+        run: Invoke-Pester -Script .\scripts\tests\BootstrapScripts.Tests.ps1 -EnableExit
+
+      - name: Run installer script tests
+        shell: pwsh
+        run: Invoke-Pester -Script .\scripts\tests\InstallerScripts.Tests.ps1 -EnableExit
+
+      - name: Restore machine-agent
+        run: dotnet restore machine-agent\AdagioMachineAgent.csproj
+
+      - name: Build machine-agent (Release)
+        run: dotnet build machine-agent\AdagioMachineAgent.csproj -c Release --no-restore
+
+      - name: Build and package extension
+        shell: pwsh
+        run: .\scripts\ci-verify-extension.ps1 -InstallDeps -Compile -PackageVsix
+
+      - name: Build MSI installer
+        run: dotnet build installer\AdagioMachineAgent.Setup.wixproj -p:Configuration=Release
+
+      - name: Build bundle installer
+        run: dotnet build installer-bundle\AdagioMachineAgent.Bundle.wixproj -p:Configuration=Release
+
+      - name: Validate silent installer bootstrap matrix
+        shell: pwsh
+        run: .\scripts\test-installer-bootstrap-matrix.ps1 -MsiPath .\installer\bin\x64\Release\AdagioMachineAgentSetup.msi -ForceCleanMachine -FailOnScenarioFailure
+
+      - name: Validate bundle launch in layout mode
+        shell: pwsh
+        run: .\scripts\run-installer-bundle-with-response.ps1 -BundlePath .\installer-bundle\bin\x64\Release\AdagioMachineAgent.Bundle.exe -GenerateResponseFile -ResponseOutputPath .\artifacts\installer-bundle-validation\installer-response.json -OutputDir .\artifacts\installer-bundle-validation -LayoutOnly
+
+      - name: Run .NET tests
+        run: dotnet test AdagioAgent.sln -c Release --logger "trx;LogFileName=dotnet-tests.trx" --results-directory .\TestResults
+
+      - name: Run extension tests
+        shell: pwsh
+        run: .\scripts\ci-verify-extension.ps1 -RunTests
+
+      - name: Upload MSI artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdagioMachineAgentSetup
+          path: installer/bin/x64/Release/AdagioMachineAgentSetup.msi
+          if-no-files-found: error
+
+      - name: Upload BA artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdagioMachineAgentBA
+          path: installer-bundle/bin/x64/Release/AdagioMachineAgent.BA.exe
+          if-no-files-found: error
+
+      - name: Upload bundle artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdagioMachineAgentBundle
+          path: installer-bundle/bin/x64/Release/AdagioMachineAgent.Bundle.exe
+          if-no-files-found: error
+
+      - name: Upload installer bundle validation JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: InstallerBundleValidationJson
+          path: artifacts/installer-bundle-validation/**/*.json
+          if-no-files-found: warn
+
+      - name: Upload installer bundle validation Markdown
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: InstallerBundleValidationMarkdown
+          path: artifacts/installer-bundle-validation/**/*.md
+          if-no-files-found: warn
+
+      - name: Upload installer bundle validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: InstallerBundleValidationLogs
+          path: artifacts/installer-bundle-validation/**/*.log
+          if-no-files-found: warn
+
+      - name: Upload VSIX artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdagioControllerExtension
+          path: controller-extension/*.vsix
+          if-no-files-found: error
+
+      - name: Upload .NET test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-test-results
+          path: TestResults/*.trx
+          if-no-files-found: warn
