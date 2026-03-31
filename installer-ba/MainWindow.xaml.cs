@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace AdagioMachineAgent.BootstrapperApplication
@@ -15,6 +17,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
     {
         private readonly InstallerContext _context;
         private readonly List<WizardScreen> _screens = new();
+        private readonly InstallProgressScreen _progressScreen;
         private int _currentScreenIndex = 0;
 
         public MainWindow()
@@ -30,6 +33,8 @@ namespace AdagioMachineAgent.BootstrapperApplication
             _screens.Add(new NetworkConfigurationScreen(_context));
             _screens.Add(new PathSecurityScreen(_context));
             _screens.Add(new SummaryScreen(_context));
+            _progressScreen = new InstallProgressScreen();
+            _screens.Add(_progressScreen);
 
             // Start with first screen
             ShowCurrentScreen();
@@ -53,6 +58,15 @@ namespace AdagioMachineAgent.BootstrapperApplication
 
         private void UpdateNavigationButtons()
         {
+            // Hide all navigation controls while the install is running or complete.
+            if (_currentScreenIndex == _screens.IndexOf(_progressScreen))
+            {
+                PreviousButton.Visibility = Visibility.Collapsed;
+                NextButton.Visibility = Visibility.Collapsed;
+                CancelButton.Visibility = Visibility.Collapsed;
+                return;
+            }
+
             PreviousButton.IsEnabled = _currentScreenIndex > 0;
             PreviousButton.Visibility = _currentScreenIndex > 0 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -123,7 +137,7 @@ namespace AdagioMachineAgent.BootstrapperApplication
 
             try
             {
-                // Collect configuration from all screens
+                // Collect configuration from all screens.
                 var config = new InstallerResponseFile
                 {
                     Timestamp = DateTime.UtcNow.ToString("O"),
@@ -133,14 +147,16 @@ namespace AdagioMachineAgent.BootstrapperApplication
                     Discovery = _context.Discovery
                 };
 
-                // Generate response file
+                // Persist the response file so the bundle can pass it to the MSI.
                 string responseFilePath = GenerateResponseFile(config);
 
-                // Write response file path to a well-known location so bundle can read it
-                WriteResponseFilePathMarker(responseFilePath);
+                // Navigate to the installation progress screen.
+                _currentScreenIndex = _screens.IndexOf(_progressScreen);
+                ShowCurrentScreen();
 
-                // Exit with success (0) so bundle proceeds with MSI execution
-                Environment.Exit(0);
+                // Launch the Burn bundle quietly on a background thread while the
+                // progress screen remains visible and streams the log output.
+                _ = LaunchBundleAsync(responseFilePath, correlationId);
             }
             catch (Exception ex)
             {
@@ -219,13 +235,139 @@ namespace AdagioMachineAgent.BootstrapperApplication
             return responseFile;
         }
 
-        private void WriteResponseFilePathMarker(string responseFilePath)
+        // -------------------------------------------------------------------------
+        // Bundle launch helpers
+        // -------------------------------------------------------------------------
+
+        /// <summary>
+        /// Locates the Burn bundle EXE that is expected to be co-deployed in the
+        /// same directory as this wizard.
+        /// </summary>
+        private static string? FindBundleExe()
         {
-            // Write to a marker file that the Burn bundle can read via environment variable or temp location
-            string markerDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "AdagioInstaller");
-            System.IO.Directory.CreateDirectory(markerDir);
-            string markerFile = System.IO.Path.Combine(markerDir, "response-path.txt");
-            System.IO.File.WriteAllText(markerFile, responseFilePath);
+            var candidate = Path.Combine(AppContext.BaseDirectory, "AdagioMachineAgent.Bundle.exe");
+            return File.Exists(candidate) ? candidate : null;
+        }
+
+        /// <summary>
+        /// Launches the Burn bundle in quiet mode, streams relevant log lines to the
+        /// progress screen, and reports the final success/failure state.
+        /// </summary>
+        private async Task LaunchBundleAsync(string responseFilePath, string correlationId)
+        {
+            string logDir = Path.Combine(Path.GetTempPath(), "AdagioInstaller");
+            Directory.CreateDirectory(logDir);
+            string logPath = Path.Combine(logDir, $"bundle-{DateTime.UtcNow:yyyyMMddHHmmss}.log");
+
+            _progressScreen.SetStatus("Locating installer bundle\u2026", logPath);
+            _progressScreen.AppendLog($"[{DateTime.Now:HH:mm:ss}] Correlation ID : {correlationId}");
+            _progressScreen.AppendLog($"[{DateTime.Now:HH:mm:ss}] Response file  : {responseFilePath}");
+
+            string? bundlePath = FindBundleExe();
+            if (bundlePath == null)
+            {
+                _progressScreen.AppendLog($"[ERROR] AdagioMachineAgent.Bundle.exe not found in: {AppContext.BaseDirectory}");
+                _progressScreen.AppendLog("[ERROR] Ensure the wizard and bundle are deployed in the same folder.");
+                _progressScreen.SetStatus("Installation failed: bundle not found.", logPath);
+                _progressScreen.SetComplete(false, logPath);
+                return;
+            }
+
+            _progressScreen.AppendLog($"[{DateTime.Now:HH:mm:ss}] Bundle         : {bundlePath}");
+            _progressScreen.SetStatus("Running installation\u2026");
+
+            try
+            {
+                // Run the bundle silently. The wizard is already elevated (requireAdministrator
+                // manifest) so no further UAC prompt is needed for the child process.
+                var psi = new ProcessStartInfo
+                {
+                    FileName = bundlePath,
+                    // /install  – install mode
+                    // /quiet    – no UI from WixStdBA
+                    // /log      – write Burn log to known path
+                    // ADAGIO_RESPONSE_FILE_PATH – overridable bundle variable consumed by MSI
+                    Arguments = $"/install /quiet /log \"{logPath}\" ADAGIO_RESPONSE_FILE_PATH=\"{responseFilePath}\"",
+                    UseShellExecute = true
+                };
+
+                var process = Process.Start(psi);
+                if (process == null)
+                {
+                    _progressScreen.AppendLog("[ERROR] Failed to start the installer process.");
+                    _progressScreen.SetComplete(false, logPath);
+                    return;
+                }
+
+                long lastLogPosition = 0;
+
+                while (!process.HasExited)
+                {
+                    await Task.Delay(1500).ConfigureAwait(false);
+                    lastLogPosition = TailBurnLog(logPath, lastLogPosition);
+                }
+
+                // Drain any remaining log content written after the process exits.
+                TailBurnLog(logPath, lastLogPosition);
+
+                int exitCode = process.ExitCode;
+                _progressScreen.AppendLog($"[{DateTime.Now:HH:mm:ss}] Bundle exited with code {exitCode}.");
+                bool success = exitCode == 0;
+                _progressScreen.SetStatus(
+                    success ? "Installation complete." : $"Installation failed (exit code {exitCode}).",
+                    logPath);
+                _progressScreen.SetComplete(success, logPath);
+            }
+            catch (Exception ex)
+            {
+                _progressScreen.AppendLog($"[ERROR] {ex.Message}");
+                _progressScreen.SetComplete(false, logPath);
+            }
+        }
+
+        /// <summary>
+        /// Reads new content appended to the Burn log file since <paramref name="position"/>
+        /// and forwards relevant lines to the progress screen.
+        /// Returns the updated file position.
+        /// </summary>
+        private long TailBurnLog(string logPath, long position)
+        {
+            if (!File.Exists(logPath)) return position;
+
+            try
+            {
+                using var fs = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                if (fs.Length <= position) return position;
+
+                fs.Seek(position, SeekOrigin.Begin);
+
+                // Burn writes logs in UTF-16 LE on Windows.
+                using var reader = new StreamReader(fs, Encoding.Unicode, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
+                string? line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    var t = line.Trim();
+                    if (t.Length == 0) continue;
+
+                    // Surface lines that carry meaningful progress or error signals.
+                    if (t.Contains("Error", StringComparison.OrdinalIgnoreCase)
+                        || t.Contains("Apply", StringComparison.OrdinalIgnoreCase)
+                        || t.Contains("Package", StringComparison.OrdinalIgnoreCase)
+                        || t.Contains("Progress", StringComparison.OrdinalIgnoreCase)
+                        || t.Contains("Install", StringComparison.OrdinalIgnoreCase)
+                        || t.Contains("Rollback", StringComparison.OrdinalIgnoreCase)
+                        || t.Contains("Complete", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _progressScreen.AppendLog(t);
+                    }
+                }
+
+                return fs.Position;
+            }
+            catch
+            {
+                return position;
+            }
         }
 
         private static string WriteInstallerFailureDiagnostics(Exception ex, string correlationId)

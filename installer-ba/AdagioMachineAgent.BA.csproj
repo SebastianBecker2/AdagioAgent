@@ -20,11 +20,16 @@
     <!-- Self-contained deployment for use in bundle -->
     <SelfContained>true</SelfContained>
     <PublishTrimmed>false</PublishTrimmed>
+
+    <!-- Require administrator rights so the installer can write to Program Files
+         and to the Windows Services registry hive. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- JSON serialization for response file generation -->
-    <PackageReference Include="System.Text.Json" Version="8.0.4" />
+    <!-- JSON serialization for response file generation.
+         8.0.5+ resolves known high-severity vuln GHSA-8g4q-xg66-9fp4. -->
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows10.0.22621.0'">

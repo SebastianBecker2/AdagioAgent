@@ -11,6 +11,9 @@
     <InstallerPlatform>x64</InstallerPlatform>
     <_MachineAgentCsproj>$(MSBuildThisFileDirectory)..\machine-agent\AdagioMachineAgent.csproj</_MachineAgentCsproj>
     <_MsiProjectPath>$(MSBuildThisFileDirectory)..\installer\AdagioMachineAgent.Setup.wixproj</_MsiProjectPath>
+    <_BaCsproj>$(MSBuildThisFileDirectory)..\installer-ba\AdagioMachineAgent.BA.csproj</_BaCsproj>
+    <!-- TFM-qualified output path produced by dotnet build for the BA project. -->
+    <_BaOutputDir>$(MSBuildThisFileDirectory)..\installer-ba\bin\x64\$(Configuration)\net8.0-windows10.0.22621.0\</_BaOutputDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,6 +35,23 @@
     <MSBuild Projects="$(_MsiProjectPath)"
              Targets="Build"
              Properties="Configuration=$(Configuration);Platform=x64" />
+  </Target>
+
+  <!-- Build the wizard BA application before linking the bundle so the co-located
+       EXE is always up-to-date when developers iterate on the bundle. -->
+  <Target Name="BuildBaApplication" BeforeTargets="BeforeBuild">
+    <MSBuild Projects="$(_BaCsproj)"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);Platform=x64" />
+  </Target>
+
+  <!-- Copy the wizard EXE next to the bundle EXE so FindBundleExe() can locate it
+       at runtime when the two artifacts are deployed together. -->
+  <Target Name="CopyBaToOutput" AfterTargets="Build">
+    <Copy SourceFiles="$(_BaOutputDir)AdagioMachineAgent.BA.exe"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="true"
+          ContinueOnError="true" />
   </Target>
 
 </Project>
