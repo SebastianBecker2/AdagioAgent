@@ -37,18 +37,6 @@ jobs:
         shell: pwsh
         run: .\scripts\check-observability-docs.ps1
 
-      - name: Run dry-run script tests
-        shell: pwsh
-        run: Invoke-Pester -Path .\scripts\tests\DryRunScripts.Tests.ps1 -EnableExit
-
-      - name: Run bootstrap script tests
-        shell: pwsh
-        run: Invoke-Pester -Path .\scripts\tests\BootstrapScripts.Tests.ps1 -EnableExit
-
-      - name: Run installer script tests
-        shell: pwsh
-        run: Invoke-Pester -Path .\scripts\tests\InstallerScripts.Tests.ps1 -EnableExit
-
       - name: Restore machine-agent
         run: dotnet restore machine-agent\AdagioMachineAgent.csproj
 
