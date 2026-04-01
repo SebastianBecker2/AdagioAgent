@@ -4,6 +4,7 @@
   "description": "VS Code extension that connects Copilot to a Windows VM agent for automated executable testing",
   "version": "0.2.3",
   "publisher": "adagio",
+  "icon": "resources/adagio-agent-icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
